@@ -3,6 +3,7 @@ extends CanvasLayer
 const DATA_PATH: String = "res://data/PIKACHU_DEMO_ALL_IN_ONE.json"
 const PIKACHU_TEXTURE: Texture2D = preload("res://assets/Pikachu.png")
 const MOVE_IDS: Array[String] = ["nuzzle", "quick_attack", "growl"]
+const AGGRO_AFTER_HIT_MULTIPLIER: float = 0.5
 
 var data: Dictionary = {}
 var player_levels: Array[int] = [15]
@@ -91,6 +92,12 @@ func _make_panel(bg: Color, border: Color, radius: int = 8) -> StyleBoxFlat:
     style.content_margin_right = 8.0
     style.content_margin_top = 6.0
     style.content_margin_bottom = 6.0
+    return style
+
+func _make_bar_style(color: Color, radius: int = 4) -> StyleBoxFlat:
+    var style: StyleBoxFlat = StyleBoxFlat.new()
+    style.bg_color = color
+    style.set_corner_radius_all(radius)
     return style
 
 func _build_config(root: Control) -> void:
@@ -321,12 +328,12 @@ func _build_battle(root: Control) -> void:
     var battle_area: Control = Control.new()
     battle_area.name = "BattleArea"
     battle_area.position = Vector2(0, 42)
-    battle_area.size = Vector2(480, 184)
+    battle_area.size = Vector2(480, 178)
     battle_panel.add_child(battle_area)
 
     var command: PanelContainer = PanelContainer.new()
-    command.position = Vector2(10, 226)
-    command.size = Vector2(460, 84)
+    command.position = Vector2(10, 220)
+    command.size = Vector2(460, 90)
     command.add_theme_stylebox_override("panel", _make_panel(Color("15201fed"), Color("f5df78"), 7))
     battle_panel.add_child(command)
 
@@ -338,7 +345,7 @@ func _build_battle(root: Control) -> void:
     log_label.bbcode_enabled = true
     log_label.fit_content = true
     log_label.scroll_active = false
-    log_label.custom_minimum_size = Vector2(430, 27)
+    log_label.custom_minimum_size = Vector2(430, 31)
     log_label.add_theme_font_size_override("normal_font_size", 11)
     command_v.add_child(log_label)
 
@@ -424,7 +431,7 @@ func _start_battle() -> void:
 
     var area: Control = battle_panel.get_node("BattleArea") as Control
     for child: Node in area.get_children():
-        child.free()
+        child.queue_free()
 
     for index: int in range(player_levels.size()):
         var player_combatant: Dictionary = _make_combatant("player", index, player_levels[index])
@@ -436,20 +443,26 @@ func _start_battle() -> void:
         enemy_team.append(enemy_combatant)
         combatants.append(enemy_combatant)
 
-    _layout_team(area, player_team, false)
+    # Gegner links, eigenes Team rechts.
     _layout_team(area, enemy_team, true)
-    _set_log("Der Pikachu-Testkampf beginnt! ATB-Leisten füllen sich automatisch.")
+    _layout_team(area, player_team, false)
+    _refresh_all_cards()
+    _set_log("Der Pikachu-Testkampf beginnt! Blau = ATB, Grün/Gelb/Rot = KP.")
     _disable_move_buttons()
 
 func _make_combatant(side: String, index: int, level: int) -> Dictionary:
-    var species: Dictionary = data.get("species", {})
-    var pikachu: Dictionary = species.get("pikachu", {})
+    var species_all: Dictionary = data.get("species", {})
+    var pikachu: Dictionary = species_all.get("pikachu", {})
     var base: Dictionary = pikachu.get("base_stats", {"hp": 35, "attack": 53, "defense": 47, "special": 55, "speed": 90})
+    var types: Dictionary = pikachu.get("types", {"primary": "electric", "secondary": null})
 
     var max_hp: int = int(floor((2.0 * float(base.get("hp", 35)) * float(level)) / 100.0)) + level + 10
     var attack: int = int(floor((2.0 * float(base.get("attack", 53)) * float(level)) / 100.0)) + 5
     var defense: int = int(floor((2.0 * float(base.get("defense", 47)) * float(level)) / 100.0)) + 5
     var speed: int = int(floor((2.0 * float(base.get("speed", 90)) * float(level)) / 100.0)) + 5
+
+    # Für die Demo bewusst deterministisch: höheres Level startet mit mehr Bedrohung.
+    var start_aggro: float = 10.0 + float(level) * 2.0
 
     return {
         "id": side + "_" + str(index),
@@ -461,12 +474,14 @@ func _make_combatant(side: String, index: int, level: int) -> Dictionary:
         "attack": attack,
         "defense": defense,
         "speed": speed,
+        "type_primary": str(types.get("primary", "electric")),
+        "type_secondary": types.get("secondary", null),
         "attack_stage": 0,
         "paralyzed": false,
-        "atb": randf_range(0.0, 26.0),
+        "atb": 0.0,
         "cycle_mult": 1.0,
         "alive": true,
-        "aggro": randf_range(0.0, 2.0)
+        "aggro": start_aggro
     }
 
 func _layout_team(area: Control, team: Array[Dictionary], enemy: bool) -> void:
@@ -474,20 +489,20 @@ func _layout_team(area: Control, team: Array[Dictionary], enemy: bool) -> void:
     for index: int in range(team.size()):
         var combatant: Dictionary = team[index]
         var card: Control = _create_combatant_card(combatant, enemy)
-        var x: float = 292.0 if enemy else 18.0
+        var x: float = 18.0 if enemy else 292.0
         card.position = Vector2(x, positions[index])
         area.add_child(card)
 
 func _positions_for_count(count: int) -> Array[float]:
     match count:
         1:
-            return [54.0]
+            return [52.0]
         2:
-            return [20.0, 91.0]
+            return [18.0, 88.0]
         3:
-            return [4.0, 59.0, 114.0]
+            return [1.0, 57.0, 113.0]
         _:
-            return [-3.0, 40.0, 83.0, 126.0]
+            return [-5.0, 38.0, 81.0, 124.0]
 
 func _create_combatant_card(combatant: Dictionary, enemy: bool) -> Control:
     var card: PanelContainer = PanelContainer.new()
@@ -504,7 +519,9 @@ func _create_combatant_card(combatant: Dictionary, enemy: bool) -> Control:
     sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
     sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
     sprite.custom_minimum_size = Vector2(42, 42)
-    sprite.flip_h = enemy
+    # Das Originalbild schaut nach rechts. Gegner links schauen nach rechts,
+    # das eigene Team rechts wird gespiegelt und schaut nach links.
+    sprite.flip_h = not enemy
     h.add_child(sprite)
 
     var v: VBoxContainer = VBoxContainer.new()
@@ -522,6 +539,8 @@ func _create_combatant_card(combatant: Dictionary, enemy: bool) -> Control:
     hp_bar.value = float(combatant["hp"])
     hp_bar.show_percentage = false
     hp_bar.custom_minimum_size = Vector2(112, 9)
+    hp_bar.add_theme_stylebox_override("background", _make_bar_style(Color("c8c8c2")))
+    hp_bar.add_theme_stylebox_override("fill", _make_bar_style(Color("55b85a")))
     v.add_child(hp_bar)
 
     var hp_text: Label = Label.new()
@@ -535,11 +554,13 @@ func _create_combatant_card(combatant: Dictionary, enemy: bool) -> Control:
     atb_bar.value = float(combatant["atb"])
     atb_bar.show_percentage = false
     atb_bar.custom_minimum_size = Vector2(112, 6)
+    atb_bar.add_theme_stylebox_override("background", _make_bar_style(Color("b5b5aa"), 3))
+    atb_bar.add_theme_stylebox_override("fill", _make_bar_style(Color("42aef5"), 3))
     v.add_child(atb_bar)
 
     var status: Label = Label.new()
     status.text = ""
-    status.add_theme_color_override("font_color", Color("7a4d00"))
+    status.add_theme_color_override("font_color", Color("59605c"))
     status.add_theme_font_size_override("font_size", 8)
     v.add_child(status)
 
@@ -568,15 +589,14 @@ func _process(delta: float) -> void:
             effective_speed *= 0.5
 
         var cycle: float = maxf(0.01, float(combatant.get("cycle_mult", 1.0)))
-        var atb_gain: float = delta * (12.0 + effective_speed * 0.62) / cycle
-        combatant["atb"] = minf(100.0, float(combatant.get("atb", 0.0)) + atb_gain)
-        _refresh_card(combatant)
+        var gain: float = delta * (12.0 + effective_speed * 0.62) / cycle
+        combatant["atb"] = minf(100.0, float(combatant.get("atb", 0.0)) + gain)
 
-        if float(combatant["atb"]) >= 100.0:
-            var actor_speed: float = float(combatant.get("speed", 0))
-            if ready_actor.is_empty() or actor_speed > best_speed:
-                ready_actor = combatant
-                best_speed = actor_speed
+        if float(combatant["atb"]) >= 100.0 and effective_speed > best_speed:
+            ready_actor = combatant
+            best_speed = effective_speed
+
+    _refresh_all_cards()
 
     if ready_actor.is_empty():
         return
@@ -593,8 +613,9 @@ func _prompt_player(actor: Dictionary) -> void:
 
     var moves: Dictionary = data.get("moves", {})
     for index: int in range(move_buttons.size()):
-        var move: Dictionary = moves.get(MOVE_IDS[index], {})
-        move_buttons[index].text = str(move.get("name", MOVE_IDS[index])) + "  AP " + str(move.get("ap_cost", 1))
+        var move_id: String = MOVE_IDS[index]
+        var move: Dictionary = moves.get(move_id, {})
+        move_buttons[index].text = str(move.get("name", move_id)) + "  AP " + str(int(move.get("ap_cost", 1)))
         move_buttons[index].disabled = false
 
 func _disable_move_buttons() -> void:
@@ -604,6 +625,7 @@ func _disable_move_buttons() -> void:
 func _on_move_pressed(move_id: String) -> void:
     if not paused_for_player or selected_actor.is_empty():
         return
+
     _disable_move_buttons()
     paused_for_player = false
     var actor: Dictionary = selected_actor
@@ -613,7 +635,7 @@ func _on_move_pressed(move_id: String) -> void:
 func _enemy_act(actor: Dictionary) -> void:
     var roll: float = randf()
     var move_id: String = "growl"
-    if roll < 0.40:
+    if roll < 0.4:
         move_id = "nuzzle"
     elif roll < 0.75:
         move_id = "quick_attack"
@@ -627,76 +649,111 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
         actor["atb"] = 0.0
         actor["cycle_mult"] = 1.0
         _set_log(_actor_name(actor) + " ist paralysiert und kann sich nicht bewegen!")
-        _refresh_card(actor)
+        _refresh_all_cards()
         return
 
     var moves: Dictionary = data.get("moves", {})
     var move: Dictionary = moves.get(move_id, {})
     actor["atb"] = 0.0
-    actor["cycle_mult"] = _cycle_multiplier(int(move.get("ap_cost", 1)))
+    actor["cycle_mult"] = _cycle_multiplier_for_move(move)
 
     if move_id == "growl":
         var targets: Array[Dictionary] = _living_opponents(actor)
         for target: Dictionary in targets:
             target["attack_stage"] = maxi(-6, int(target.get("attack_stage", 0)) - 1)
-            target["aggro"] = float(target.get("aggro", 0.0)) + 3.0
-            _refresh_card(target)
-            _pulse_card(target, Color("80b6ff"))
+            _pulse_combatant(target, Color("80b6ff"))
+        actor["aggro"] = float(actor.get("aggro", 0.0)) + float(targets.size()) * 3.0
         _set_log(_actor_name(actor) + " setzt [b]Heuler[/b] ein. Angriff aller Gegner sinkt!")
     else:
         var target: Dictionary = _highest_aggro_target(actor)
         if target.is_empty():
             return
 
-        var damage: int = _calculate_damage(actor, target, int(move.get("power", 20)))
+        var effectiveness: float = _type_effectiveness(str(move.get("type", "normal")), target)
+        var damage: int = _calculate_damage(actor, target, int(move.get("power", 20)), effectiveness)
         target["hp"] = maxi(0, int(target["hp"]) - damage)
-        target["aggro"] = float(target.get("aggro", 0.0)) + float(damage)
 
-        var applied_paralysis: bool = false
+        # Aggro entsteht beim handelnden Pokémon aus der tatsächlichen Wirkung.
+        actor["aggro"] = float(actor.get("aggro", 0.0)) + float(damage)
+
+        var paralysis_applied: bool = false
         if move_id == "nuzzle" and int(target["hp"]) > 0:
             target["paralyzed"] = true
-            applied_paralysis = true
+            paralysis_applied = true
+            actor["aggro"] = float(actor.get("aggro", 0.0)) + 3.0
+
+        # Nach einer aufgelösten offensiven Einzelzielaktion verliert das Ziel einen Teil seiner Aggro.
+        target["aggro"] = maxf(0.0, float(target.get("aggro", 0.0)) * AGGRO_AFTER_HIT_MULTIPLIER)
 
         _animate_attack(actor, target, move_id)
-        var suffix: String = " + Paralyse!" if applied_paralysis else "."
-        _set_log(_actor_name(actor) + " nutzt [b]" + str(move.get("name", move_id)) + "[/b] → " + str(damage) + " Schaden" + suffix)
+
+        var feedback: String = _effectiveness_text(effectiveness)
+        var status_feedback: String = " + Paralyse!" if paralysis_applied else ""
+        var log_text: String = _actor_name(actor) + " nutzt [b]" + str(move.get("name", move_id)) + "[/b] → " + str(damage) + " Schaden."
+        if not feedback.is_empty():
+            log_text += " [b]" + feedback + "[/b]"
+        log_text += status_feedback
+        _set_log(log_text)
 
         if int(target["hp"]) <= 0:
             target["alive"] = false
             target["atb"] = 0.0
 
-    _refresh_card(actor)
-    for combatant: Dictionary in combatants:
-        _refresh_card(combatant)
+    _refresh_all_cards()
     _check_battle_end()
 
-func _cycle_multiplier(ap_cost: int) -> float:
+func _cycle_multiplier_for_move(move: Dictionary) -> float:
     var rules: Dictionary = data.get("rules", {})
     var ap_rules: Dictionary = rules.get("ap_costs_demo", {})
-    var multipliers: Dictionary = ap_rules.get("demo_atb_cycle_multiplier", {})
-    return float(multipliers.get(str(ap_cost), 1.0))
+    var curve: Dictionary = ap_rules.get("demo_atb_cycle_multiplier", {})
+    return float(curve.get(str(int(move.get("ap_cost", 1))), 1.0))
 
-func _calculate_damage(actor: Dictionary, target: Dictionary, power: int) -> int:
+func _calculate_damage(actor: Dictionary, target: Dictionary, power: int, effectiveness: float) -> int:
     var stage: int = int(actor.get("attack_stage", 0))
     var rules: Dictionary = data.get("rules", {})
-    var stat_stages: Dictionary = rules.get("stat_stages", {})
-    var multipliers: Dictionary = stat_stages.get("multipliers", {})
+    var stage_rules: Dictionary = rules.get("stat_stages", {})
+    var multipliers: Dictionary = stage_rules.get("multipliers", {})
     var stage_multiplier: float = float(multipliers.get(str(stage), 1.0))
 
-    var attack: float = float(actor.get("attack", 10)) * stage_multiplier
-    var defense: float = maxf(1.0, float(target.get("defense", 10)))
-    var level: float = float(actor.get("level", 1))
-    var raw: float = (((2.0 * level / 5.0 + 2.0) * float(power) * attack / defense) / 50.0) + 2.0
-    var randomized: float = raw * randf_range(0.88, 1.0)
-    return maxi(1, int(round(randomized)))
+    var attack_value: float = float(actor.get("attack", 10)) * stage_multiplier
+    var defense_value: float = maxf(1.0, float(target.get("defense", 10)))
+    var level_value: float = float(actor.get("level", 1))
+    var raw: float = (((2.0 * level_value / 5.0 + 2.0) * float(power) * attack_value / defense_value) / 50.0) + 2.0
+    var varied: float = raw * randf_range(0.88, 1.0) * effectiveness
+    return maxi(1, int(round(varied)))
+
+func _type_effectiveness(move_type: String, target: Dictionary) -> float:
+    # Die Demo enthält derzeit ausschließlich Pikachu. Deshalb wird hier nur
+    # die aktuell benötigte Typbeziehung abgebildet; das vollständige Typensystem
+    # kann später zentral ersetzt werden.
+    var primary: String = str(target.get("type_primary", ""))
+    var secondary_variant: Variant = target.get("type_secondary", null)
+    var multiplier: float = 1.0
+
+    if move_type == "electric":
+        if primary == "electric":
+            multiplier *= 0.5
+        if secondary_variant != null and str(secondary_variant) == "electric":
+            multiplier *= 0.5
+
+    return multiplier
+
+func _effectiveness_text(effectiveness: float) -> String:
+    if effectiveness <= 0.0:
+        return "Keine Wirkung!"
+    if effectiveness > 1.0:
+        return "Sehr effektiv!"
+    if effectiveness < 1.0:
+        return "Nicht sehr effektiv."
+    return ""
 
 func _living_opponents(actor: Dictionary) -> Array[Dictionary]:
     var source_team: Array[Dictionary] = enemy_team if str(actor["side"]) == "player" else player_team
-    var living: Array[Dictionary] = []
+    var result: Array[Dictionary] = []
     for candidate: Dictionary in source_team:
         if bool(candidate.get("alive", false)):
-            living.append(candidate)
-    return living
+            result.append(candidate)
+    return result
 
 func _highest_aggro_target(actor: Dictionary) -> Dictionary:
     var choices: Array[Dictionary] = _living_opponents(actor)
@@ -704,75 +761,118 @@ func _highest_aggro_target(actor: Dictionary) -> Dictionary:
         return {}
 
     var best: Dictionary = choices[0]
-    var best_aggro: float = float(best.get("aggro", 0.0))
-    for index: int in range(1, choices.size()):
-        var candidate: Dictionary = choices[index]
+    for candidate: Dictionary in choices:
         var candidate_aggro: float = float(candidate.get("aggro", 0.0))
+        var best_aggro: float = float(best.get("aggro", 0.0))
         if candidate_aggro > best_aggro:
             best = candidate
-            best_aggro = candidate_aggro
+        elif is_equal_approx(candidate_aggro, best_aggro) and int(candidate.get("index", 0)) < int(best.get("index", 0)):
+            best = candidate
     return best
+
+func _highest_aggro_in_team(team: Array[Dictionary]) -> Dictionary:
+    var best: Dictionary = {}
+    for candidate: Dictionary in team:
+        if not bool(candidate.get("alive", false)):
+            continue
+        if best.is_empty():
+            best = candidate
+            continue
+        var candidate_aggro: float = float(candidate.get("aggro", 0.0))
+        var best_aggro: float = float(best.get("aggro", 0.0))
+        if candidate_aggro > best_aggro:
+            best = candidate
+        elif is_equal_approx(candidate_aggro, best_aggro) and int(candidate.get("index", 0)) < int(best.get("index", 0)):
+            best = candidate
+    return best
+
+func _is_highest_aggro(combatant: Dictionary) -> bool:
+    if not bool(combatant.get("alive", false)):
+        return false
+    var team: Array[Dictionary] = player_team if str(combatant.get("side", "")) == "player" else enemy_team
+    var highest: Dictionary = _highest_aggro_in_team(team)
+    return not highest.is_empty() and str(highest.get("id", "")) == str(combatant.get("id", ""))
 
 func _actor_name(combatant: Dictionary) -> String:
     var prefix: String = "Wildes Pikachu" if str(combatant["side"]) == "enemy" else "Pikachu"
     return prefix + " Lv." + str(combatant["level"])
 
+func _refresh_all_cards() -> void:
+    for combatant: Dictionary in combatants:
+        _refresh_card(combatant)
+
 func _refresh_card(combatant: Dictionary) -> void:
-    var refs_value: Variant = team_controls.get(str(combatant.get("id", "")), null)
-    if refs_value == null or not (refs_value is Dictionary):
+    var id: String = str(combatant.get("id", ""))
+    var ui: Dictionary = team_controls.get(id, {})
+    if ui.is_empty():
         return
 
-    var refs: Dictionary = refs_value
-    var card: PanelContainer = refs["card"] as PanelContainer
-    var hp: ProgressBar = refs["hp"] as ProgressBar
-    var hp_text: Label = refs["hp_text"] as Label
-    var atb: ProgressBar = refs["atb"] as ProgressBar
-    var status: Label = refs["status"] as Label
+    var card: Control = ui.get("card") as Control
+    var hp_bar: ProgressBar = ui.get("hp") as ProgressBar
+    var hp_text: Label = ui.get("hp_text") as Label
+    var atb_bar: ProgressBar = ui.get("atb") as ProgressBar
+    var status: Label = ui.get("status") as Label
 
-    hp.value = float(combatant["hp"])
+    hp_bar.value = float(combatant["hp"])
     hp_text.text = str(combatant["hp"]) + "/" + str(combatant["max_hp"]) + " KP"
-    atb.value = float(combatant["atb"])
+    atb_bar.value = float(combatant["atb"])
 
-    var status_text: String = ""
+    var hp_ratio: float = float(combatant["hp"]) / maxf(1.0, float(combatant["max_hp"]))
+    if hp_ratio <= 0.25:
+        hp_bar.add_theme_stylebox_override("fill", _make_bar_style(Color("d94c4c")))
+    elif hp_ratio <= 0.5:
+        hp_bar.add_theme_stylebox_override("fill", _make_bar_style(Color("e0bd45")))
+    else:
+        hp_bar.add_theme_stylebox_override("fill", _make_bar_style(Color("55b85a")))
+
+    var pieces: Array[String] = []
+    var aggro_text: String = "AGGRO %.1f" % float(combatant.get("aggro", 0.0))
+    if _is_highest_aggro(combatant):
+        aggro_text = "ZIEL | " + aggro_text
+        status.add_theme_color_override("font_color", Color("b54d22"))
+    else:
+        status.add_theme_color_override("font_color", Color("59605c"))
+    pieces.append(aggro_text)
+
     if bool(combatant.get("paralyzed", false)):
-        status_text += "PAR  "
-    var attack_stage: int = int(combatant.get("attack_stage", 0))
-    if attack_stage != 0:
-        status_text += "ANG " + str(attack_stage)
-    status.text = status_text
+        pieces.append("PAR")
+    if int(combatant.get("attack_stage", 0)) != 0:
+        pieces.append("ANG " + str(combatant.get("attack_stage", 0)))
+    status.text = " · ".join(pieces)
 
     card.modulate.a = 1.0 if bool(combatant.get("alive", false)) else 0.28
 
 func _animate_attack(actor: Dictionary, target: Dictionary, move_id: String) -> void:
-    var actor_refs_value: Variant = team_controls.get(str(actor.get("id", "")), null)
-    var target_refs_value: Variant = team_controls.get(str(target.get("id", "")), null)
+    var actor_ui: Dictionary = team_controls.get(str(actor.get("id", "")), {})
+    var target_ui: Dictionary = team_controls.get(str(target.get("id", "")), {})
 
-    if actor_refs_value is Dictionary:
-        var actor_refs: Dictionary = actor_refs_value
-        var actor_card: PanelContainer = actor_refs["card"] as PanelContainer
+    if not actor_ui.is_empty():
+        var actor_card: Control = actor_ui.get("card") as Control
         var origin: Vector2 = actor_card.position
-        var direction: float = 14.0 if str(actor["side"]) == "player" else -14.0
-        var attack_tween: Tween = create_tween()
-        attack_tween.tween_property(actor_card, "position", origin + Vector2(direction, 0), 0.08)
-        attack_tween.tween_property(actor_card, "position", origin, 0.12)
+        var direction: float = -1.0 if str(actor["side"]) == "player" else 1.0
+        var shift: Vector2 = Vector2(14.0 * direction, 0.0)
+        var tween: Tween = create_tween()
+        tween.tween_property(actor_card, "position", origin + shift, 0.08)
+        tween.tween_property(actor_card, "position", origin, 0.12)
 
-    if target_refs_value is Dictionary:
-        var target_refs: Dictionary = target_refs_value
-        var target_card: PanelContainer = target_refs["card"] as PanelContainer
+    if not target_ui.is_empty():
+        var target_card: Control = target_ui.get("card") as Control
         var flash: Color = Color("fff36c") if move_id == "nuzzle" else Color("ffffff")
-        _pulse_card(target, flash)
+        _pulse_card(target_card, flash)
         var target_origin: Vector2 = target_card.position
-        var hit_tween: Tween = create_tween()
-        hit_tween.tween_property(target_card, "position", target_origin + Vector2(3, 0), 0.04)
-        hit_tween.tween_property(target_card, "position", target_origin - Vector2(3, 0), 0.04)
-        hit_tween.tween_property(target_card, "position", target_origin, 0.04)
+        var shake: Tween = create_tween()
+        shake.tween_property(target_card, "position", target_origin + Vector2(3, 0), 0.04)
+        shake.tween_property(target_card, "position", target_origin - Vector2(3, 0), 0.04)
+        shake.tween_property(target_card, "position", target_origin, 0.04)
 
-func _pulse_card(combatant: Dictionary, color: Color) -> void:
-    var refs_value: Variant = team_controls.get(str(combatant.get("id", "")), null)
-    if not (refs_value is Dictionary):
+func _pulse_combatant(combatant: Dictionary, color: Color) -> void:
+    var ui: Dictionary = team_controls.get(str(combatant.get("id", "")), {})
+    if ui.is_empty():
         return
-    var refs: Dictionary = refs_value
-    var card: PanelContainer = refs["card"] as PanelContainer
+    var card: Control = ui.get("card") as Control
+    _pulse_card(card, color)
+
+func _pulse_card(card: CanvasItem, color: Color) -> void:
     var tween: Tween = create_tween()
     tween.tween_property(card, "modulate", color, 0.06)
     tween.tween_property(card, "modulate", Color.WHITE, 0.16)
@@ -800,12 +900,13 @@ func _check_battle_end() -> void:
 
     battle_active = false
     paused_for_player = false
+    selected_actor = {}
     _disable_move_buttons()
     result_panel.visible = true
 
     if players_alive:
         result_title.text = "SIEG!"
-        result_text.text = "Alle wilden Pikachus wurden besiegt. Du kannst sofort erneut testen oder das Setup ändern."
+        result_text.text = "Alle wilden Pikachus wurden besiegt. Du kannst sofort neu testen oder das Setup ändern."
     else:
         result_title.text = "NIEDERLAGE"
         result_text.text = "Dein Team ist kampfunfähig. Du kannst direkt neu testen oder zur Route zurückkehren."
