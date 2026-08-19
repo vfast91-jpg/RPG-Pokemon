@@ -1,40 +1,53 @@
-# RPG-Pokemon – Godot Exploration Demo 0.2
+# RPG-Pokemon – Godot Demo 0.3
 
-Die Oberwelt ist jetzt auf ein **klassisches Tile-/Grid-System** umgestellt. Die Grafik kommt aus dem hochgeladenen Puny-World-Tileset und wird intern als 16×16-Raster verwendet und im Spiel pixelgenau 2× dargestellt.
+Die Demo enthält jetzt die begehbare Route **und einen Pikachu-Testkampf**.
 
-## So öffnest du die aktuelle Version
+## Öffnen
 
 1. Auf GitHub **Code → Download ZIP**.
 2. ZIP vollständig entpacken.
-3. Godot öffnen.
-4. **Importieren** wählen.
-5. Im neuen Ordner **`project.godot`** auswählen.
-6. Projekt öffnen und **▶ Projekt ausführen** drücken.
+3. In Godot **`project.godot`** importieren.
+4. **▶ Projekt ausführen**.
 
-Wenn noch die alte frei gezeichnete Karte oder die dunkle technische ATB-Testkarte erscheint, ist noch ein älterer lokaler Projektordner geöffnet.
+Wenn noch eine ältere Version erscheint, hast du wahrscheinlich noch einen alten lokalen Projektordner geöffnet.
 
-## Neu in 0.2
+## Steuerung Oberwelt
 
-- echtes 16×16-Tile-Raster, visuell 2× skaliert
-- rasterbasierte Vier-Richtungs-Bewegung wie in klassischen Pokémon-/RPG-Maker-Spielen
-- Karte aus dem Puny-World-Tileset statt frei gezeichneter Platzhalterwelt
-- Gras, Wege, Waldgrenzen, Teich, Vegetation und Gebäude aus dem Tileset
-- feste begehbare und blockierte Rasterfelder
-- NPC-, Schild- und Tür-Interaktion
-- kleiner Pokémon-artiger Dialogbereich
-- klassische interne Spielauflösung von 480×320 Pixeln
-- weiterhin **kein Kampf und kein ATB**
+- **WASD / Pfeiltasten** – laufen
+- **E / Leertaste** – interagieren
 
-## Steuerung
+## Pikachu-Demokampf
 
-- **WASD** oder **Pfeiltasten** – ein Rasterfeld laufen
-- **E** oder **Leertaste** – interagieren / Dialog schließen
-- **Enter** oder **Escape** – Dialog schließen
+Im westlichen hohen Gras steht jetzt ein sichtbares Pikachu.
 
-## Aktuelles Ziel
+Daneben befindet sich ein **Kampf-Testterminal**:
 
-Diese Version ist bewusst noch eine Gestaltungsbasis. Als Nächstes werden Map-Komposition, Charakter-Sprites, Tile-Auswahl, Animationen und Details anhand der tatsächlichen Godot-Ansicht weiter verfeinert.
+- Anzahl eigener Pikachus: 1–4
+- Anzahl wilder Pikachus: 1–4
+- Level jedes einzelnen Pikachus: 1–100
+- Preset: 4v4 auf Level 15
+- Preset: 4v4 mit Level 5 / 15 / 30 / 50
+
+Sprich das Pikachu an, um mit der aktuellen Konfiguration zu kämpfen.
+
+Der Kampf enthält:
+
+- KP-Leisten
+- ATB-Leisten
+- Wangenrubbler
+- Ruckzuckhieb
+- Heuler
+- Paralyse
+- Angriffsstufen
+- kleine Treffer-/Bewegungsanimationen
+- Gegner-KI
+- Sieg- und Niederlagebildschirm
+- sichere Rückkehr zur Route nach dem Kampf
+
+Die Kampfdaten liegen in `data/PIKACHU_DEMO_ALL_IN_ONE.json`.
 
 ## Assets
 
-Die Tileset-Datei liegt unter `assets/punyworld-overworld-tileset_0.png`. Lizenz- und Quellenhinweise stehen in `ASSET_CREDITS.md`.
+- Pikachu: `assets/Pikachu.png`
+- Tileset: `assets/punyworld-overworld-tileset_0.png`
+- weitere Lizenz- und Quellenhinweise: `ASSET_CREDITS.md`
