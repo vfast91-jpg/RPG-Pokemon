@@ -19,6 +19,8 @@ const PLAYER_SIDE := preload("res://assets/player_side.svg")
 @onready var player_sprite: Sprite2D = $Player/Sprite
 @onready var camera: Camera2D = $Player/Camera2D
 @onready var npc: Sprite2D = $NPC
+@onready var pikachu_encounter: Sprite2D = $PikachuEncounter
+@onready var battle_demo: CanvasLayer = $BattleDemo
 @onready var dialog: Control = $UI/Dialog
 @onready var dialog_text: RichTextLabel = $UI/Dialog/Margin/Text
 @onready var interact_hint: Control = $UI/InteractHint
@@ -48,11 +50,12 @@ func _ready() -> void:
     player.position = _cell_to_world(player_cell)
     player_sprite.position.y = PLAYER_BASE_Y
     npc.position = _cell_to_world(Vector2i(23, 12)) + Vector2(0, -15)
+    pikachu_encounter.position = _cell_to_world(Vector2i(15, 14)) + Vector2(0, -12)
 
     blocked[Vector2i(23, 12)] = true
     interactables[Vector2i(23, 12)] = {
         "title": "Wanderin Mira",
-        "body": "Der Hainpfad ist heute ruhig. Im hohen Gras bewegt sich schon etwas – Kämpfe bleiben in dieser Version aber noch ausgeschaltet.",
+        "body": "Im westlichen Gras wartet jetzt ein Pikachu. Am gelben Testterminal daneben kannst du den Demokampf konfigurieren.",
         "hint": "E  Reden"
     }
 
@@ -68,6 +71,22 @@ func _ready() -> void:
         "hint": "E  Tür ansehen"
     }
 
+    blocked[Vector2i(15, 14)] = true
+    interactables[Vector2i(15, 14)] = {
+        "title": "Wildes Pikachu",
+        "body": "",
+        "hint": "E  Kampf starten",
+        "action": "battle_start"
+    }
+
+    blocked[Vector2i(17, 14)] = true
+    interactables[Vector2i(17, 14)] = {
+        "title": "Kampf-Testterminal",
+        "body": "",
+        "hint": "E  Kampf konfigurieren",
+        "action": "battle_config"
+    }
+
     dialog.visible = false
     interact_hint.visible = false
     grass_hint.modulate.a = 0.0
@@ -81,6 +100,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
     _update_banner(delta)
     _update_feedback(delta)
+
+    if battle_demo.visible:
+        interact_hint.visible = false
+        return
 
     if dialog_open:
         return
@@ -113,50 +136,38 @@ func _setup_tileset() -> void:
     decor.scale = Vector2(RENDER_SCALE, RENDER_SCALE)
 
 func _build_world() -> void:
-    # Grundfläche: echtes 16x16-Tile-Raster, im Spiel 2x vergrößert.
     for y in range(WORLD_SIZE.y):
         for x in range(WORLD_SIZE.x):
             ground.set_cell(0, Vector2i(x, y), SOURCE_ID, Vector2i(0, 0), 0)
 
-    # Hauptweg und kleiner Platz vor der Waldstation.
     _paint_rounded_path(Rect2i(18, 0, 4, 30))
     _paint_rounded_path(Rect2i(18, 9, 15, 5))
 
-    # Hohes Gras / wilde Wiesenflächen.
     _paint_tall_grass(Rect2i(10, 12, 6, 6))
     _paint_tall_grass(Rect2i(25, 19, 5, 5))
 
-    # Oberer Waldrand mit einer Lücke über dem Weg.
     _stamp_region(Vector2i(0, 0), Rect2i(0, 7, 9, 3))
     _stamp_region(Vector2i(9, 0), Rect2i(9, 7, 9, 3))
     _stamp_region(Vector2i(24, 0), Rect2i(0, 7, 9, 3))
     _stamp_region(Vector2i(33, 0), Rect2i(9, 7, 9, 3))
 
-    # Unterer Waldrand, ebenfalls mit Wegöffnung.
     _stamp_region(Vector2i(0, 27), Rect2i(0, 7, 9, 3))
     _stamp_region(Vector2i(9, 27), Rect2i(9, 7, 9, 3))
     _stamp_region(Vector2i(24, 27), Rect2i(0, 7, 9, 3))
     _stamp_region(Vector2i(33, 27), Rect2i(9, 7, 9, 3))
 
-    # Seitenbegrenzung aus Einzelbäumen.
     for y in range(3, 27, 3):
         _stamp_region(Vector2i(0, y), Rect2i(8, 7, 1, 3))
         _stamp_region(Vector2i(41, y), Rect2i(17, 7, 1, 3))
 
-    # Zwei dichtere Waldstücke innerhalb der Route.
     _stamp_region(Vector2i(2, 5), Rect2i(0, 7, 9, 3))
     _stamp_region(Vector2i(31, 18), Rect2i(9, 7, 9, 3))
-
-    # Kleiner Teich aus einem fertigen 3x3-Pond-Block des Tilesets.
     _stamp_region(Vector2i(5, 18), Rect2i(7, 10, 3, 3))
-
-    # Waldstation: drei nebeneinanderliegende Gebäudeteile aus dem Set.
     _stamp_region(Vector2i(28, 5), Rect2i(7, 26, 3, 3))
 
-    # Schild am Platz.
     _put_decor(Vector2i(24, 8), Vector2i(7, 30))
+    _put_decor(Vector2i(17, 14), Vector2i(7, 30))
 
-    # Kleine Vegetationsdetails.
     _put_decor(Vector2i(8, 15), Vector2i(0, 28))
     _put_decor(Vector2i(9, 16), Vector2i(1, 28))
     _put_decor(Vector2i(34, 14), Vector2i(2, 28))
@@ -164,7 +175,6 @@ func _build_world() -> void:
     _put_decor(Vector2i(12, 22), Vector2i(0, 29))
     _put_decor(Vector2i(27, 25), Vector2i(1, 29))
 
-    # Blockierte Rasterfelder.
     for x in range(WORLD_SIZE.x):
         if x < 18 or x > 21:
             for y in range(3):
@@ -290,6 +300,8 @@ func _set_facing_texture(direction: Vector2i) -> void:
         player_sprite.flip_h = false
 
 func _unhandled_key_input(event: InputEvent) -> void:
+    if battle_demo.visible:
+        return
     if not (event is InputEventKey):
         return
     var key_event := event as InputEventKey
@@ -309,8 +321,14 @@ func _try_interact() -> void:
     if not interactables.has(target):
         return
 
-    var data: Dictionary = interactables[target]
-    _open_dialog(str(data["title"]), str(data["body"]))
+    var entry: Dictionary = interactables[target]
+    var action := str(entry.get("action", "dialog"))
+    if action == "battle_config":
+        battle_demo.open_config()
+    elif action == "battle_start":
+        battle_demo.open_battle_direct()
+    else:
+        _open_dialog(str(entry["title"]), str(entry["body"]))
 
 func _open_dialog(title: String, body: String) -> void:
     dialog_open = true
@@ -323,14 +341,14 @@ func _close_dialog() -> void:
     dialog.visible = false
 
 func _update_interaction_hint() -> void:
-    if dialog_open or moving:
+    if dialog_open or moving or battle_demo.visible:
         interact_hint.visible = false
         return
 
     var target := player_cell + facing
     if interactables.has(target):
-        var data: Dictionary = interactables[target]
-        interact_label.text = str(data["hint"])
+        var entry: Dictionary = interactables[target]
+        interact_label.text = str(entry["hint"])
         interact_hint.visible = true
     else:
         interact_hint.visible = false
