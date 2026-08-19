@@ -6,7 +6,7 @@ static func load_json(path: String) -> Variant:
 	if file == null:
 		push_error("Could not open data file: %s" % path)
 		return {}
-	var parsed := JSON.parse_string(file.get_as_text())
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	if parsed == null:
 		push_error("Invalid JSON: %s" % path)
 		return {}
