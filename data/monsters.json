@@ -1,0 +1,8 @@
+[
+  {"id":"bulwark","name":"Bulwark","level":12,"hp":180,"attack":22,"defense":48,"special":22,"speed":24,"base_power":120,"role_hint":"tank","moves":["standard_strike","guard","heavy_strike"]},
+  {"id":"fang","name":"Fang","level":12,"hp":112,"attack":52,"defense":23,"special":18,"speed":38,"base_power":116,"role_hint":"damage","moves":["standard_strike","heavy_strike","sweep"]},
+  {"id":"sage","name":"Sage","level":12,"hp":128,"attack":19,"defense":28,"special":54,"speed":34,"base_power":118,"role_hint":"support","moves":["standard_strike","attack_down","slow","guard"]},
+  {"id":"dash","name":"Dash","level":12,"hp":104,"attack":34,"defense":20,"special":25,"speed":62,"base_power":112,"role_hint":"speed","moves":["quick_strike","standard_strike","slow"]},
+  {"id":"moss","name":"Moss","level":10,"hp":150,"attack":25,"defense":40,"special":30,"speed":22,"base_power":104,"role_hint":"reserve","moves":["standard_strike","guard"]},
+  {"id":"spark","name":"Spark","level":10,"hp":96,"attack":37,"defense":19,"special":33,"speed":50,"base_power":108,"role_hint":"reserve","moves":["quick_strike","standard_strike","attack_down"]}
+]
