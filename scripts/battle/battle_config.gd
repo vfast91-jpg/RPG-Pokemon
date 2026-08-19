@@ -1,0 +1,16 @@
+class_name BattleConfig
+extends RefCounted
+
+const MAX_TEAM_SIZE := 6
+const MAX_ACTIVE := 4
+const ATB_MAX := 100.0
+const BASE_ATB_RATE := 8.0
+const TRAINER_ATB_RATE := 12.0
+const AGGRO_AFTER_HIT_FACTOR := 0.5
+const MISS_RECOVERY_FACTOR := 0.8
+const WAIT_RECOVERY_FACTOR := 0.6
+const WAIT_AGGRO_FACTOR := 0.55
+const SWITCH_ATB_RATIO := 0.25
+const SWITCH_AGGRO_RETAIN_FACTOR := 0.75
+const START_AGGRO_LEVEL_WEIGHT := 2.0
+const START_AGGRO_POWER_WEIGHT := 0.08
