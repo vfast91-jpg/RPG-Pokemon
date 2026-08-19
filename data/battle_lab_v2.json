@@ -1,0 +1,68 @@
+{
+  "schema_version": 2,
+  "demo": {
+    "level_min": 1,
+    "level_max": 10,
+    "team_min": 1,
+    "team_max": 4
+  },
+  "rules": {
+    "ap_cycle_multiplier": {
+      "1": 1.0,
+      "2": 1.08,
+      "3": 1.16,
+      "4": 1.24,
+      "5": 1.32,
+      "6": 1.45,
+      "7": 1.65,
+      "8": 1.9
+    },
+    "miss_atb_start_pct": 20.0,
+    "wait_atb_start_pct": 35.0,
+    "wait_aggro_multiplier": 0.65,
+    "aggro_after_targeted_offense_multiplier": 0.5,
+    "crit_base_chance": 0.05,
+    "crit_multiplier": 1.5
+  },
+  "species": {
+    "bulbasaur": {"display_name":"Bisasam","types":["grass","poison"],"base_stats":{"hp":45,"attack":60,"defense":60,"special":65,"speed":45},"rpg_base_stat_total":275,"learnset":[[1,"tackle"],[1,"growl"],[3,"vine_whip"],[6,"growth"],[9,"leech_seed"]]},
+    "charmander": {"display_name":"Glumanda","types":["fire"],"base_stats":{"hp":39,"attack":57,"defense":48,"special":50,"speed":65},"rpg_base_stat_total":259,"learnset":[[1,"scratch"],[1,"growl"],[4,"ember"],[8,"smokescreen"]]},
+    "squirtle": {"display_name":"Schiggy","types":["water"],"base_stats":{"hp":44,"attack":49,"defense":65,"special":60,"speed":43},"rpg_base_stat_total":261,"learnset":[[1,"tackle"],[1,"tail_whip"],[3,"water_gun"],[6,"withdraw"],[9,"rapid_spin"]]},
+    "caterpie": {"display_name":"Raupy","types":["bug"],"base_stats":{"hp":45,"attack":27,"defense":30,"special":23,"speed":45},"rpg_base_stat_total":170,"learnset":[[1,"tackle"],[1,"string_shot"],[9,"bug_bite"]]},
+    "weedle": {"display_name":"Hornliu","types":["bug","poison"],"base_stats":{"hp":40,"attack":30,"defense":27,"special":23,"speed":50},"rpg_base_stat_total":170,"learnset":[[1,"poison_sting"],[1,"string_shot"],[9,"bug_bite"]]},
+    "pidgey": {"display_name":"Taubsi","types":["normal","flying"],"base_stats":{"hp":40,"attack":42,"defense":38,"special":40,"speed":56},"rpg_base_stat_total":216,"learnset":[[1,"tackle"],[5,"sand_attack"],[9,"gust"]]},
+    "rattata": {"display_name":"Rattfratz","types":["normal"],"base_stats":{"hp":30,"attack":46,"defense":35,"special":35,"speed":72},"rpg_base_stat_total":218,"learnset":[[1,"tackle"],[1,"tail_whip"],[4,"quick_attack"],[7,"focus_energy"],[10,"bite"]]},
+    "spearow": {"display_name":"Habitak","types":["normal","flying"],"base_stats":{"hp":40,"attack":50,"defense":31,"special":35,"speed":70},"rpg_base_stat_total":226,"learnset":[[1,"growl"],[1,"peck"],[4,"leer"],[8,"assurance"]]},
+    "ekans": {"display_name":"Rettan","types":["poison"],"base_stats":{"hp":35,"attack":53,"defense":51,"special":50,"speed":55},"rpg_base_stat_total":244,"learnset":[[1,"leer"],[1,"wrap"],[4,"poison_sting"],[9,"bite"]]},
+    "pichu": {"display_name":"Pichu","types":["electric"],"base_stats":{"hp":20,"attack":38,"defense":28,"special":33,"speed":60},"rpg_base_stat_total":179,"learnset":[[1,"tail_whip"],[1,"thunder_shock"],[4,"play_nice"],[8,"sweet_kiss"]]}
+  },
+  "moves": {
+    "tackle": {"name":"Tackle","type":"normal","category":"physical","power":40,"accuracy":100,"ap_cost":2,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "scratch": {"name":"Kratzer","type":"normal","category":"physical","power":40,"accuracy":100,"ap_cost":2,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "growl": {"name":"Heuler","type":"normal","category":"status","power":null,"accuracy":100,"ap_cost":1,"target":"all_enemies","contact":false,"area":true,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"outgoing_damage_reduction_next","scale_special_pct":1.0}]},
+    "tail_whip": {"name":"Rutenschlag","type":"normal","category":"status","power":null,"accuracy":100,"ap_cost":3,"target":"all_enemies","contact":false,"area":true,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"incoming_damage_increase_next","scale_special_pct":1.0}]},
+    "vine_whip": {"name":"Rankenhieb","type":"grass","category":"physical","power":45,"accuracy":100,"ap_cost":4,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "growth": {"name":"Wachstum","type":"normal","category":"status","power":null,"accuracy":null,"ap_cost":5,"target":"self","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":true,"effects":[{"kind":"outgoing_damage_increase_next","scale_special_pct":1.0}]},
+    "leech_seed": {"name":"Egelsamen","type":"grass","category":"status","power":null,"accuracy":90,"ap_cost":7,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"seed"}]},
+    "ember": {"name":"Glut","type":"fire","category":"special","power":40,"accuracy":100,"ap_cost":4,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"},{"kind":"major_status","status":"burn","chance":0.1}]},
+    "smokescreen": {"name":"Rauchwolke","type":"normal","category":"status","power":null,"accuracy":100,"ap_cost":5,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"accuracy_reduction_next","scale_special_pct":1.0}]},
+    "water_gun": {"name":"Aquaknarre","type":"water","category":"special","power":40,"accuracy":100,"ap_cost":4,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "withdraw": {"name":"Panzerschutz","type":"water","category":"status","power":null,"accuracy":null,"ap_cost":1,"target":"self","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":true,"effects":[{"kind":"incoming_damage_reduction_next","scale_special_pct":1.0}]},
+    "rapid_spin": {"name":"Turbodreher","type":"normal","category":"physical","power":50,"accuracy":100,"ap_cost":1,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"},{"kind":"cleanse_self","effects":["seeded","binding"]},{"kind":"atb_cycle_reduction_next","scale_special_pct":1.0}]},
+    "string_shot": {"name":"Fadenschuss","type":"bug","category":"status","power":null,"accuracy":95,"ap_cost":1,"target":"all_enemies","contact":false,"area":true,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"atb_cycle_increase_next","scale_special_pct":2.0}]},
+    "bug_bite": {"name":"Käferbiss","type":"bug","category":"physical","power":60,"accuracy":100,"ap_cost":5,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "poison_sting": {"name":"Giftstachel","type":"poison","category":"physical","power":15,"accuracy":100,"ap_cost":2,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"},{"kind":"major_status","status":"poison","chance":0.3}]},
+    "sand_attack": {"name":"Sandwirbel","type":"ground","category":"status","power":null,"accuracy":100,"ap_cost":6,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"accuracy_reduction_next","scale_special_pct":1.0}]},
+    "gust": {"name":"Windstoß","type":"flying","category":"special","power":40,"accuracy":100,"ap_cost":2,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "quick_attack": {"name":"Ruckzuckhieb","type":"normal","category":"physical","power":30,"accuracy":100,"ap_cost":3,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":true,"normal_battle_available":false,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "focus_energy": {"name":"Energiefokus","type":"normal","category":"status","power":null,"accuracy":null,"ap_cost":3,"target":"self","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":true,"effects":[{"kind":"focus_energy"}]},
+    "bite": {"name":"Biss","type":"dark","category":"physical","power":60,"accuracy":100,"ap_cost":4,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"},{"kind":"atb_knockback","chance":0.3,"amount_pct":25.0}]},
+    "peck": {"name":"Schnabel","type":"flying","category":"physical","power":35,"accuracy":100,"ap_cost":2,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"}]},
+    "leer": {"name":"Silberblick","type":"normal","category":"status","power":null,"accuracy":100,"ap_cost":3,"target":"all_enemies","contact":false,"area":true,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"incoming_damage_increase_next","scale_special_pct":1.0}]},
+    "assurance": {"name":"Gewissheit","type":"dark","category":"physical","power":60,"accuracy":100,"ap_cost":7,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage","double_if_target_damaged_since_own_action":true}]},
+    "wrap": {"name":"Wickel","type":"normal","category":"physical","power":15,"accuracy":90,"ap_cost":5,"target":"enemy_highest_aggro","contact":true,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"},{"kind":"binding","turns_min":4,"turns_max":5}]},
+    "thunder_shock": {"name":"Donnerschock","type":"electric","category":"special","power":40,"accuracy":100,"ap_cost":3,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"damage"},{"kind":"major_status","status":"paralysis","chance":0.1}]},
+    "play_nice": {"name":"Kameradschaft","type":"normal","category":"status","power":null,"accuracy":null,"ap_cost":5,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":true,"effects":[{"kind":"outgoing_damage_reduction_next","scale_special_pct":1.0}]},
+    "sweet_kiss": {"name":"Bitterkuss","type":"fairy","category":"status","power":null,"accuracy":75,"ap_cost":7,"target":"enemy_highest_aggro","contact":false,"area":false,"opening_only":false,"normal_battle_available":true,"bypass_accuracy":false,"effects":[{"kind":"confusion","turns_min":1,"turns_max":4}]}
+  }
+}
