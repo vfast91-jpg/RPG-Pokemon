@@ -1,35 +1,40 @@
-# RPG-Pokemon – Godot Exploration Demo 0.1
+# RPG-Pokemon – Godot Exploration Demo 0.2
 
-Das Repository ist jetzt ein **Godot-4-Projekt**. Die alte technische Kampf-Testkarte gehört nicht zu dieser Version.
+Die Oberwelt ist jetzt auf ein **klassisches Tile-/Grid-System** umgestellt. Die Grafik kommt aus dem hochgeladenen Puny-World-Tileset und wird intern als 16×16-Raster verwendet und im Spiel pixelgenau 2× dargestellt.
 
-## So öffnest du die richtige Version
+## So öffnest du die aktuelle Version
 
 1. Auf GitHub **Code → Download ZIP**.
 2. ZIP vollständig entpacken.
 3. Godot öffnen.
 4. **Importieren** wählen.
-5. Im entpackten Ordner die Datei **`project.godot`** auswählen.
-6. Projekt öffnen und oben rechts **▶ Projekt ausführen** drücken.
+5. Im neuen Ordner **`project.godot`** auswählen.
+6. Projekt öffnen und **▶ Projekt ausführen** drücken.
 
-Wenn Godot stattdessen wieder die dunkle „technische Testkarte“ mit ATB/Aggro anzeigt, ist noch der alte lokale Projektordner geöffnet – nicht der neu heruntergeladene GitHub-Ordner.
+Wenn noch die alte frei gezeichnete Karte oder die dunkle technische ATB-Testkarte erscheint, ist noch ein älterer lokaler Projektordner geöffnet.
 
-## Diese Demo enthält
+## Neu in 0.2
 
-- eine illustrierte Top-down-Welt mit Weg, Wald, hohem Gras, Teich und Waldstation
-- einen sichtbaren Trainer-Charakter mit Blickrichtungen
-- einen NPC
-- Kamera-Follow
-- Kollisionen
-- Schild- und NPC-Interaktion
-- ein kleines RPG-Dialogfenster
-- **keinen Kampf und kein ATB**
+- echtes 16×16-Tile-Raster, visuell 2× skaliert
+- rasterbasierte Vier-Richtungs-Bewegung wie in klassischen Pokémon-/RPG-Maker-Spielen
+- Karte aus dem Puny-World-Tileset statt frei gezeichneter Platzhalterwelt
+- Gras, Wege, Waldgrenzen, Teich, Vegetation und Gebäude aus dem Tileset
+- feste begehbare und blockierte Rasterfelder
+- NPC-, Schild- und Tür-Interaktion
+- kleiner Pokémon-artiger Dialogbereich
+- klassische interne Spielauflösung von 480×320 Pixeln
+- weiterhin **kein Kampf und kein ATB**
 
 ## Steuerung
 
-- **WASD** oder **Pfeiltasten** – bewegen
-- **E** oder **Leertaste** – interagieren / Dialog weiter
+- **WASD** oder **Pfeiltasten** – ein Rasterfeld laufen
+- **E** oder **Leertaste** – interagieren / Dialog schließen
 - **Enter** oder **Escape** – Dialog schließen
 
-## Ziel dieser Version
+## Aktuelles Ziel
 
-Noch keine Spiellogik ausbauen. Erst soll die Oberwelt als visuelle Grundlage funktionieren und sich wie ein richtiges 2D-RPG anfühlen. Danach verbessern wir anhand von Screenshots Karte, Charaktere, Maßstab, Kamera und Stil.
+Diese Version ist bewusst noch eine Gestaltungsbasis. Als Nächstes werden Map-Komposition, Charakter-Sprites, Tile-Auswahl, Animationen und Details anhand der tatsächlichen Godot-Ansicht weiter verfeinert.
+
+## Assets
+
+Die Tileset-Datei liegt unter `assets/punyworld-overworld-tileset_0.png`. Lizenz- und Quellenhinweise stehen in `ASSET_CREDITS.md`.
