@@ -138,7 +138,7 @@ func _trainer_heal() -> void:
 	living.sort_custom(func(a,b): return float(a.hp)/a.max_hp < float(b.hp)/b.max_hp)
 	if not living.is_empty():
 		var target: Combatant = living[0]
-		var restored := min(45, target.max_hp - target.hp)
+		var restored: int = mini(45, target.max_hp - target.hp)
 		target.hp += restored
 		# Trainer healing does not create monster aggro; trainer threat can be added later as its own system.
 	trainer_atb = 0.0
