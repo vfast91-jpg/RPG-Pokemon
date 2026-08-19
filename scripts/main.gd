@@ -254,8 +254,8 @@ func _try_step(direction: Vector2i) -> void:
 
 func _advance_step(delta: float) -> void:
     move_elapsed += delta
-    var t := min(move_elapsed / MOVE_TIME, 1.0)
-    var eased := t * t * (3.0 - 2.0 * t)
+    var t: float = minf(move_elapsed / MOVE_TIME, 1.0)
+    var eased: float = t * t * (3.0 - 2.0 * t)
     player.position = move_from.lerp(move_to, eased)
     player_sprite.position.y = PLAYER_BASE_Y - sin(t * PI) * 2.0
 
