@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "species_order": [
+    "bulbasaur",
+    "charmander",
+    "squirtle",
+    "caterpie",
+    "weedle",
+    "pidgey",
+    "rattata",
+    "spearow",
+    "ekans",
+    "pikachu"
+  ],
+  "species": {
+    "bulbasaur": {
+      "id": "bulbasaur",
+      "name": "Bisasam",
+      "types": ["grass", "poison"],
+      "base_stats": {"hp": 45, "attack": 60, "defense": 60, "special": 65, "speed": 45},
+      "learnset": [
+        {"level": 1, "moves": ["tackle", "growl"]},
+        {"level": 3, "moves": ["vine_whip"]},
+        {"level": 6, "moves": ["growth"]},
+        {"level": 9, "moves": ["leech_seed"]}
+      ]
+    },
+    "charmander": {
+      "id": "charmander",
+      "name": "Glumanda",
+      "types": ["fire"],
+      "base_stats": {"hp": 39, "attack": 57, "defense": 48, "special": 50, "speed": 65},
+      "learnset": [
+        {"level": 1, "moves": ["scratch", "growl"]},
+        {"level": 4, "moves": ["ember"]},
+        {"level": 8, "moves": ["smokescreen"]}
+      ]
+    },
+    "squirtle": {
+      "id": "squirtle",
+      "name": "Schiggy",
+      "types": ["water"],
+      "base_stats": {"hp": 44, "attack": 49, "defense": 65, "special": 60, "speed": 43},
+      "learnset": [
+        {"level": 1, "moves": ["tackle", "tail_whip"]},
+        {"level": 3, "moves": ["water_gun"]},
+        {"level": 6, "moves": ["withdraw"]},
+        {"level": 9, "moves": ["rapid_spin"]}
+      ]
+    },
+    "caterpie": {
+      "id": "caterpie",
+      "name": "Raupy",
+      "types": ["bug"],
+      "base_stats": {"hp": 45, "attack": 27, "defense": 30, "special": 23, "speed": 45},
+      "learnset": [
+        {"level": 1, "moves": ["tackle", "string_shot"]},
+        {"level": 9, "moves": ["bug_bite"]}
+      ]
+    },
+    "weedle": {
+      "id": "weedle",
+      "name": "Hornliu",
+      "types": ["bug", "poison"],
+      "base_stats": {"hp": 40, "attack": 30, "defense": 27, "special": 23, "speed": 50},
+      "learnset": [
+        {"level": 1, "moves": ["poison_sting", "string_shot"]},
+        {"level": 9, "moves": ["bug_bite"]}
+      ]
+    },
+    "pidgey": {
+      "id": "pidgey",
+      "name": "Taubsi",
+      "types": ["normal", "flying"],
+      "base_stats": {"hp": 40, "attack": 42, "defense": 38, "special": 40, "speed": 56},
+      "learnset": [
+        {"level": 1, "moves": ["tackle"]},
+        {"level": 5, "moves": ["sand_attack"]},
+        {"level": 9, "moves": ["gust"]}
+      ]
+    },
+    "rattata": {
+      "id": "rattata",
+      "name": "Rattfratz",
+      "types": ["normal"],
+      "base_stats": {"hp": 30, "attack": 46, "defense": 35, "special": 35, "speed": 72},
+      "learnset": [
+        {"level": 1, "moves": ["tackle", "tail_whip"]},
+        {"level": 4, "moves": ["quick_attack"]},
+        {"level": 7, "moves": ["focus_energy"]},
+        {"level": 10, "moves": ["bite"]}
+      ]
+    },
+    "spearow": {
+      "id": "spearow",
+      "name": "Habitak",
+      "types": ["normal", "flying"],
+      "base_stats": {"hp": 40, "attack": 50, "defense": 31, "special": 35, "speed": 70},
+      "learnset": [
+        {"level": 1, "moves": ["growl", "peck"]},
+        {"level": 4, "moves": ["leer"]},
+        {"level": 8, "moves": ["assurance"]}
+      ]
+    },
+    "ekans": {
+      "id": "ekans",
+      "name": "Rettan",
+      "types": ["poison"],
+      "base_stats": {"hp": 35, "attack": 53, "defense": 51, "special": 50, "speed": 55},
+      "learnset": [
+        {"level": 1, "moves": ["leer", "wrap"]},
+        {"level": 4, "moves": ["poison_sting"]},
+        {"level": 9, "moves": ["bite"]}
+      ]
+    },
+    "pikachu": {
+      "id": "pikachu",
+      "name": "Pikachu",
+      "types": ["electric"],
+      "base_stats": {"hp": 35, "attack": 53, "defense": 47, "special": 55, "speed": 90},
+      "learnset": [{"level": 1, "moves": ["nuzzle", "quick_attack", "growl"]}],
+      "source_note": "Fallback auf das bestehende Pikachu-Demo-Loadout; eine separate normale Level-Lernliste ist im aktuellen Projektpaket nicht enthalten."
+    }
+  },
+  "moves": {
+    "tackle": {"id":"tackle","name":"Tackle","type":"normal","category":"physical","power":40,"accuracy":100,"ap":2,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "scratch": {"id":"scratch","name":"Kratzer","type":"normal","category":"physical","power":40,"accuracy":100,"ap":2,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "growl": {"id":"growl","name":"Heuler","type":"normal","category":"status","power":null,"accuracy":100,"ap":1,"target":"all_enemies","area":true,"priority":0,"opening":false,"mechanics":[{"kind":"outgoing_damage_mod","scope":"all_enemies","multiplier_from_special":-1.0,"uses_special_percent":true,"duration":"next_damage"}]},
+    "tail_whip": {"id":"tail_whip","name":"Rutenschlag","type":"normal","category":"status","power":null,"accuracy":100,"ap":3,"target":"all_enemies","area":true,"priority":0,"opening":false,"mechanics":[{"kind":"incoming_damage_mod","scope":"all_enemies","multiplier_from_special":1.0,"uses_special_percent":true,"duration":"next_hit"}]},
+    "vine_whip": {"id":"vine_whip","name":"Rankenhieb","type":"grass","category":"physical","power":45,"accuracy":100,"ap":4,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "growth": {"id":"growth","name":"Wachstum","type":"normal","category":"status","power":null,"accuracy":null,"ap":5,"target":"self","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"outgoing_damage_mod","scope":"self","multiplier_from_special":1.0,"uses_special_percent":true,"duration":"next_damage"}]},
+    "leech_seed": {"id":"leech_seed","name":"Egelsamen","type":"grass","category":"status","power":null,"accuracy":90,"ap":7,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"seed","scope":"enemy_highest_aggro"}]},
+    "ember": {"id":"ember","name":"Glut","type":"fire","category":"special","power":40,"accuracy":100,"ap":4,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"},{"kind":"status","status":"burn","chance":0.1}]},
+    "smokescreen": {"id":"smokescreen","name":"Rauchwolke","type":"normal","category":"status","power":null,"accuracy":100,"ap":5,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"accuracy_mod","scope":"enemy_highest_aggro","uses_special_percent":true,"multiplier_from_special":-1.0,"duration":"next_accuracy"}]},
+    "water_gun": {"id":"water_gun","name":"Aquaknarre","type":"water","category":"special","power":40,"accuracy":100,"ap":4,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "withdraw": {"id":"withdraw","name":"Panzerschutz","type":"water","category":"status","power":null,"accuracy":null,"ap":1,"target":"self","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"incoming_damage_mod","scope":"self","multiplier_from_special":-1.0,"uses_special_percent":true,"duration":"next_hit"}]},
+    "rapid_spin": {"id":"rapid_spin","name":"Turbodreher","type":"normal","category":"physical","power":50,"accuracy":100,"ap":1,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"},{"kind":"cleanse_self","effects":["seeded","binding"]},{"kind":"atb_cycle_mod","scope":"self","uses_special_percent":true,"multiplier_from_special":-1.0,"duration":"next_cycle"}]},
+    "string_shot": {"id":"string_shot","name":"Fadenschuss","type":"bug","category":"status","power":null,"accuracy":95,"ap":1,"target":"all_enemies","area":true,"priority":0,"opening":false,"mechanics":[{"kind":"atb_cycle_mod","scope":"all_enemies","uses_special_percent":true,"multiplier_from_special":2.0,"duration":"next_cycle"}]},
+    "bug_bite": {"id":"bug_bite","name":"Käferbiss","type":"bug","category":"physical","power":60,"accuracy":100,"ap":5,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "poison_sting": {"id":"poison_sting","name":"Giftstachel","type":"poison","category":"physical","power":15,"accuracy":100,"ap":2,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"},{"kind":"status","status":"poison","chance":0.3}]},
+    "sand_attack": {"id":"sand_attack","name":"Sandwirbel","type":"ground","category":"status","power":null,"accuracy":100,"ap":6,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"accuracy_mod","scope":"enemy_highest_aggro","uses_special_percent":true,"multiplier_from_special":-1.0,"duration":"next_accuracy"}]},
+    "gust": {"id":"gust","name":"Windstoß","type":"flying","category":"special","power":40,"accuracy":100,"ap":2,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "quick_attack": {"id":"quick_attack","name":"Ruckzuckhieb","type":"normal","category":"physical","power":30,"accuracy":100,"ap":1,"target":"enemy_highest_aggro","area":false,"priority":1,"opening":true,"mechanics":[{"kind":"damage"}]},
+    "focus_energy": {"id":"focus_energy","name":"Energiefokus","type":"normal","category":"status","power":null,"accuracy":null,"ap":3,"target":"self","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"critical_focus","scope":"self","bonus_cap":25}]},
+    "bite": {"id":"bite","name":"Biss","type":"dark","category":"physical","power":60,"accuracy":100,"ap":4,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"},{"kind":"atb_knockback","scope":"enemy_highest_aggro","chance":0.3,"amount":0.25}]},
+    "peck": {"id":"peck","name":"Schnabel","type":"flying","category":"physical","power":35,"accuracy":100,"ap":2,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"}]},
+    "leer": {"id":"leer","name":"Silberblick","type":"normal","category":"status","power":null,"accuracy":100,"ap":3,"target":"all_enemies","area":true,"priority":0,"opening":false,"mechanics":[{"kind":"incoming_damage_mod","scope":"all_enemies","multiplier_from_special":1.0,"uses_special_percent":true,"duration":"next_hit"}]},
+    "assurance": {"id":"assurance","name":"Gewissheit","type":"dark","category":"physical","power":60,"accuracy":100,"ap":7,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage","conditional_double_if_damaged_since_last_action":true}]},
+    "wrap": {"id":"wrap","name":"Wickel","type":"normal","category":"physical","power":15,"accuracy":90,"ap":5,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"},{"kind":"binding","scope":"enemy_highest_aggro","min_ticks":4,"max_ticks":5,"damage_fraction":0.125}]},
+    "nuzzle": {"id":"nuzzle","name":"Wangenrubbler","type":"electric","category":"physical","power":20,"accuracy":100,"ap":5,"target":"enemy_highest_aggro","area":false,"priority":0,"opening":false,"mechanics":[{"kind":"damage"},{"kind":"status","status":"paralysis","chance":1.0}]}
+  },
+  "rules": {
+    "level_min": 1,
+    "level_max": 10,
+    "team_min": 1,
+    "team_max": 4,
+    "aggro_after_offensive_hit_multiplier": 0.5,
+    "ap_cycle_multiplier": {"1":1.0,"2":1.08,"3":1.16,"4":1.24,"5":1.32,"6":1.45,"7":1.65,"8":1.9},
+    "miss_cycle_multiplier": 0.85,
+    "wait_aggro_multiplier": 0.55,
+    "wait_cycle_multiplier": 0.7
+  }
+}
