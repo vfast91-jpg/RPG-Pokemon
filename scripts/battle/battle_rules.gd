@@ -21,7 +21,7 @@ static func calculate_damage(attacker: Combatant, defender: Combatant, power: fl
 	return max(1, int(round(raw * mitigation)))
 
 static func apply_damage(attacker: Combatant, defender: Combatant, power: float, base_aggro: float, aggro_scale: float) -> int:
-	var amount := min(defender.hp, calculate_damage(attacker, defender, power))
+	var amount: int = mini(defender.hp, calculate_damage(attacker, defender, power))
 	defender.hp -= amount
 	attacker.aggro += base_aggro + amount * aggro_scale
 	defender.aggro *= BattleConfig.AGGRO_AFTER_HIT_FACTOR
