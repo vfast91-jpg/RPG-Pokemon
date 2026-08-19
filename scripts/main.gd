@@ -4,6 +4,7 @@ const SPEED := 190.0
 const PLAYER_START := Vector2(760, 760)
 const NPC_HOME := Vector2(872, 392)
 const SIGN_POS := Vector2(718, 476)
+const SPRITE_BASE_Y := -34.0
 
 const PLAYER_DOWN := preload("res://assets/player_down.svg")
 const PLAYER_UP := preload("res://assets/player_up.svg")
@@ -19,7 +20,6 @@ const PLAYER_SIDE := preload("res://assets/player_side.svg")
 @onready var grass_hint: Label = $UI/GrassHint
 
 var dialog_open := false
-var facing := Vector2.DOWN
 var walk_clock := 0.0
 var npc_clock := 0.0
 
@@ -27,7 +27,9 @@ func _ready() -> void:
     player.position = PLAYER_START
     dialog.visible = false
     interact_hint.visible = false
-    grass_hint.modulate.a = 0.0
+    var initial_hint_color := grass_hint.modulate
+    initial_hint_color.a = 0.0
+    grass_hint.modulate = initial_hint_color
 
     # World collision: map bounds, forest masses, pond, house and fence.
     _add_block(Rect2(-20, -20, 1640, 44))
@@ -65,16 +67,14 @@ func _physics_process(delta: float) -> void:
 
     if input_vector.length_squared() > 0.0:
         input_vector = input_vector.normalized()
-        facing = input_vector
         player.velocity = input_vector * SPEED
         player.move_and_slide()
         walk_clock += delta * 11.0
-        player_sprite.position.y = -4.0 - abs(sin(walk_clock)) * 2.0
+        player_sprite.position.y = SPRITE_BASE_Y - abs(sin(walk_clock)) * 2.0
         _set_facing_texture(input_vector)
     else:
         player.velocity = Vector2.ZERO
-        player_sprite.position.y = -4.0
-        player_sprite.rotation = lerp(player_sprite.rotation, 0.0, min(delta * 12.0, 1.0))
+        player_sprite.position.y = SPRITE_BASE_Y
 
     _update_interaction_hint()
     _update_grass_feedback(delta, input_vector)
