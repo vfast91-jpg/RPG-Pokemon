@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Open this folder directly in Godot 4.x.
+; RPG-Pokemon exploration prototype – Godot 4.x
 
 config_version=5
 
@@ -11,10 +11,10 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 
 [display]
 
-window/size/viewport_width=960
-window/size/viewport_height=540
-window/size/window_width_override=1280
-window/size/window_height_override=720
+window/size/viewport_width=480
+window/size/viewport_height=320
+window/size/window_width_override=960
+window/size/window_height_override=640
 window/stretch/mode="canvas_items"
 
 [rendering]
