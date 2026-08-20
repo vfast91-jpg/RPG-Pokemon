@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_ui_feedback.gd"
+extends "res://scripts/battle_demo_move_emojis.gd"
 
 # Combat-lab balancing layer:
 # - Temporary positive and negative stat/control modifiers last for the next
