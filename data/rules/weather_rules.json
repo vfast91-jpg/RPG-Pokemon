@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "weathers": {
+    "rain": {
+      "display_name": "Regen",
+      "emoji": "🌧️",
+      "start_message": "🌧️ Es beginnt zu regnen!",
+      "end_message": "🌧️ Der Regen hört auf.",
+      "damage_type_strength_coefficients": {
+        "water": 1.0,
+        "fire": -1.0
+      }
+    }
+  }
+}
