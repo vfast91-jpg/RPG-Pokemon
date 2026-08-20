@@ -126,10 +126,13 @@ func _finish_opening_phase() -> void:
 
         actor["atb"] = minf(float(actor.get("atb", 0.0)), -debt)
         paid_debts.append(
-            "%s: −%d ATB" % [_actor_name(actor), int(round(debt))]
+            "%s: Aktionsleiste −%d%%" % [_actor_name(actor), int(round(debt))]
         )
 
     super._finish_opening_phase()
+
+    if log_label != null:
+        log_label.text = log_label.text.replace("ATB-Leisten", "Aktionsleisten")
 
     if not paid_debts.is_empty():
         _set_log(
@@ -250,7 +253,7 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
         return
 
     log_label.text += (
-        "\n⏳ Bei Einsatz in Runde 0: −%d ATB für die erste normale Aktion."
+        "\n⏳ Bei Einsatz in Runde 0: Aktionsleiste −%d%% für die erste normale Aktion."
         % int(round(debt))
     )
 
