@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "moves": {
+    "rain_dance": {
+      "id": "rain_dance",
+      "name": "Regentanz",
+      "type": "water",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 8,
+      "target": "global_battlefield",
+      "area": true,
+      "priority": 0,
+      "opening": false,
+      "emoji": "🌧️",
+      "mechanics": [],
+      "weather": {
+        "weather_id": "rain",
+        "strength_stat": "special",
+        "strength_cap": 50.0,
+        "duration_actions": 3,
+        "duration_unit": "source_actions"
+      }
+    }
+  }
+}
