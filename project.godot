@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 [autoload]
 
 TypeSystem="*res://scripts/battle/type_system.gd"
+BattleFeedback="*res://scripts/battle/type_feedback_overlay.gd"
 
 [display]
 
