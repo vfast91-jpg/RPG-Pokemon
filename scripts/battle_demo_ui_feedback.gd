@@ -2,11 +2,73 @@ extends "res://scripts/battle_demo_hd.gd"
 
 # Player-facing polish for the combat lab:
 # - RPG-AP are always displayed as whole numbers.
-# - Move tooltips explain tactical consequences in detail.
-# - Every resolved action produces readable, human-scale visual feedback.
+# - Move tooltips stay compact and decision-focused.
+# - Resolved actions remain visible long enough to understand.
+# - A persistent battle protocol records the fight between both teams.
 
-const ACTION_FEEDBACK_SECONDS: float = 1.10
-const FEEDBACK_RISE_PIXELS: float = 18.0
+const ACTION_FEEDBACK_SECONDS: float = 2.50
+const FEEDBACK_RISE_PIXELS: float = 24.0
+const PROTOCOL_MAX_ENTRIES: int = 40
+
+var protocol_label: RichTextLabel = null
+var protocol_entries: Array[String] = []
+var protocol_turn: int = 0
+
+
+func _build_battle(root: Control) -> void:
+    super._build_battle(root)
+    _build_protocol_panel()
+
+
+func _build_protocol_panel() -> void:
+    if battle_panel == null:
+        return
+
+    var protocol_panel: PanelContainer = PanelContainer.new()
+    protocol_panel.name = "BattleProtocol"
+    protocol_panel.position = Vector2(202, 10)
+    protocol_panel.size = Vector2(232, 204)
+    protocol_panel.z_index = 2
+    protocol_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    protocol_panel.add_theme_stylebox_override(
+        "panel",
+        _panel(Color("13201ed9"), Color("5f786d"), 6, 5.0)
+    )
+    battle_panel.add_child(protocol_panel)
+
+    var content: VBoxContainer = VBoxContainer.new()
+    content.add_theme_constant_override("separation", 3)
+    protocol_panel.add_child(content)
+
+    var title: Label = Label.new()
+    title.text = "KAMPFPROTOKOLL"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 10)
+    title.add_theme_color_override("font_color", Color("d8e5df"))
+    content.add_child(title)
+
+    protocol_label = RichTextLabel.new()
+    protocol_label.bbcode_enabled = true
+    protocol_label.fit_content = false
+    protocol_label.scroll_active = true
+    protocol_label.scroll_following = true
+    protocol_label.selection_enabled = true
+    protocol_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    protocol_label.custom_minimum_size = Vector2(0, 174)
+    protocol_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    protocol_label.add_theme_font_size_override("normal_font_size", 8)
+    protocol_label.add_theme_font_size_override("bold_font_size", 8)
+    content.add_child(protocol_label)
+
+    _clear_protocol()
+
+
+func _start_battle() -> void:
+    _clear_protocol()
+    super._start_battle()
+    _append_protocol_system(
+        "Kampf gestartet · Dein Team " + str(player_team.size()) + " vs. Gegner " + str(enemy_team.size())
+    )
 
 
 func _prompt_player(actor: Dictionary) -> void:
@@ -32,7 +94,7 @@ func _prompt_player(actor: Dictionary) -> void:
     var wait_button: Button = Button.new()
     wait_button.text = "Warten"
     wait_button.custom_minimum_size = Vector2(145, 31)
-    wait_button.tooltip_text = "Aggro senken und schneller wieder bereit werden."
+    wait_button.tooltip_text = "Warten · Aggro sinkt · nächster ATB-Zyklus wird kürzer."
     wait_button.pressed.connect(_choose_wait)
     action_grid.add_child(wait_button)
 
@@ -45,72 +107,138 @@ func _move_tooltip(move: Dictionary) -> String:
     var move_type: String = str(move.get("type", "normal"))
     var category: String = str(move.get("category", "physical"))
 
-    parts.append(str(move.get("name", "Attacke")))
-    parts.append("Typ: " + _type_name(move_type) + " · Kategorie: " + _category_name(category))
+    parts.append(str(move.get("name", "Attacke")) + " · " + _type_name(move_type) + " · " + _category_name(category))
 
+    var combat_line: Array[String] = []
     if move.get("power", null) != null:
-        parts.append("Stärke: " + str(int(round(float(move.get("power", 0))))))
-    else:
-        parts.append("Stärke: — (Status-/Supportattacke)")
-
+        combat_line.append("Stärke " + str(int(round(float(move.get("power", 0))))))
     if move.get("accuracy", null) != null:
-        parts.append("Genauigkeit: " + str(int(round(float(move.get("accuracy", 100))))) + "%")
+        combat_line.append("Genauigkeit " + str(int(round(float(move.get("accuracy", 100))))) + "%")
     else:
-        parts.append("Genauigkeit: kein Genauigkeitswurf")
+        combat_line.append("trifft ohne Genauigkeitswurf")
+    combat_line.append("Ziel: " + _target_name(str(move.get("target", "enemy_highest_aggro"))))
+    parts.append(" · ".join(combat_line))
 
-    parts.append("Ziel: " + _target_name(str(move.get("target", "enemy_highest_aggro"))))
-    if bool(move.get("area", false)):
-        parts.append("Flächenattacke: ja")
+    var effect_summary: String = _compact_effect_summary(move)
+    if not effect_summary.is_empty():
+        parts.append("Effekt: " + effect_summary)
 
+    var type_context: String = _compact_type_context(move, category, move_type)
+    if not type_context.is_empty():
+        parts.append(type_context)
+
+    var special_bits: Array[String] = []
     var priority: int = int(round(float(move.get("priority", 0))))
     if priority != 0:
-        parts.append("Priorität: " + ("+" if priority > 0 else "") + str(priority))
+        special_bits.append("Priorität " + ("+" if priority > 0 else "") + str(priority))
     if bool(move.get("opening", false)):
-        parts.append("Runde 0: einsetzbar")
+        special_bits.append("in Runde 0 nutzbar")
+    if bool(move.get("area", false)):
+        special_bits.append("Flächenwirkung")
+    if not special_bits.is_empty():
+        parts.append("Besonderheit: " + " · ".join(special_bits))
 
-    _append_type_context(parts, move, category, move_type)
-
-    parts.append("")
-    parts.append("Wirkung:")
-    var effect_lines: Array[String] = _move_effect_lines(move)
-    if effect_lines.is_empty():
-        parts.append("• Keine zusätzliche Wirkung hinterlegt.")
-    else:
-        for line: String in effect_lines:
-            parts.append(line)
-
-    parts.append("")
-    parts.append("AP: " + str(ap) + " · nächster ATB-Zyklus ×" + _decimal(_ap_cycle(ap), 2))
-    parts.append("AP werden NICHT verbraucht. Sie sind die Zeitkosten der Attacke.")
-    parts.append("AP 1 = keine zusätzliche ATB-Verlangsamung; höhere AP = längere Erholung bis zur nächsten Aktion.")
+    parts.append(
+        "AP " + str(ap) + " → ATB-Zyklus ×" + _decimal(_ap_cycle(ap), 2)
+        + " · AP = Zeitkosten, wird nicht verbraucht"
+    )
 
     return "\n".join(parts)
 
 
-func _append_type_context(parts: Array[String], move: Dictionary, category: String, move_type: String) -> void:
+func _compact_type_context(move: Dictionary, category: String, move_type: String) -> String:
     if selected_actor.is_empty():
-        return
+        return ""
 
+    var bits: Array[String] = []
     var actor_types: Array = _type_array(selected_actor.get("types", []))
     if actor_types.has(move_type):
         if category == "status":
-            var status_bonus: float = TypeSystem.get_same_type_status_multiplier(move_type, actor_types)
-            parts.append("Eigener Typbonus: Statuswirkung ×" + _decimal(status_bonus, 2))
+            bits.append(
+                "eigener Typbonus ×" + _decimal(
+                    TypeSystem.get_same_type_status_multiplier(move_type, actor_types), 2
+                )
+            )
         else:
-            var damage_bonus: float = TypeSystem.get_same_type_damage_multiplier(move_type, actor_types)
-            parts.append("Eigener Typbonus: Schaden ×" + _decimal(damage_bonus, 2))
+            bits.append(
+                "eigener Typbonus ×" + _decimal(
+                    TypeSystem.get_same_type_damage_multiplier(move_type, actor_types), 2
+                )
+            )
 
-    if category == "status":
-        return
+    if category != "status":
+        var current_targets: Array = _targets(
+            selected_actor, str(move.get("target", "enemy_highest_aggro"))
+        )
+        if current_targets.size() == 1 and current_targets[0] is Dictionary:
+            var target: Dictionary = current_targets[0]
+            var defender_types: Array = _type_array(target.get("types", []))
+            var multiplier: float = TypeSystem.get_multiplier(move_type, defender_types)
+            bits.append(
+                "gegen " + _actor_name(target) + " ×" + _decimal(multiplier, 2)
+                + " (" + _effectiveness_name(multiplier) + ")"
+            )
+        elif current_targets.size() > 1:
+            bits.append("Typwirkung wird je Ziel berechnet")
 
-    var current_targets: Array = _targets(selected_actor, str(move.get("target", "enemy_highest_aggro")))
-    for target_value: Variant in current_targets:
-        if not (target_value is Dictionary):
+    if bits.is_empty():
+        return ""
+    return "Matchup: " + " · ".join(bits)
+
+
+func _compact_effect_summary(move: Dictionary) -> String:
+    var effects: Array[String] = []
+    var mechanics_value: Variant = move.get("mechanics", [])
+    if not (mechanics_value is Array):
+        return ""
+
+    for mechanic_value: Variant in mechanics_value:
+        if not (mechanic_value is Dictionary):
             continue
-        var target: Dictionary = target_value
-        var defender_types: Array = _type_array(target.get("types", []))
-        var multiplier: float = TypeSystem.get_multiplier(move_type, defender_types)
-        parts.append("Gegen " + _actor_name(target) + ": Typwirkung ×" + _decimal(multiplier, 2) + " (" + _effectiveness_name(multiplier) + ")")
+        var mechanic: Dictionary = mechanic_value
+        var kind: String = str(mechanic.get("kind", ""))
+        var multiplier: float = float(mechanic.get("multiplier_from_special", 0.0))
+
+        match kind:
+            "damage":
+                effects.append("direkter Schaden")
+            "status":
+                var chance: int = int(round(float(mechanic.get("chance", 1.0)) * 100.0))
+                var status_text: String = _status_name(str(mechanic.get("status", "Status")))
+                effects.append(status_text if chance >= 100 else str(chance) + "% " + status_text)
+            "outgoing_damage_mod":
+                effects.append("verursachter Schaden ↓" if multiplier < 0.0 else "verursachter Schaden ↑")
+            "incoming_damage_mod":
+                effects.append("eingehender Schaden ↓" if multiplier < 0.0 else "eingehender Schaden ↑")
+            "accuracy_mod":
+                effects.append("Genauigkeit ↓" if multiplier < 0.0 else "Genauigkeit ↑")
+            "atb_cycle_mod":
+                effects.append("nächster ATB-Zyklus kürzer" if multiplier < 0.0 else "nächster ATB-Zyklus länger")
+            "atb_knockback":
+                var chance_knockback: int = int(round(float(mechanic.get("chance", 1.0)) * 100.0))
+                var amount: int = int(round(float(mechanic.get("amount", 0.0)) * 100.0))
+                effects.append(str(chance_knockback) + "% ATB −" + str(amount) + "%")
+            "cleanse_self":
+                effects.append("entfernt negative Effekte")
+            "seed":
+                effects.append("Samen-/Entzugseffekt")
+            "binding":
+                effects.append("Bindung + Folgeschaden")
+            "critical_focus":
+                effects.append("Kritisch-Fokus")
+            _:
+                if not kind.is_empty():
+                    effects.append(kind.replace("_", " "))
+
+    return " · ".join(effects)
+
+
+func _choose_wait() -> void:
+    if selected_actor.is_empty():
+        return
+    var actor: Dictionary = selected_actor
+    super._choose_wait()
+    _append_protocol_action(actor, "wartet · Aggro gesenkt · nächste Aktion schneller", [])
 
 
 func _execute_move(actor: Dictionary, move_id: String) -> void:
@@ -123,12 +251,16 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     for target_value: Variant in targets:
         if target_value is Dictionary:
             var target: Dictionary = target_value
-            before_states[str(target.get("id", ""))] = _feedback_snapshot(target)
+            var snapshot: Dictionary = _feedback_snapshot(target)
+            if str(target.get("id", "")) == str(actor.get("id", "")):
+                snapshot["atb"] = 0.0
+            before_states[str(target.get("id", ""))] = snapshot
 
     var actor_hp_before: int = int(actor.get("hp", 0))
 
-    # Freeze the ATB clock while the action feedback is visible. The actual
-    # action still resolves immediately; only the next ATB progress waits.
+    # The ATB clock is deliberately frozen while the action feedback remains
+    # on screen. The battle may therefore take a little time, but each action
+    # can actually be read and understood.
     paused = true
     _flash_combatant(actor, Color("fff1a3"))
     _spawn_feedback_label(actor, str(move.get("name", move_id)), Color("ffe46c"))
@@ -136,6 +268,7 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     super._execute_move(actor, move_id)
 
     var target_ids: Dictionary = {}
+    var protocol_results: Array[String] = []
     for target_value: Variant in targets:
         if not (target_value is Dictionary):
             continue
@@ -144,13 +277,25 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
         target_ids[target_id] = true
         var before_value: Variant = before_states.get(target_id, {})
         var before: Dictionary = before_value if before_value is Dictionary else {}
-        _show_target_feedback(target, before)
+        var feedback: Dictionary = _show_target_feedback(target, before)
+        var feedback_text: String = str(feedback.get("text", "KEIN EFFEKT"))
+        if feedback_text != "KEIN EFFEKT":
+            protocol_results.append(_actor_name(target) + ": " + feedback_text)
 
     # Confusion can make the acting Pokémon damage itself even though the
     # originally selected target is an opponent.
     if int(actor.get("hp", 0)) < actor_hp_before and not target_ids.has(str(actor.get("id", ""))):
+        var self_damage: int = actor_hp_before - int(actor.get("hp", 0))
         _flash_combatant(actor, Color("ffb2b2"))
-        _spawn_feedback_label(actor, "−" + str(actor_hp_before - int(actor.get("hp", 0))) + " KP", Color("ff8d8d"))
+        _spawn_feedback_label(actor, "−" + str(self_damage) + " KP", Color("ff8d8d"))
+        protocol_results.append(_actor_name(actor) + ": −" + str(self_damage) + " KP durch Verwirrung")
+
+    var action_text: String = str(move.get("name", move_id))
+    if log_label != null:
+        var parsed_log: String = log_label.get_parsed_text().strip_edges()
+        if not parsed_log.is_empty():
+            action_text = parsed_log
+    _append_protocol_action(actor, action_text, protocol_results)
 
     get_tree().create_timer(ACTION_FEEDBACK_SECONDS).timeout.connect(_finish_action_feedback)
 
@@ -160,7 +305,7 @@ func _finish_action_feedback() -> void:
         paused = false
 
 
-func _show_target_feedback(target: Dictionary, before: Dictionary) -> void:
+func _show_target_feedback(target: Dictionary, before: Dictionary) -> Dictionary:
     var feedback: Dictionary = _feedback_result(target, before)
     var kind: String = str(feedback.get("kind", "neutral"))
     var color: Color = Color("ffeaa2")
@@ -171,6 +316,7 @@ func _show_target_feedback(target: Dictionary, before: Dictionary) -> void:
 
     _flash_combatant(target, color)
     _spawn_feedback_label(target, str(feedback.get("text", "EFFEKT")), color)
+    return feedback
 
 
 func _flash_combatant(combatant: Dictionary, color: Color) -> void:
@@ -184,9 +330,9 @@ func _flash_combatant(combatant: Dictionary, color: Color) -> void:
 
     card.modulate = Color.WHITE
     var tween: Tween = create_tween()
-    tween.tween_property(card, "modulate", color, 0.12)
-    tween.tween_interval(0.72)
-    tween.tween_property(card, "modulate", Color.WHITE, 0.20)
+    tween.tween_property(card, "modulate", color, 0.18)
+    tween.tween_interval(maxf(0.0, ACTION_FEEDBACK_SECONDS - 0.48))
+    tween.tween_property(card, "modulate", Color.WHITE, 0.30)
 
 
 func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) -> void:
@@ -215,8 +361,45 @@ func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) ->
     var tween: Tween = create_tween()
     tween.set_parallel(true)
     tween.tween_property(label, "position:y", label.position.y - FEEDBACK_RISE_PIXELS, ACTION_FEEDBACK_SECONDS)
-    tween.tween_property(label, "modulate:a", 0.0, 0.30).set_delay(ACTION_FEEDBACK_SECONDS - 0.30)
+    tween.tween_property(label, "modulate:a", 0.0, 0.55).set_delay(ACTION_FEEDBACK_SECONDS - 0.55)
     tween.chain().tween_callback(label.queue_free)
+
+
+func _clear_protocol() -> void:
+    protocol_entries.clear()
+    protocol_turn = 0
+    if protocol_label != null:
+        protocol_label.text = "[color=#91a69d]Noch keine Aktion.[/color]"
+
+
+func _append_protocol_system(text: String) -> void:
+    protocol_entries.append("[color=#91a69d]" + text + "[/color]")
+    _refresh_protocol()
+
+
+func _append_protocol_action(actor: Dictionary, action_text: String, results: Array[String]) -> void:
+    protocol_turn += 1
+    var side_text: String = "DEIN TEAM" if str(actor.get("side", "")) == "player" else "GEGNER"
+    var side_color: String = "#8fd3ff" if str(actor.get("side", "")) == "player" else "#ffb1a8"
+
+    var entry: String = (
+        "[b]" + str(protocol_turn) + ".[/b] "
+        + "[color=" + side_color + "]" + side_text + "[/color] · "
+        + action_text
+    )
+    if not results.is_empty():
+        entry += "\n[color=#d8e5df]↳ " + " · ".join(results) + "[/color]"
+
+    protocol_entries.append(entry)
+    while protocol_entries.size() > PROTOCOL_MAX_ENTRIES:
+        protocol_entries.pop_front()
+    _refresh_protocol()
+
+
+func _refresh_protocol() -> void:
+    if protocol_label == null:
+        return
+    protocol_label.text = "\n\n".join(protocol_entries)
 
 
 func _feedback_snapshot(target: Dictionary) -> Dictionary:
@@ -361,7 +544,7 @@ func _target_name(rule: String) -> String:
         "field":
             return "gesamtes Kampffeld"
         "enemy_highest_aggro":
-            return "Gegner mit höchster Aggro"
+            return "höchste Aggro"
         _:
             return rule.replace("_", " ")
 
@@ -390,66 +573,3 @@ func _effectiveness_name(multiplier: float) -> String:
     if multiplier < 1.0:
         return "wenig effektiv"
     return "normal"
-
-
-func _move_effect_lines(move: Dictionary) -> Array[String]:
-    var result: Array[String] = []
-    var mechanics_value: Variant = move.get("mechanics", [])
-    if not (mechanics_value is Array):
-        return result
-
-    for mechanic_value: Variant in mechanics_value:
-        if not (mechanic_value is Dictionary):
-            continue
-        var mechanic: Dictionary = mechanic_value
-        var kind: String = str(mechanic.get("kind", ""))
-        var multiplier: float = float(mechanic.get("multiplier_from_special", 0.0))
-
-        match kind:
-            "damage":
-                result.append("• Verursacht direkten Schaden.")
-                if bool(mechanic.get("conditional_double_if_damaged_since_last_action", false)):
-                    result.append("• Spezialregel: kann unter der hinterlegten Bedingung doppelten Schaden verursachen.")
-            "status":
-                var chance: int = int(round(float(mechanic.get("chance", 1.0)) * 100.0))
-                var status_text: String = _status_name(str(mechanic.get("status", "Status")))
-                if chance >= 100:
-                    result.append("• Verursacht " + status_text + ".")
-                else:
-                    result.append("• " + str(chance) + "% Chance auf " + status_text + ".")
-            "outgoing_damage_mod":
-                if multiplier < 0.0:
-                    result.append("• Senkt den verursachten Schaden des Ziels für dessen nächsten Schaden.")
-                else:
-                    result.append("• Erhöht den verursachten Schaden des Ziels für dessen nächsten Schaden.")
-            "incoming_damage_mod":
-                if multiplier < 0.0:
-                    result.append("• Verringert den nächsten eingehenden Schaden des Ziels.")
-                else:
-                    result.append("• Erhöht den nächsten eingehenden Schaden des Ziels.")
-            "accuracy_mod":
-                if multiplier < 0.0:
-                    result.append("• Senkt die Genauigkeit des Ziels für den nächsten Genauigkeitswurf.")
-                else:
-                    result.append("• Erhöht die Genauigkeit des Ziels.")
-            "atb_cycle_mod":
-                if multiplier < 0.0:
-                    result.append("• Verkürzt den nächsten ATB-Zyklus des Ziels.")
-                else:
-                    result.append("• Verlängert den nächsten ATB-Zyklus des Ziels.")
-            "atb_knockback":
-                var chance_knockback: int = int(round(float(mechanic.get("chance", 1.0)) * 100.0))
-                var amount: int = int(round(float(mechanic.get("amount", 0.0)) * 100.0))
-                result.append("• " + str(chance_knockback) + "% Chance, die ATB-Leiste des Ziels um ca. " + str(amount) + "% zurückzuwerfen.")
-            "cleanse_self":
-                result.append("• Entfernt hinterlegte negative Effekte vom Anwender.")
-            "seed":
-                result.append("• Setzt einen fortlaufenden Samen-/Entzugseffekt auf das Ziel.")
-            "binding":
-                result.append("• Bindet das Ziel und verursacht über mehrere Ticks Folgewirkung.")
-            "critical_focus":
-                result.append("• Bereitet einen Kritisch-Fokus für kommende Angriffe vor.")
-            _:
-                result.append("• Zusatzeffekt: " + kind.replace("_", " ") + ".")
-
-    return result
