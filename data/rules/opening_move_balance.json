@@ -1,19 +1,24 @@
 {
-  "schema_version": 1,
-  "rule_id": "opening_move_damage_balance_v1",
-  "description": "Schadensattacken, die bereits in der Eröffnungsphase/Runde 0 einsetzbar sind, erhalten einen deutlichen Schadensabschlag, weil sie Schaden vor dem normalen ATB-Kampfbeginn verteilen können.",
+  "schema_version": 2,
+  "rule_id": "opening_move_damage_balance_v2",
+  "description": "Schadensattacken, die bereits in der Eröffnungsphase/Runde 0 einsetzbar sind, erhalten einen deutlichen Schadensabschlag. Prioritätsattacken bezahlen den zusätzlichen Eröffnungsvorteil außerdem mit ATB-Rückstand für ihre erste normale Aktion.",
   "applies_when": {
     "opening": true,
     "has_damage_mechanic": true
   },
   "default_power_cap": 20,
+  "default_priority_opening_atb_debt": 35,
+  "normal_combat_priority_move_policy": "allowed",
+  "opening_only_requires_explicit_tag": true,
   "exceptions_require_explicit_balance_note": true,
   "reference_move": {
     "id": "quick_attack",
     "name": "Ruckzuckhieb",
     "power": 20,
     "priority": 1,
-    "ap": 1
+    "ap": 1,
+    "opening_atb_debt": 35,
+    "usable_during_normal_atb": true
   },
-  "design_note": "Sehr schnelle Prioritäts-/Runde-0-Attacken dürfen nicht gleichzeitig normalen oder hohen Basisschaden besitzen. Ihr Tempo und der mögliche Schaden vor dem eigentlichen Kampfbeginn sind bereits ein starker Vorteil."
+  "design_note": "Runde 0 ist ein freiwilliger Tempo-Vorschuss, kein kostenloser Zusatzschaden. Ruckzuckhieb und vergleichbare Prioritätsattacken bleiben im normalen ATB-Kampf nutzbar; nur ihr Einsatz vor Kampfbeginn erzeugt den ATB-Rückstand. Echte Opening-only-Attacken müssen später ausdrücklich als solche markiert werden."
 }
