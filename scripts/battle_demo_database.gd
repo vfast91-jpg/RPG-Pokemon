@@ -129,6 +129,112 @@ func _canonical_learnset_array(learnset_value: Variant) -> Array:
     return result
 
 
+func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
+    var enriched: Dictionary = setup.duplicate(true)
+    if not (enriched.get("known_moves", null) is Array):
+        var species_id: String = str(enriched.get("species_id", ""))
+        var level: int = maxi(1, int(enriched.get("level", 1)))
+        var root_id: String = _database_family_root(species_id)
+        if not root_id.is_empty():
+            enriched["known_moves"] = _database_family_moves(root_id, level)
+    return super._make_combatant(side, index, enriched)
+
+
+func route_moves_for_level(species_id: String, level: int) -> Array:
+    var root_id: String = _database_family_root(species_id)
+    if root_id.is_empty():
+        return super.route_moves_for_level(species_id, level)
+    return _database_family_moves(root_id, maxi(1, level))
+
+
+func _database_family_root(species_id: String) -> String:
+    if species_id.is_empty():
+        return ""
+    var species_value: Variant = _canonical_pack.get("species", {})
+    if not (species_value is Dictionary):
+        return ""
+    var all_species: Dictionary = species_value
+
+    for root_value: Variant in species_ids:
+        var root_id: String = str(root_value)
+        var current_id: String = root_id
+        for _hop: int in range(8):
+            if current_id == species_id:
+                return root_id
+            var current_value: Variant = all_species.get(current_id, {})
+            if not (current_value is Dictionary):
+                break
+            var evolution_value: Variant = (current_value as Dictionary).get("evolution", {})
+            if not (evolution_value is Dictionary):
+                break
+            var target_id: String = str((evolution_value as Dictionary).get("evolves_into", ""))
+            if target_id.is_empty():
+                break
+            current_id = target_id
+    return ""
+
+
+func _database_family_moves(root_id: String, level: int) -> Array:
+    var result: Array = []
+    var species_value: Variant = _canonical_pack.get("species", {})
+    if not (species_value is Dictionary):
+        return result
+    var all_species: Dictionary = species_value
+    var current_id: String = root_id
+    var form_start_level: int = 1
+
+    for _hop: int in range(8):
+        var current_value: Variant = all_species.get(current_id, {})
+        if not (current_value is Dictionary):
+            break
+        var current: Dictionary = current_value
+        var learnset_value: Variant = current.get("learnset", {})
+        var learnset: Dictionary = learnset_value if learnset_value is Dictionary else {}
+
+        if form_start_level > 1:
+            _database_append_usable_moves(result, learnset.get("evolution_moves", []))
+
+        var evolution_value: Variant = current.get("evolution", {})
+        var evolution: Dictionary = evolution_value if evolution_value is Dictionary else {}
+        var evolution_level: int = int(evolution.get("evolution_level", 0))
+        var upper_level: int = level
+        if evolution_level > 0:
+            upper_level = mini(level, evolution_level - 1)
+
+        var level_up_value: Variant = learnset.get("level_up", {})
+        if level_up_value is Dictionary:
+            var levels: Array[int] = []
+            for level_key: Variant in (level_up_value as Dictionary).keys():
+                var level_text: String = str(level_key)
+                if level_text.is_valid_int():
+                    levels.append(int(level_text))
+            levels.sort()
+            for move_level: int in levels:
+                if move_level < form_start_level or move_level > upper_level:
+                    continue
+                _database_append_usable_moves(
+                    result,
+                    (level_up_value as Dictionary).get(str(move_level), [])
+                )
+
+        var target_id: String = str(evolution.get("evolves_into", ""))
+        if evolution_level <= 0 or target_id.is_empty() or level < evolution_level:
+            break
+        current_id = target_id
+        form_start_level = evolution_level
+
+    return result
+
+
+func _database_append_usable_moves(result: Array, move_values: Variant) -> void:
+    if not (move_values is Array):
+        return
+    for move_value: Variant in move_values:
+        var move_id: String = str(move_value)
+        if _database_move_is_runtime_usable(move_id) and not result.has(move_id):
+            result.append(move_id)
+
+
 func _build_config(root: Control) -> void:
     super._build_config(root)
     if config_panel != null and config_panel.get_child_count() > 0:
