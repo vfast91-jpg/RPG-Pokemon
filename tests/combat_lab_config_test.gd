@@ -27,7 +27,7 @@ func _initialize() -> void:
         _validate_side(lab, lab.enemy_setup, lab.enemy_rows, 17, 20, "Gegner", attempt)
 
     # Force the maximum 4v4 setup and verify the compact rows stay structurally
-    # bounded instead of growing out of their half of the screen.
+    # bounded instead of growing out of their half of the 640px virtual screen.
     lab.player_setup.clear()
     lab.enemy_setup.clear()
     for index: int in range(4):
@@ -103,9 +103,9 @@ func _validate_side(lab, setup: Array, rows: VBoxContainer, min_level: int, max_
             continue
 
         _check(
-            row.get_combined_minimum_size().x <= 430.0,
-            "%s Zeile %d: Mindestbreite %.1f ist zu gross fuer eine Teamhaelfte."
-            % [side_name, index + 1, row.get_combined_minimum_size().x]
+            row.get_combined_minimum_size().x <= lab.LAB_ROW_MAXIMUM_MIN_WIDTH,
+            "%s Zeile %d: Mindestbreite %.1f ist zu gross fuer eine Teamhaelfte (Limit %.1f)."
+            % [side_name, index + 1, row.get_combined_minimum_size().x, lab.LAB_ROW_MAXIMUM_MIN_WIDTH]
         )
 
         var picker: OptionButton = row.get_node_or_null("FamilyPicker") as OptionButton
@@ -115,11 +115,13 @@ func _validate_side(lab, setup: Array, rows: VBoxContainer, min_level: int, max_
         _check(badge != null, "%s Zeile %d: Formanzeige fehlt." % [side_name, index + 1])
         _check(level_spin != null, "%s Zeile %d: Levelauswahl fehlt." % [side_name, index + 1])
 
-        if picker != null and picker.selected >= 0:
-            _check(
-                str(picker.get_item_metadata(picker.selected)) == family_id,
-                "%s Zeile %d: Sichtbare Familie passt nicht zum Setup." % [side_name, index + 1]
-            )
+        if picker != null:
+            _check(not picker.fit_to_longest_item, "%s Zeile %d: Familienauswahl darf sich nicht am laengsten Namen verbreitern." % [side_name, index + 1])
+            if picker.selected >= 0:
+                _check(
+                    str(picker.get_item_metadata(picker.selected)) == family_id,
+                    "%s Zeile %d: Sichtbare Familie passt nicht zum Setup." % [side_name, index + 1]
+                )
 
         if level_spin != null:
             _check(
