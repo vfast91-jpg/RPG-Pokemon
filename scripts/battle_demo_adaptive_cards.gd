@@ -4,9 +4,8 @@ extends "res://scripts/battle_demo_family_lab.gd"
 #
 # This file is the single authority for battle cards, Pokemon sprite sizing and
 # combat formation. Team size changes positions only; dimensions never change.
-# The visible meters deliberately use plain ColorRects instead of ProgressBars,
-# because themed ProgressBars enforce their own minimum height and were the
-# reason KP/Aggro/ATB visually escaped and overlapped the cards.
+# The visible meters use plain Panels with fixed geometry instead of themed
+# ProgressBars: this keeps the stable layout while allowing fully rounded ends.
 
 const ROSTER_CARD_WIDTH: float = 176.0
 const ROSTER_CARD_HEIGHT: float = 52.0
@@ -115,7 +114,7 @@ func _make_card(combatant: Dictionary, enemy: bool) -> Control:
 
     # Hidden compatibility controllers: inherited battle logic writes values to
     # ProgressBars. Keeping invisible controllers preserves that contract while
-    # the visible meters remain immune to theme minimum-size inflation.
+    # the visible rounded meters remain immune to theme minimum-size inflation.
     var hp_controller := ProgressBar.new()
     hp_controller.name = "HPController"
     hp_controller.visible = false
@@ -222,23 +221,34 @@ func _make_meter(
     background_color: Color,
     fill_color: Color
 ) -> Dictionary:
-    var background := ColorRect.new()
+    var background := Panel.new()
     background.name = node_name + "Back"
     background.position = position_value
     background.size = Vector2(ROSTER_METER_WIDTH, ROSTER_METER_HEIGHT)
-    background.color = background_color
     background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    background.add_theme_stylebox_override("panel", _meter_style(background_color))
     canvas.add_child(background)
 
-    var fill := ColorRect.new()
+    var fill := Panel.new()
     fill.name = node_name + "Fill"
     fill.position = position_value
     fill.size = Vector2(ROSTER_METER_WIDTH, ROSTER_METER_HEIGHT)
-    fill.color = fill_color
     fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    fill.add_theme_stylebox_override("panel", _meter_style(fill_color))
     canvas.add_child(fill)
 
     return {"background": background, "fill": fill}
+
+
+func _meter_style(color: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = color
+    style.set_corner_radius_all(int(round(ROSTER_METER_HEIGHT * 0.5)))
+    style.content_margin_left = 0.0
+    style.content_margin_right = 0.0
+    style.content_margin_top = 0.0
+    style.content_margin_bottom = 0.0
+    return style
 
 
 func _info_button_style(background: Color, border: Color) -> StyleBoxFlat:
@@ -305,11 +315,12 @@ func _layout_team(area: Control, team: Array, enemy: bool) -> void:
         var max_sprite_y: float = maxf(0.0, area.size.y - ROSTER_SPRITE_SIDE)
         sprite.position = Vector2(sprite_x, clampf(desired_y, 0.0, max_sprite_y))
 
-        ui["texture"] = sprite
-        cards[combatant_id] = ui
-
         _add_roster_shadow(area, sprite, combatant_id)
-        _add_roster_connector(area, card, sprite, enemy, combatant_id)
+        var connector: Line2D = _add_roster_connector(area, card, sprite, enemy, combatant_id)
+
+        ui["texture"] = sprite
+        ui["connector"] = connector
+        cards[combatant_id] = ui
 
 
 func _add_roster_shadow(area: Control, sprite: TextureRect, combatant_id: String) -> void:
@@ -334,7 +345,7 @@ func _add_roster_connector(
     sprite: TextureRect,
     enemy: bool,
     combatant_id: String
-) -> void:
+) -> Line2D:
     var line := Line2D.new()
     line.name = "CardConnector_" + combatant_id
     line.width = 2.0
@@ -343,6 +354,7 @@ func _add_roster_connector(
     line.z_index = 4
     area.add_child(line)
     _update_roster_connector(line, card, sprite, enemy)
+    return line
 
 
 func _refresh_cards() -> void:
@@ -368,6 +380,9 @@ func _refresh_cards() -> void:
         var atb: float = clampf(float(combatant.get("atb", 0.0)), 0.0, 100.0)
         var aggro: float = float(combatant.get("aggro", 0.0))
         var max_aggro: float = _max_aggro_for_side(str(combatant.get("side", "")))
+        var target_count: int = _incoming_target_count(combatant)
+        var active: bool = combatant_id == active_id
+        var alive: bool = bool(combatant.get("alive", false))
 
         var hp_text: Label = ui.get("hp_text") as Label
         if hp_text != null:
@@ -381,41 +396,62 @@ func _refresh_cards() -> void:
         if atb_text != null:
             atb_text.text = "ATB %d%%" % int(round(atb))
 
-        _set_meter_fill(ui.get("hp_fill") as ColorRect, hp / max_hp)
-        _set_meter_fill(ui.get("aggro_fill") as ColorRect, aggro / maxf(1.0, max_aggro))
-        _set_meter_fill(ui.get("atb_fill") as ColorRect, atb / 100.0)
+        _set_meter_fill(ui.get("hp_fill") as Panel, hp / max_hp)
+        _set_meter_fill(ui.get("aggro_fill") as Panel, aggro / maxf(1.0, max_aggro))
+        _set_meter_fill(ui.get("atb_fill") as Panel, atb / 100.0)
 
         var status_line: Label = ui.get("status_line") as Label
         if status_line != null:
-            status_line.text = _roster_status_text(combatant, combatant_id == active_id)
-            if not bool(combatant.get("alive", false)):
+            status_line.text = _roster_status_text(combatant, active)
+            if not alive:
                 status_line.add_theme_color_override("font_color", Color("666666"))
-            elif combatant_id == active_id:
+            elif active:
                 status_line.add_theme_color_override("font_color", Color("8a6410"))
-            elif _incoming_target_count(combatant) > 0:
+            elif target_count > 0:
                 status_line.add_theme_color_override("font_color", Color("a33333"))
             else:
                 status_line.add_theme_color_override("font_color", Color("5a4646"))
 
         var card: PanelContainer = ui.get("card") as PanelContainer
         if card != null:
-            if not bool(combatant.get("alive", false)):
+            if not alive:
                 card.add_theme_stylebox_override("panel", _roster_card_fainted)
-            elif combatant_id == active_id:
+            elif active:
                 card.add_theme_stylebox_override("panel", _roster_card_active)
-            elif _incoming_target_count(combatant) > 0:
+            elif target_count > 0:
                 card.add_theme_stylebox_override("panel", _roster_card_target)
             else:
                 card.add_theme_stylebox_override("panel", _roster_card_default)
 
+        var connector: Line2D = ui.get("connector") as Line2D
+        if connector != null:
+            _apply_connector_state(connector, alive, active, target_count)
 
-func _set_meter_fill(fill: ColorRect, ratio: float) -> void:
+
+func _set_meter_fill(fill: Panel, ratio: float) -> void:
     if fill == null:
         return
+    var clamped_ratio: float = clampf(ratio, 0.0, 1.0)
+    fill.visible = clamped_ratio > 0.0
     fill.size = Vector2(
-        ROSTER_METER_WIDTH * clampf(ratio, 0.0, 1.0),
+        ROSTER_METER_WIDTH * clamped_ratio,
         ROSTER_METER_HEIGHT
     )
+
+
+func _apply_connector_state(line: Line2D, alive: bool, active: bool, target_count: int) -> void:
+    if not alive:
+        line.default_color = Color("6a6a6a88")
+        line.width = 2.0
+    elif active:
+        line.default_color = Color("e0a52f")
+        line.width = 3.0
+    elif target_count > 0:
+        line.default_color = Color("cf3434")
+        line.width = 3.0
+    else:
+        line.default_color = Color("f6edc9b8")
+        line.width = 2.0
 
 
 func _roster_status_text(combatant: Dictionary, active: bool) -> String:
@@ -467,13 +503,8 @@ func _update_roster_connector(
         card_edge = card.position + Vector2(0.0, card.size.y * 0.5)
         sprite_edge = sprite.position + Vector2(sprite.size.x, sprite.size.y * 0.5)
 
-    var midpoint: Vector2 = (card_edge + sprite_edge) * 0.5
-    line.points = PackedVector2Array([
-        card_edge,
-        Vector2(midpoint.x, card_edge.y),
-        Vector2(midpoint.x, sprite_edge.y),
-        sprite_edge
-    ])
+    # One clean direct segment: no staircase corners between card and Pokemon.
+    line.points = PackedVector2Array([card_edge, sprite_edge])
 
 
 func _ensure_roster_card_styles() -> void:
