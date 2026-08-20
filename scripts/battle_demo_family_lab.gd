@@ -31,22 +31,37 @@ func _build_config(root: Control) -> void:
 func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
     super._fill_rows(box, setup, own)
 
-    # Make the rule visible instead of hiding it in the battle start logic.
-    # Example at Lv.18: "Schiggy-Familie -> Schillok".
+    # The original combat-lab row still creates its level SpinBox with the old
+    # prototype cap LEVEL_MAX = 10. The database-backed lab supports Lv.1–100,
+    # so repair every generated row after the inherited UI has been built.
+    # This also restores randomized values above 10 instead of displaying them
+    # as Lv.10.
     for index: int in range(mini(box.get_child_count(), setup.size())):
         var row: HBoxContainer = box.get_child(index) as HBoxContainer
         if row == null:
             continue
 
         var picker: OptionButton = null
+        var level_spin: SpinBox = null
         for child: Node in row.get_children():
             if child is OptionButton:
                 picker = child as OptionButton
-                break
+            elif child is SpinBox:
+                level_spin = child as SpinBox
+
+        var level: int = clampi(int(setup[index].get("level", 1)), 1, DATABASE_LEVEL_MAX)
+        if level_spin != null:
+            level_spin.min_value = 1.0
+            level_spin.max_value = float(DATABASE_LEVEL_MAX)
+            level_spin.allow_greater = false
+            level_spin.set_value_no_signal(float(level))
+            level_spin.tooltip_text = "Level 1–%d. Die aktive Entwicklungsform folgt automatisch dem Level." % DATABASE_LEVEL_MAX
+
         if picker == null:
             continue
 
-        var level: int = maxi(1, int(setup[index].get("level", 1)))
+        # Make the rule visible instead of hiding it in the battle start logic.
+        # Example at Lv.18: "Schiggy-Familie -> Schillok".
         for item_index: int in range(picker.item_count):
             var family_id: String = str(picker.get_item_metadata(item_index))
             picker.set_item_text(item_index, _lab_family_label(family_id, level))
@@ -60,7 +75,14 @@ func _species_changed(_item_index: int, own: bool, index: int, picker: OptionBut
 
 
 func _level_changed(value: float, own: bool, index: int) -> void:
-    super._level_changed(value, own, index)
+    # Do not call the prototype implementation here: it still clamps to the old
+    # LEVEL_MAX = 10. The canonical database and random-level controls support
+    # the full Lv.1–100 range.
+    var setup: Array = player_setup if own else enemy_setup
+    if index >= setup.size():
+        return
+    setup[index]["level"] = clampi(int(value), 1, DATABASE_LEVEL_MAX)
+
     # The displayed form changes exactly at evolution thresholds.
     _refresh_setup()
 
