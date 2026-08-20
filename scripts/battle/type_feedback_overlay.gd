@@ -32,7 +32,8 @@ func _process(delta: float) -> void:
             last_log_text = current_text
             var feedback: Dictionary = _feedback_from_log(current_text)
             if not feedback.is_empty():
-                _show_feedback(demo, str(feedback["text"]), feedback["color"] as Color)
+                var accent: Color = feedback.get("color", Color.WHITE)
+                _show_feedback(demo, str(feedback.get("text", "")), accent)
 
     if feedback_time_left > 0.0:
         feedback_time_left -= delta
