@@ -69,6 +69,24 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
     if log_label == null:
         return
 
+    # Player-facing terminology: the internal ATB system stays untouched, but
+    # the UI calls the visible meter the Aktionsleiste.
+    log_label.text = log_label.text.replace(
+        "→ ATB ×", "→ Ladezeit der Aktionsleiste ×"
+    )
+    log_label.text = log_label.text.replace(
+        "ATB-Zyklen kürzer", "Aktionsleiste füllt sich schneller"
+    )
+    log_label.text = log_label.text.replace(
+        "ATB-Zyklen länger", "Aktionsleiste füllt sich langsamer"
+    )
+    log_label.text = log_label.text.replace(
+        "ATB schneller", "Aktionsleiste füllt sich schneller"
+    )
+    log_label.text = log_label.text.replace(
+        "ATB langsamer", "Aktionsleiste füllt sich langsamer"
+    )
+
     var power_value: Variant = move.get("power", null)
     if power_value == null:
         return
@@ -84,9 +102,36 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
     )
 
 
+func _preview_wait() -> void:
+    super._preview_wait()
+    if log_label != null:
+        log_label.text = (
+            "[b]⏳ Warten[/b] · keine Attacke\n"
+            + "Aggro sinkt · die eigene Aktionsleiste füllt sich beim nächsten Mal schneller."
+        )
+
+
 func _detail_info(combatant: Dictionary) -> String:
-    # Keep the stable internal data key `special`; only the player-facing label changes.
-    return super._detail_info(combatant).replace("Spezial ", "Status ")
+    # Keep stable internal data keys such as `special`, `speed` and `atb`;
+    # only their player-facing labels are translated into plain language.
+    var detail: String = super._detail_info(combatant)
+    detail = detail.replace("Spezial ", "Status ")
+    detail = detail.replace("ATB: ", "Aktionsleiste: ")
+    detail = detail.replace("Initiative ", "Geschwindigkeit ")
+    detail = detail.replace("Gesamt ATB-Zyklus", "Gesamt Ladezeit der Aktionsleiste")
+    detail = detail.replace("ATB-Zyklus", "Ladezeit der Aktionsleiste")
+    return detail
+
+
+func _status_tokens(combatant: Dictionary) -> Array[String]:
+    var tokens: Array[String] = super._status_tokens(combatant)
+    var renamed: Array[String] = []
+    for token: String in tokens:
+        var visible_token: String = token
+        visible_token = visible_token.replace("ATB+", "SCHNELLER")
+        visible_token = visible_token.replace("ATB-", "LANGSAMER")
+        renamed.append(visible_token)
+    return renamed
 
 
 func _audit_opening_damage_balance() -> void:
