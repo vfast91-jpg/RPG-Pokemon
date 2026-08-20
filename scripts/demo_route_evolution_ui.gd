@@ -151,9 +151,9 @@ func _build_evolution_choice_popup() -> void:
     panel.anchor_right = 0.5
     panel.anchor_bottom = 0.5
     panel.offset_left = -245.0
-    panel.offset_top = -230.0
+    panel.offset_top = -165.0
     panel.offset_right = 245.0
-    panel.offset_bottom = 230.0
+    panel.offset_bottom = 165.0
     panel.add_theme_stylebox_override(
         "panel",
         _panel(Color("172923"), Color("ffe576"), 12, 11.0)
@@ -161,21 +161,21 @@ func _build_evolution_choice_popup() -> void:
     _evolution_choice_overlay.add_child(panel)
 
     var content := VBoxContainer.new()
-    content.add_theme_constant_override("separation", 8)
+    content.add_theme_constant_override("separation", 6)
     panel.add_child(content)
 
     _evolution_choice_title = Label.new()
     _evolution_choice_title.text = "🌟 ENTWICKLUNG WÄHLEN"
     _evolution_choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _evolution_choice_title.add_theme_font_size_override("font_size", 19)
+    _evolution_choice_title.add_theme_font_size_override("font_size", 18)
     _evolution_choice_title.add_theme_color_override("font_color", Color("ffe576"))
     content.add_child(_evolution_choice_title)
 
     _evolution_choice_subtitle = Label.new()
     _evolution_choice_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _evolution_choice_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _evolution_choice_subtitle.custom_minimum_size = Vector2(0, 42)
-    _evolution_choice_subtitle.add_theme_font_size_override("font_size", 12)
+    _evolution_choice_subtitle.custom_minimum_size = Vector2(0, 36)
+    _evolution_choice_subtitle.add_theme_font_size_override("font_size", 11)
     _evolution_choice_subtitle.add_theme_color_override("font_color", Color("dce8e3"))
     content.add_child(_evolution_choice_subtitle)
 
@@ -186,14 +186,14 @@ func _build_evolution_choice_popup() -> void:
 
     _evolution_choice_buttons = VBoxContainer.new()
     _evolution_choice_buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _evolution_choice_buttons.add_theme_constant_override("separation", 6)
+    _evolution_choice_buttons.add_theme_constant_override("separation", 5)
     scroll.add_child(_evolution_choice_buttons)
 
     var note := Label.new()
     note.text = "Die Entwicklung ist verpflichtend – nur das Ziel wird gewählt."
     note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    note.add_theme_font_size_override("font_size", 9)
+    note.add_theme_font_size_override("font_size", 8)
     note.add_theme_color_override("font_color", Color("9fb2aa"))
     content.add_child(note)
 
@@ -249,7 +249,7 @@ func _show_next_evolution_choice_popup() -> void:
         var target_available: bool = bool(choice.get("target_available", true))
         var button := Button.new()
         button.text = target_name if target_available else "%s  ·  Daten fehlen" % target_name
-        button.custom_minimum_size = Vector2(0, 42)
+        button.custom_minimum_size = Vector2(0, 38)
         button.disabled = not target_available
         button.tooltip_text = "Entwickle %s zu %s" % [before_name, target_name]
         button.pressed.connect(_on_evolution_choice_button.bind(target_id))
