@@ -48,6 +48,7 @@ func _run_scenario(lab, player_count: int, enemy_count: int, scenario: String) -
 
     _validate_team(lab, lab.player_team, false, area, scenario + " Spieler")
     _validate_team(lab, lab.enemy_team, true, area, scenario + " Gegner")
+    _validate_connector_states(lab, scenario)
 
 
 func _validate_team(lab, team: Array, enemy: bool, area: Control, label: String) -> void:
@@ -92,9 +93,14 @@ func _validate_team(lab, team: Array, enemy: bool, area: Control, label: String)
                 _check(previous_sprite_x < sprite.position.x, "%s: Spielerformation zeigt nicht nach oben." % label)
         previous_sprite_x = sprite.position.x
 
-        _validate_meter(ui.get("hp_back") as ColorRect, ui.get("hp_fill") as ColorRect, label, index, "KP")
-        _validate_meter(ui.get("aggro_back") as ColorRect, ui.get("aggro_fill") as ColorRect, label, index, "Aggro")
-        _validate_meter(ui.get("atb_back") as ColorRect, ui.get("atb_fill") as ColorRect, label, index, "ATB")
+        _validate_meter(ui.get("hp_back") as Panel, ui.get("hp_fill") as Panel, label, index, "KP")
+        _validate_meter(ui.get("aggro_back") as Panel, ui.get("aggro_fill") as Panel, label, index, "Aggro")
+        _validate_meter(ui.get("atb_back") as Panel, ui.get("atb_fill") as Panel, label, index, "ATB")
+
+        var connector: Line2D = ui.get("connector") as Line2D
+        _check(connector != null, "%s #%d: Verbindungslinie fehlt." % [label, index + 1])
+        if connector != null:
+            _check(connector.points.size() == 2, "%s #%d: Verbindungslinie hat wieder Treppen-Ecken." % [label, index + 1])
 
         var info: Button = ui.get("info") as Button
         _check(info != null, "%s #%d: Info-Knopf fehlt." % [label, index + 1])
@@ -103,7 +109,7 @@ func _validate_team(lab, team: Array, enemy: bool, area: Control, label: String)
             _check(info.position.y + info.size.y <= 48.01, "%s #%d: Info-Knopf ragt aus dem Karteninhalt." % [label, index + 1])
 
 
-func _validate_meter(background: ColorRect, fill: ColorRect, label: String, index: int, meter_name: String) -> void:
+func _validate_meter(background: Panel, fill: Panel, label: String, index: int, meter_name: String) -> void:
     _check(background != null, "%s #%d: %s-Hintergrund fehlt." % [label, index + 1, meter_name])
     _check(fill != null, "%s #%d: %s-Fuellung fehlt." % [label, index + 1, meter_name])
     if background == null or fill == null:
@@ -116,9 +122,60 @@ func _validate_meter(background: ColorRect, fill: ColorRect, label: String, inde
     _check(background.position.x + background.size.x <= 148.01, "%s #%d: %s ragt rechts aus dem reservierten Bereich." % [label, index + 1, meter_name])
     _check(background.position.y + background.size.y <= 48.01, "%s #%d: %s ragt unten aus der Karte." % [label, index + 1, meter_name])
 
+    var background_style: StyleBoxFlat = background.get_theme_stylebox("panel") as StyleBoxFlat
+    var fill_style: StyleBoxFlat = fill.get_theme_stylebox("panel") as StyleBoxFlat
+    _check(background_style != null, "%s #%d: %s-Hintergrund hat keinen Rundungsstil." % [label, index + 1, meter_name])
+    _check(fill_style != null, "%s #%d: %s-Fuellung hat keinen Rundungsstil." % [label, index + 1, meter_name])
+
+
+func _validate_connector_states(lab, scenario: String) -> void:
+    if lab.player_team.is_empty():
+        return
+
+    var active: Dictionary = lab.player_team[0]
+    lab.selected_actor = active
+    lab._refresh_cards()
+
+    var active_ui_value: Variant = lab.cards.get(str(active.get("id", "")), {})
+    if active_ui_value is Dictionary:
+        var active_connector: Line2D = (active_ui_value as Dictionary).get("connector") as Line2D
+        _check(active_connector != null, "%s: Aktive Verbindungslinie fehlt." % scenario)
+        if active_connector != null:
+            _check(_same_color(active_connector.default_color, Color("e0a52f")), "%s: Aktive Verbindungslinie ist nicht gelb." % scenario)
+            _check(absf(active_connector.width - 3.0) < 0.01, "%s: Aktive Verbindungslinie wird nicht betont." % scenario)
+
+    lab.selected_actor = {}
+    lab._refresh_cards()
+
+    var found_target: bool = false
+    for combatant_value: Variant in lab.combatants:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        if not bool(combatant.get("alive", false)) or lab._incoming_target_count(combatant) <= 0:
+            continue
+        found_target = true
+        var ui_value: Variant = lab.cards.get(str(combatant.get("id", "")), {})
+        if not (ui_value is Dictionary):
+            continue
+        var connector: Line2D = (ui_value as Dictionary).get("connector") as Line2D
+        _check(connector != null, "%s: Ziel-Verbindungslinie fehlt." % scenario)
+        if connector != null:
+            _check(_same_color(connector.default_color, Color("cf3434")), "%s: Aggro-Ziel-Verbindungslinie ist nicht rot." % scenario)
+            _check(absf(connector.width - 3.0) < 0.01, "%s: Aggro-Ziel-Verbindungslinie wird nicht betont." % scenario)
+
+    _check(found_target, "%s: Kein Aggro-Ziel fuer Farbtest gefunden." % scenario)
+
 
 func _same_vec(left: Vector2, right: Vector2) -> bool:
     return left.distance_to(right) < 0.01
+
+
+func _same_color(left: Color, right: Color) -> bool:
+    return absf(left.r - right.r) < 0.001 \
+        and absf(left.g - right.g) < 0.001 \
+        and absf(left.b - right.b) < 0.001 \
+        and absf(left.a - right.a) < 0.001
 
 
 func _check(condition: bool, message: String) -> void:
