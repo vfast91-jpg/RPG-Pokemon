@@ -138,6 +138,44 @@ func _resolved_effectiveness_feedback(multiplier: float, dealt_damage: bool) -> 
     return ""
 
 
+func _resolve_opening_actions_async() -> void:
+    if _opening_choices.is_empty():
+        _finish_opening_phase()
+        return
+
+    for choice_value: Variant in _opening_choices:
+        if not battle_active:
+            return
+        if not (choice_value is Dictionary):
+            continue
+        var choice: Dictionary = choice_value
+        var actor_value: Variant = choice.get("actor", {})
+        if not (actor_value is Dictionary):
+            continue
+        var actor: Dictionary = actor_value
+        if not bool(actor.get("alive", false)):
+            continue
+
+        var move_id: String = str(choice.get("move_id", ""))
+        if move_id.is_empty():
+            continue
+
+        paused = true
+        _set_log(
+            "[b]RUNDE 0[/b] · " + _actor_name(actor)
+            + " setzt " + str(_move_data(move_id).get("name", move_id)) + " ein."
+        )
+        # Use this leaf layer instead of bypassing it with super so opening
+        # attacks receive the same type-effectiveness feedback as normal moves.
+        _execute_move(actor, move_id)
+        await get_tree().create_timer(SHORT_ACTION_FEEDBACK_SECONDS).timeout
+        if not battle_active:
+            return
+        paused = true
+
+    _finish_opening_phase()
+
+
 func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
     var damage: int = super._damage(actor, target, power, move_type, category)
     if damage <= 0:
