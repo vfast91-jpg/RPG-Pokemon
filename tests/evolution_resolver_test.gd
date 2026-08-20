@@ -79,7 +79,7 @@ func _initialize() -> void:
     quit(0)
 
 
-func _test_branching_evolutions(resolver: RefCounted) -> void:
+func _test_branching_evolutions(resolver) -> void:
     # Generic fixture on purpose: branching support must not be hard-coded to
     # Eevee, Tyrogue, Gloom, Poliwhirl, Scyther or any other specific family.
     var branching_species: Dictionary = {

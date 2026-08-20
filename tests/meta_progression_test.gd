@@ -51,7 +51,7 @@ func _initialize() -> void:
     quit(0)
 
 
-func _test_branching_family_roots(progression: Node) -> void:
+func _test_branching_family_roots(progression) -> void:
     var original_rules: Dictionary = progression._evolution_rules.duplicate(true)
     progression._evolution_rules = {
         "level_evolutions": {
