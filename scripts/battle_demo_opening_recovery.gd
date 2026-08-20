@@ -1,23 +1,60 @@
 extends "res://scripts/battle_demo_route_party.gd"
 
-# Opening-phase balance polish:
+# Opening-phase and AP balance polish:
 # - Opening-only attacks are selectable exclusively during Runde 0.
 # - Ruckzuckhieb is restored to Stärke 30 and uses AP 8.
-# - AP 8 already creates roughly 1.9× normal recovery in the current test
-#   curve, so opening-only attacks do not stack an extra negative ATB debt.
+# - AP recovery uses the binding central curve in data/rules/ap_cycle_balance.json.
+# - AP 8 creates 3.25x normal recovery, so opening-only attacks do not stack
+#   an extra negative ATB debt unless explicitly configured.
 # - Other priority attacks may still use explicit `opening_atb_debt` values.
 
 const OPENING_BALANCE_RULE_PATH: String = "res://data/rules/opening_move_balance.json"
+const AP_CYCLE_RULE_PATH: String = "res://data/rules/ap_cycle_balance.json"
 const FALLBACK_PRIORITY_OPENING_ATB_DEBT: float = 0.0
 
 var _priority_opening_atb_debt: float = FALLBACK_PRIORITY_OPENING_ATB_DEBT
 var _opening_balance_rule: Dictionary = {}
+var _ap_cycle_curve: Dictionary = {
+    "1": 1.00,
+    "2": 1.15,
+    "3": 1.30,
+    "4": 1.50,
+    "5": 1.75,
+    "6": 2.10,
+    "7": 2.60,
+    "8": 3.25
+}
 
 
 func _load_data() -> void:
     super._load_data()
+    _load_ap_cycle_rule()
     _load_opening_balance_rule()
     _apply_opening_reference_move()
+
+
+func _load_ap_cycle_rule() -> void:
+    if FileAccess.file_exists(AP_CYCLE_RULE_PATH):
+        var file: FileAccess = FileAccess.open(AP_CYCLE_RULE_PATH, FileAccess.READ)
+        if file != null:
+            var parsed: Variant = JSON.parse_string(file.get_as_text())
+            if parsed is Dictionary:
+                var curve_value: Variant = parsed.get("ap_cycle_multiplier", {})
+                if curve_value is Dictionary and not curve_value.is_empty():
+                    _ap_cycle_curve = curve_value.duplicate(true)
+
+    # Keep the runtime data dictionary synchronized so every inherited combat
+    # layer sees the same binding curve even if it reads `data.rules` directly.
+    var rules_value: Variant = data.get("rules", {})
+    var rules: Dictionary = rules_value if rules_value is Dictionary else {}
+    rules["ap_cycle_multiplier"] = _ap_cycle_curve.duplicate(true)
+    rules["ap_cycle_rule_source"] = AP_CYCLE_RULE_PATH
+    data["rules"] = rules
+
+
+func _ap_cycle(ap: int) -> float:
+    var bounded_ap: int = clampi(ap, 1, 8)
+    return maxf(0.01, float(_ap_cycle_curve.get(str(bounded_ap), 1.0)))
 
 
 func _load_opening_balance_rule() -> void:
@@ -199,9 +236,10 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
         return
 
     if bool(move.get("opening_only", false)):
+        var recovery: float = _ap_cycle(int(move.get("ap", 8)))
         log_label.text += (
-            "\n⚡ Nur Runde 0 · danach AP %d Erholung."
-            % int(move.get("ap", 8))
+            "\n⚡ Nur Runde 0 · danach AP %d = %.2fx Erholungszeit."
+            % [int(move.get("ap", 8)), recovery]
         )
         return
 
