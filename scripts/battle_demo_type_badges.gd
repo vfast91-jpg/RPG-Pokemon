@@ -1,12 +1,14 @@
 extends "res://scripts/battle_demo_feedback_polish.gd"
 
 # Compact type badges for the always-visible battle cards.
-# They reuse the combatant's existing `types` data and share the name row so
-# even 4-vs-4 battles keep the current compact card height.
+# They reuse the combatant's existing `types` data and sit directly below the
+# Pokemon name while keeping 4-vs-4 battles inside the existing battle area.
 
 
 func _make_card(combatant: Dictionary, enemy: bool) -> Control:
     var card: Control = super._make_card(combatant, enemy)
+    card.custom_minimum_size.y = 52.0
+    card.size.y = 52.0
     _attach_type_badges(combatant)
     return card
 
@@ -34,22 +36,47 @@ func _attach_type_badges(combatant: Dictionary) -> void:
     if types.is_empty():
         return
 
-    var header: HBoxContainer = HBoxContainer.new()
-    header.name = "NameAndTypes"
-    header.add_theme_constant_override("separation", 2)
-    content.add_child(header)
-    content.move_child(header, 0)
-
-    name_label.reparent(header)
-    name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    # Make just enough vertical room for the new row without making the combat
+    # cards overlap when four Pokemon are visible on one side.
+    name_label.add_theme_font_size_override("font_size", 8)
     name_label.clip_text = true
     name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    hp_bar.custom_minimum_size.y = 8.0
+
+    var atb_bar: ProgressBar = ui.get("atb") as ProgressBar
+    if atb_bar != null:
+        atb_bar.custom_minimum_size.y = 4.0
+
+    var aggro_bar: ProgressBar = ui.get("aggro") as ProgressBar
+    if aggro_bar != null:
+        aggro_bar.custom_minimum_size.y = 4.0
+
+    var aggro_label: Label = ui.get("aggro_label") as Label
+    if aggro_label != null:
+        aggro_label.custom_minimum_size = Vector2(28.0, 6.0)
+        aggro_label.add_theme_font_size_override("font_size", 6)
+
+    var status_label: Label = ui.get("status") as Label
+    if status_label != null:
+        status_label.add_theme_font_size_override("font_size", 6)
+
+    var type_row: HBoxContainer = HBoxContainer.new()
+    type_row.name = "TypeBadges"
+    type_row.custom_minimum_size.y = 7.0
+    type_row.add_theme_constant_override("separation", 2)
 
     for type_value: Variant in types:
         var type_id: String = str(type_value)
         if type_id.is_empty():
             continue
-        header.add_child(_make_type_badge(type_id))
+        type_row.add_child(_make_type_badge(type_id))
+
+    if type_row.get_child_count() == 0:
+        type_row.queue_free()
+        return
+
+    content.add_child(type_row)
+    content.move_child(type_row, hp_bar.get_index())
 
 
 func _make_type_badge(type_id: String) -> Control:
