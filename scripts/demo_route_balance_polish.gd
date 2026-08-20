@@ -8,6 +8,7 @@ extends "res://scripts/demo_route_levelup_hardmode.gd"
 #   common later without letting repeated two-enemy fights dominate every run.
 # - Every Pokémon that entered a stage battle receives XP after a victory,
 #   even if it was knocked out during that battle.
+# - Full-team replacement choices stay inside the route panel and can scroll.
 
 const CAPTURE_LEVEL_BY_STAGE: Array[int] = [3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
 const ENEMY_LEVEL_BY_STAGE: Array[int] = [2, 3, 3, 4, 4, 5, 6, 7, 8, 9]
@@ -37,6 +38,21 @@ func _choices_for_stage(current_stage: int) -> Array[Dictionary]:
         if str(choice.get("kind", "")) == "catch":
             choice["hint"] = "Du erhältst ein zufälliges Pokémon auf Level %d." % capture_level
     return choices
+
+
+func _show_stage_choices(message: String = "") -> void:
+    super._show_stage_choices(message)
+    # Once a new stage starts, its three path choices must be visible again.
+    path_box.visible = true
+
+
+func _choose_path(choice: Dictionary) -> void:
+    super._choose_path(choice)
+    # Keeping the already-selected path buttons on screen consumed roughly
+    # three extra button rows. With a full four-Pokémon team that pushed the
+    # replacement list and the bottom team card below the viewport, making it
+    # look as if a Pokémon had disappeared. Hide the spent choices instead.
+    path_box.visible = false
 
 
 func _begin_capture_event() -> void:
@@ -70,6 +86,44 @@ func _begin_capture_event() -> void:
     replace_button.text = "TEAM-POKÉMON ERSETZEN"
     replace_button.pressed.connect(_show_replace_choices)
     capture_actions.add_child(replace_button)
+
+
+func _show_replace_choices() -> void:
+    _clear_container(capture_actions)
+
+    var prompt := Label.new()
+    prompt.text = "Welches Pokémon soll ins Lager?"
+    prompt.add_theme_font_size_override("font_size", 9)
+    capture_actions.add_child(prompt)
+
+    var choices_scroll := ScrollContainer.new()
+    choices_scroll.custom_minimum_size = Vector2(0, 78)
+    choices_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    choices_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    choices_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    capture_actions.add_child(choices_scroll)
+
+    var choices_box := VBoxContainer.new()
+    choices_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    choices_box.add_theme_constant_override("separation", 2)
+    choices_scroll.add_child(choices_box)
+
+    for index: int in range(team.size()):
+        var member_value: Variant = team[index]
+        if not (member_value is Dictionary):
+            continue
+        var member: Dictionary = member_value
+        var button := Button.new()
+        button.text = "%d. %s Lv.%d" % [index + 1, str(member.get("name", "Pokémon")), int(member.get("level", 1))]
+        button.custom_minimum_size = Vector2(0, 24)
+        button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        button.pressed.connect(_replace_team_member.bind(index))
+        choices_box.add_child(button)
+
+    var back_button := Button.new()
+    back_button.text = "ZURÜCK"
+    back_button.pressed.connect(_begin_capture_event_again)
+    capture_actions.add_child(back_button)
 
 
 func _start_stage_battle() -> void:
