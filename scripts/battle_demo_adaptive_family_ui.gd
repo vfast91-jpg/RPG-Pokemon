@@ -37,19 +37,20 @@ func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
         if picker == null or level_spin == null:
             continue
 
-        # The chooser only names the family root. The separate compact badge
-        # shows which form that family has at the selected level.
+        # Always make it explicit that the dropdown contains evolution families,
+        # not individual forms. The badge next to it shows the form that is
+        # actually active at the selected level.
         for item_index: int in range(picker.item_count):
             var family_id: String = str(picker.get_item_metadata(item_index))
-            picker.set_item_text(item_index, _species_name(family_id))
+            picker.set_item_text(item_index, "%s-Familie" % _species_name(family_id))
 
-        picker.custom_minimum_size = Vector2(96.0, 23.0)
+        picker.custom_minimum_size = Vector2(116.0, 23.0)
         picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         picker.clip_text = true
         picker.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
         var family_id: String = str(setup[index].get("species_id", ""))
-        var level: int = maxi(1, int(setup[index].get("level", 1)))
+        var level: int = clampi(int(setup[index].get("level", 1)), 1, DATABASE_LEVEL_MAX)
         var resolved_id: String = _lab_resolve_family(family_id, level)
         var badge: Control = _make_compact_form_badge(family_id, resolved_id, level)
 
@@ -57,12 +58,12 @@ func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
         row.move_child(badge, level_spin.get_index())
 
         level_spin.prefix = "Lv."
-        level_spin.custom_minimum_size = Vector2(68.0, 23.0)
+        level_spin.custom_minimum_size = Vector2(72.0, 23.0)
 
 
 func _make_compact_form_badge(family_id: String, resolved_id: String, level: int) -> Control:
     var badge := PanelContainer.new()
-    badge.custom_minimum_size = Vector2(70.0, 22.0)
+    badge.custom_minimum_size = Vector2(78.0, 22.0)
     badge.mouse_filter = Control.MOUSE_FILTER_PASS
 
     var is_base: bool = resolved_id.is_empty() or resolved_id == family_id
@@ -77,6 +78,9 @@ func _make_compact_form_badge(family_id: String, resolved_id: String, level: int
     style.content_margin_bottom = 1.0
     badge.add_theme_stylebox_override("panel", style)
 
+    var root_name: String = _species_name(family_id)
+    var active_name: String = root_name if resolved_id.is_empty() else _species_name(resolved_id)
+
     var label := Label.new()
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -84,10 +88,8 @@ func _make_compact_form_badge(family_id: String, resolved_id: String, level: int
     label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     label.add_theme_font_size_override("font_size", 8)
     label.add_theme_color_override("font_color", Color("d6ded9") if is_base else Color("c8f0d2"))
-    label.text = "Basis" if is_base else _species_name(resolved_id)
+    label.text = active_name
     badge.add_child(label)
 
-    var root_name: String = _species_name(family_id)
-    var active_name: String = root_name if resolved_id.is_empty() else _species_name(resolved_id)
     badge.tooltip_text = "%s-Familie · Level %d · aktive Form: %s" % [root_name, level, active_name]
     return badge
