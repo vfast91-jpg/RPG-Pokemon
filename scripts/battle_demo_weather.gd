@@ -4,10 +4,13 @@ const WeatherStateScript = preload("res://scripts/battle/weather_state.gd")
 const WEATHER_RULE_PATH: String = "res://data/rules/weather_rules.json"
 const WEATHER_MOVE_PACK_PATH: String = "res://data/WEATHER_MOVES.json"
 const GLOBAL_BATTLEFIELD_TARGET: String = "global_battlefield"
+const WEATHER_MECHANIC_KIND: String = "weather"
 
 var battle_weather = WeatherStateScript.new()
 var weather_label: Label = null
 var _battle_instance_counter: int = 0
+var _active_weather_move: Dictionary = {}
+var _weather_activation_result: Dictionary = {}
 
 
 func _load_data() -> void:
@@ -92,11 +95,24 @@ func _audit_weather_moves() -> void:
             continue
         var move: Dictionary = move_value
         var weather_value: Variant = move.get("weather", null)
+        var has_weather_mechanic: bool = _move_contains_weather_mechanic(move)
+
         if weather_value == null:
+            if has_weather_mechanic:
+                push_error(
+                    "Wetter-Audit: %s besitzt eine weather-Mechanik ohne weather-Datenblock."
+                    % move_id
+                )
             continue
+
         if not (weather_value is Dictionary):
             push_error("Wetter-Audit: %s besitzt keinen gültigen weather-Block." % move_id)
             continue
+        if not has_weather_mechanic:
+            push_error(
+                "Wetter-Audit: %s besitzt weather-Daten, aber keine weather-Mechanik in mechanics."
+                % move_id
+            )
 
         var weather: Dictionary = weather_value
         var weather_id: String = str(weather.get("weather_id", ""))
@@ -121,6 +137,19 @@ func _audit_weather_moves() -> void:
         var strength_stat: String = str(weather.get("strength_stat", ""))
         if strength_stat.is_empty():
             push_error("Wetter-Audit: %s braucht strength_stat." % move_id)
+
+
+func _move_contains_weather_mechanic(move: Dictionary) -> bool:
+    var mechanics_value: Variant = move.get("mechanics", [])
+    if not (mechanics_value is Array):
+        return false
+    for mechanic_value: Variant in mechanics_value:
+        if (
+            mechanic_value is Dictionary
+            and str((mechanic_value as Dictionary).get("kind", "")) == WEATHER_MECHANIC_KIND
+        ):
+            return true
+    return false
 
 
 func _build_battle(root: Control) -> void:
@@ -171,10 +200,8 @@ func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
 
 func _targets(actor: Dictionary, rule: String) -> Array:
     if rule == GLOBAL_BATTLEFIELD_TARGET:
-        # The weather effect itself is global and ignores this synthetic target.
-        # Returning the user exactly once lets the inherited move resolver mark
-        # the status move as successfully resolved and keeps the emoji animation
-        # lightweight (a short self animation instead of a fake enemy target).
+        # The effect is global. A single synthetic self target lets the inherited
+        # resolver execute the move exactly once without inventing an opponent.
         return [actor]
     return super._targets(actor, rule)
 
@@ -190,6 +217,19 @@ func _move_emoji(move_id: String, move: Dictionary) -> String:
     if not explicit_emoji.is_empty():
         return explicit_emoji
     return super._move_emoji(move_id, move)
+
+
+func _compact_effect_summary(move: Dictionary) -> String:
+    var summary: String = super._compact_effect_summary(move)
+    var weather_value: Variant = move.get("weather", null)
+    if not (weather_value is Dictionary):
+        return summary
+
+    var weather_id: String = str((weather_value as Dictionary).get("weather_id", ""))
+    var weather_text: String = "globales Wetter " + battle_weather.weather_name(weather_id)
+    if summary.is_empty():
+        return weather_text
+    return summary.replace(WEATHER_MECHANIC_KIND, weather_text)
 
 
 func _move_tooltip(move: Dictionary) -> String:
@@ -213,15 +253,16 @@ func _move_tooltip(move: Dictionary) -> String:
 
 func _execute_move(actor: Dictionary, move_id: String) -> void:
     var move: Dictionary = _move_data(move_id)
+    _active_weather_move = move
+    _weather_activation_result = {}
+
     super._execute_move(actor, move_id)
 
+    _active_weather_move = {}
     var weather_messages: Array[String] = []
-    if not move.is_empty() and _move_was_resolved(move_id, move):
-        var weather_value: Variant = move.get("weather", null)
-        if weather_value is Dictionary:
-            var activation: Dictionary = _activate_weather_from_move(actor, weather_value as Dictionary)
-            if bool(activation.get("ok", false)):
-                _append_weather_activation_messages(weather_messages, activation)
+    if bool(_weather_activation_result.get("ok", false)):
+        _append_weather_activation_messages(weather_messages, _weather_activation_result)
+    _weather_activation_result = {}
 
     _complete_weather_action(actor, weather_messages)
     _update_weather_ui()
@@ -238,6 +279,25 @@ func _choose_wait() -> void:
     _complete_weather_action(actor, weather_messages)
     _update_weather_ui()
     _append_weather_log(weather_messages)
+
+
+func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
+    var kind: String = str(mechanic.get("kind", ""))
+    if kind != WEATHER_MECHANIC_KIND:
+        return super._effect(actor, target, mechanic)
+
+    if not _weather_activation_result.is_empty():
+        push_error("Wettermechanik wurde innerhalb derselben Attacke mehrfach aufgelöst.")
+        return 0.0
+
+    var weather_value: Variant = _active_weather_move.get("weather", null)
+    if not (weather_value is Dictionary):
+        push_error("Wettermechanik wurde ohne gültigen weather-Datenblock ausgeführt.")
+        _weather_activation_result = {"ok": false, "reason": "missing_weather_block"}
+        return 0.0
+
+    _weather_activation_result = _activate_weather_from_move(actor, weather_value as Dictionary)
+    return 0.0
 
 
 func _activate_weather_from_move(actor: Dictionary, weather: Dictionary) -> Dictionary:
@@ -270,6 +330,42 @@ func _activate_weather_from_move(actor: Dictionary, weather: Dictionary) -> Dict
         strength_percent,
         duration_actions
     )
+
+
+func _feedback_snapshot(target: Dictionary) -> Dictionary:
+    var snapshot: Dictionary = super._feedback_snapshot(target)
+    var weather_state: Dictionary = battle_weather.snapshot()
+    snapshot["global_weather_id"] = str(weather_state.get("weather_id", ""))
+    snapshot["global_weather_strength"] = float(weather_state.get("strength_percent", 0.0))
+    snapshot["global_weather_remaining"] = int(weather_state.get("remaining_actions", 0))
+    return snapshot
+
+
+func _feedback_result(target: Dictionary, before: Dictionary) -> Dictionary:
+    var result: Dictionary = super._feedback_result(target, before)
+    var weather_state: Dictionary = battle_weather.snapshot()
+    var before_id: String = str(before.get("global_weather_id", ""))
+    var after_id: String = str(weather_state.get("weather_id", ""))
+    var before_strength: float = float(before.get("global_weather_strength", 0.0))
+    var after_strength: float = float(weather_state.get("strength_percent", 0.0))
+    var before_remaining: int = int(before.get("global_weather_remaining", 0))
+    var after_remaining: int = int(weather_state.get("remaining_actions", 0))
+
+    var weather_changed: bool = (
+        before_id != after_id
+        or not is_equal_approx(before_strength, after_strength)
+        or before_remaining != after_remaining
+    )
+    if not weather_changed or after_id.is_empty():
+        return result
+
+    var weather_feedback: String = battle_weather.display_text()
+    var text: String = str(result.get("text", "KEIN EFFEKT"))
+    if text == "KEIN EFFEKT":
+        text = weather_feedback
+    elif not weather_feedback.is_empty():
+        text += " · " + weather_feedback
+    return {"kind": "positive", "text": text}
 
 
 func _complete_weather_action(actor: Dictionary, messages: Array[String]) -> void:
