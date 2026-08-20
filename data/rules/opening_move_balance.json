@@ -1,6 +1,6 @@
 {
-  "schema_version": 3,
-  "rule_id": "opening_move_damage_balance_v3",
+  "schema_version": 4,
+  "rule_id": "opening_move_damage_balance_v4",
   "description": "Prioritätsattacken können als echte Eröffnungsattacken definiert werden. Opening-only-Attacken sind ausschließlich in Runde 0 auswählbar und bezahlen ihren Sofortvorteil über eine sehr hohe normale ATB-Erholungsstufe.",
   "applies_when": {
     "opening": true
@@ -21,5 +21,5 @@
     "opening_atb_debt": 0,
     "usable_during_normal_atb": false
   },
-  "design_note": "Ruckzuckhieb ist ein einmaliger Eröffnungsschlag: nur in Runde 0, Stärke 30 und AP-Stufe 8. Die AP-8-Erholung entspricht in der aktuellen Testkurve ungefähr 1,9× normaler Erholungszeit. Deshalb wird kein zusätzlicher negativer ATB-Schuldenwert gestapelt. Andere Attacken dürfen später separat als opening_only markiert werden."
+  "design_note": "Ruckzuckhieb ist ein einmaliger Eröffnungsschlag: nur in Runde 0, Stärke 30 und AP-Stufe 8. Nach der verbindlichen AP-Kurve entspricht AP 8 einer 3,25x normalen Erholungszeit. Deshalb wird kein zusätzlicher negativer ATB-Schuldenwert gestapelt. Andere Attacken dürfen später separat als opening_only markiert werden."
 }
