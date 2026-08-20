@@ -111,6 +111,50 @@ func _randomize_setup() -> void:
     _refresh_setup()
 
 
+func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
+    var sid: String = str(setup.get("species_id", "pichu"))
+    var level: int = maxi(1, int(setup.get("level", 1)))
+
+    var species_all: Variant = data.get("species", {})
+    var species: Dictionary = {}
+    if species_all is Dictionary:
+        var species_value: Variant = species_all.get(sid, {})
+        if species_value is Dictionary:
+            species = species_value
+
+    var base_stats: Variant = species.get("base_stats", {})
+    var hp_base: float = 35.0
+    var attack_base: float = 40.0
+    var defense_base: float = 40.0
+    var special_base: float = 40.0
+    var speed_base: float = 40.0
+    if base_stats is Dictionary:
+        hp_base = float(base_stats.get("hp", 35))
+        attack_base = float(base_stats.get("attack", 40))
+        defense_base = float(base_stats.get("defense", 40))
+        special_base = float(base_stats.get("special", 40))
+        speed_base = float(base_stats.get("speed", 40))
+
+    var max_hp: int = int(floor(2.0 * hp_base * float(level) / 100.0)) + level + 10
+    var types_value: Variant = species.get("types", [])
+    var types: Array = types_value.duplicate() if types_value is Array else []
+
+    return {
+        "id": side + "_" + str(index), "side": side, "index": index,
+        "species_id": sid, "name": str(species.get("name", sid)), "types": types,
+        "level": level, "max_hp": max_hp, "hp": max_hp,
+        "attack": int(floor(2.0 * attack_base * float(level) / 100.0)) + 5,
+        "defense": int(floor(2.0 * defense_base * float(level) / 100.0)) + 5,
+        "special": int(floor(2.0 * special_base * float(level) / 100.0)) + 5,
+        "speed": int(floor(2.0 * speed_base * float(level) / 100.0)) + 5,
+        "moves": _moves_for_level(species, level),
+        "atb": 0.0, "cycle": 1.0, "aggro": 10.0 + float(level) * 2.0,
+        "alive": true, "paralyzed": false, "confused_turns": 0,
+        "attack_mult": 1.0, "defense_mult": 1.0, "accuracy_mult": 1.0,
+        "next_cycle": 1.0
+    }
+
+
 func _make_card(combatant: Dictionary, enemy: bool) -> Control:
     var card: Control = super._make_card(combatant, enemy)
     card.custom_minimum_size.y = 52.0
