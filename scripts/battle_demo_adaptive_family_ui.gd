@@ -1,9 +1,9 @@
 extends "res://scripts/battle_demo_adaptive_cards.gd"
 
 # The family setup UI is now owned entirely by battle_demo_family_lab.gd.
-# This top layer keeps the compact explanatory subtitle and adds one final
-# orientation cue to the battle formation: the soft ground shadow beneath each
-# Pokemon mirrors the same tactical state as its card/connector.
+# This top layer keeps the compact explanatory subtitle and adds final visual
+# orientation cues to the battle formation: tactical ground shadows and clean,
+# horizontal card-to-Pokemon connector lines.
 
 const ROSTER_SHADOW_DEFAULT := Color("0a14103d")
 const ROSTER_SHADOW_ACTIVE := Color("e0a52f66")
@@ -22,6 +22,26 @@ func _build_config(root: Control) -> void:
     var subtitle: Label = outer.get_child(1) as Label
     if subtitle != null:
         subtitle.text = "Familie waehlen · Level bestimmt die Form · 1–4 pro Seite"
+
+
+func _update_roster_connector(
+    line: Line2D,
+    card: Control,
+    sprite: TextureRect,
+    enemy: bool
+) -> void:
+    # Keep every connector perfectly horizontal. For the top/bottom formation
+    # slots the line is allowed to leave the card above/below its vertical
+    # center instead of becoming diagonal. This preserves the staggered Pokemon
+    # formation without introducing staircase or slanted connector geometry.
+    var connector_y: float = sprite.position.y + sprite.size.y * 0.5
+    var card_edge_x: float = card.position.x + card.size.x if enemy else card.position.x
+    var sprite_edge_x: float = sprite.position.x if enemy else sprite.position.x + sprite.size.x
+
+    line.points = PackedVector2Array([
+        Vector2(card_edge_x, connector_y),
+        Vector2(sprite_edge_x, connector_y)
+    ])
 
 
 func _refresh_cards() -> void:
