@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/battle_demo_database.gd" id="2_battle"]
-[ext_resource type="Script" path="res://scripts/demo_route_database.gd" id="3_route"]
+[ext_resource type="Script" path="res://scripts/battle_demo_user_polish.gd" id="2_battle"]
+[ext_resource type="Script" path="res://scripts/demo_route_user_polish.gd" id="3_route"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
