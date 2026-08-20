@@ -1,0 +1,45 @@
+name: Godot Headless Tests
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  godot-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.3-stable_linux.x86_64 godot
+          chmod +x godot
+          ./godot --version
+
+      - name: Parse project headless
+        run: ./godot --headless --path . --editor --quit
+
+      - name: Type system smoke test
+        run: ./godot --headless --path . --script tests/type_system_smoke_test.gd
+
+      - name: Special mechanics audit
+        run: ./godot --headless --path . --script tests/special_mechanics_audit_test.gd
+
+      - name: Evolution resolver test
+        run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
+
+      - name: Meta progression test
+        run: ./godot --headless --path . --script tests/meta_progression_test.gd
+
+      - name: Weather behavior test
+        run: ./godot --headless --path . --script tests/weather_system_test.gd
