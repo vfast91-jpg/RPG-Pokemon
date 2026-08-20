@@ -4,15 +4,10 @@ on:
   push:
     branches:
       - main
-  issues:
-    types:
-      - opened
-      - reopened
   workflow_dispatch:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   godot-tests:
@@ -23,8 +18,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Godot 4.3
-        id: install
-        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -37,79 +30,22 @@ jobs:
           ./godot --version
 
       - name: Parse project headless
-        id: parse
-        continue-on-error: true
         run: ./godot --headless --path . --editor --quit
 
       - name: Type system smoke test
-        id: type_system
-        continue-on-error: true
         run: ./godot --headless --path . --script tests/type_system_smoke_test.gd
 
       - name: Special mechanics audit
-        id: special_mechanics
-        continue-on-error: true
         run: ./godot --headless --path . --script tests/special_mechanics_audit_test.gd
 
       - name: Evolution resolver test
-        id: evolution
-        continue-on-error: true
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
 
       - name: Meta progression test
-        id: meta
-        continue-on-error: true
         run: ./godot --headless --path . --script tests/meta_progression_test.gd
 
       - name: Weather behavior test
-        id: weather
-        continue-on-error: true
         run: ./godot --headless --path . --script tests/weather_system_test.gd
 
-      - name: Comment temporary test result
-        if: always() && github.event_name == 'issues'
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          BODY=$(cat <<'EOF'
-          Godot-Headless-Ergebnis für `${{ github.sha }}`:
-
-          - Godot 4.3 installieren: `${{ steps.install.outcome }}`
-          - Projekt headless parsen: `${{ steps.parse.outcome }}`
-          - Type-System-Smoke-Test: `${{ steps.type_system.outcome }}`
-          - Special-Mechanics-Audit: `${{ steps.special_mechanics.outcome }}`
-          - Evolution-Resolver-Test: `${{ steps.evolution.outcome }}`
-          - Meta-Progression-Test: `${{ steps.meta.outcome }}`
-          - Wetter-Verhaltenstest: `${{ steps.weather.outcome }}`
-          EOF
-          )
-          jq -nc --arg body "$BODY" '{body:$body}' > comment.json
-          curl --fail --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${{ github.event.issue.number }}/comments" \
-            --data @comment.json \
-            > /dev/null
-
-      - name: Fail job if any check failed
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          for outcome in \
-            "${{ steps.install.outcome }}" \
-            "${{ steps.parse.outcome }}" \
-            "${{ steps.type_system.outcome }}" \
-            "${{ steps.special_mechanics.outcome }}" \
-            "${{ steps.evolution.outcome }}" \
-            "${{ steps.meta.outcome }}" \
-            "${{ steps.weather.outcome }}"
-          do
-            if [[ "$outcome" != "success" ]]; then
-              exit 1
-            fi
-          done
+      - name: Weather runtime integration test
+        run: ./godot --headless --path . --script tests/weather_runtime_integration_test.gd
