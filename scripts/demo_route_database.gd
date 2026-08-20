@@ -129,6 +129,21 @@ func _assign_tm(entry: Dictionary, team_index: int) -> void:
     _refresh_team_panel()
 
 
+func _member_can_receive_tm(member: Dictionary, entry: Dictionary) -> bool:
+    if not super._member_can_receive_tm(member, entry):
+        return false
+
+    var move_id: String = str(entry.get("move_id", ""))
+    if move_id.is_empty():
+        return false
+
+    if battle_demo != null and battle_demo.has_method("route_move_is_runtime_usable"):
+        if not bool(battle_demo.call("route_move_is_runtime_usable", move_id)):
+            return false
+
+    return true
+
+
 func _database_tm_label(number: String) -> String:
     var normalized: String = number.strip_edges().to_upper()
     if normalized.begins_with("TR") or normalized.begins_with("TM"):
