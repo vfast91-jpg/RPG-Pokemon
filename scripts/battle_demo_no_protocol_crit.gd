@@ -6,6 +6,7 @@ extends "res://scripts/battle_demo_status_hp_opening.gd"
 # - Uses the central V2 critical-hit rules: 5% base chance, x1.5 damage.
 # - Energiefokus adds min(Spezial, 25) percentage points until switch/battle end.
 # - Energiefokus is persistent and non-stackable; it is NOT a 3-action modifier.
+# - Resolved damaging moves report type effectiveness in the visible battle log.
 
 const BASE_CRITICAL_CHANCE: float = 0.05
 const CRITICAL_DAMAGE_MULTIPLIER: float = 1.5
@@ -56,6 +57,85 @@ func _critical_chance(combatant: Dictionary) -> float:
         0.0,
         1.0
     )
+
+
+func _execute_move(actor: Dictionary, move_id: String) -> void:
+    var move: Dictionary = _move_data(move_id)
+    var type_feedback_contexts: Array = []
+
+    if not move.is_empty():
+        var category: String = str(move.get("category", "status"))
+        var power_value: Variant = move.get("power", null)
+        if category != "status" and power_value != null and float(power_value) > 0.0:
+            var move_type: String = str(move.get("type", "normal"))
+            var targets: Array = _targets(actor, str(move.get("target", "enemy_highest_aggro")))
+            for target_value: Variant in targets:
+                if not (target_value is Dictionary):
+                    continue
+                var target: Dictionary = target_value
+                var defender_types: Array = _type_array(target.get("types", []))
+                type_feedback_contexts.append({
+                    "target": target,
+                    "hp_before": int(target.get("hp", 0)),
+                    "multiplier": TypeSystem.get_multiplier(move_type, defender_types)
+                })
+
+    super._execute_move(actor, move_id)
+
+    if type_feedback_contexts.is_empty() or log_label == null:
+        return
+
+    # Only an actually resolved move may report effectiveness. This prevents
+    # paralysis, confusion self-hits and accuracy misses from producing a
+    # misleading type-effectiveness message. Immunities still report correctly.
+    var resolved_log: String = log_label.get_parsed_text().strip_edges()
+    var move_name: String = str(move.get("name", move_id))
+    var move_was_resolved: bool = resolved_log.contains("nutzt") and resolved_log.contains(move_name)
+    if not move_was_resolved:
+        return
+
+    var feedback_lines: Array[String] = []
+    var multiple_targets: bool = type_feedback_contexts.size() > 1
+
+    for context_value: Variant in type_feedback_contexts:
+        if not (context_value is Dictionary):
+            continue
+        var context: Dictionary = context_value
+        var target_value: Variant = context.get("target", {})
+        if not (target_value is Dictionary):
+            continue
+        var target: Dictionary = target_value
+        var multiplier: float = float(context.get("multiplier", 1.0))
+        var hp_before: int = int(context.get("hp_before", int(target.get("hp", 0))))
+        var hp_after: int = int(target.get("hp", 0))
+
+        var effectiveness_text: String = _resolved_effectiveness_feedback(multiplier, hp_after < hp_before)
+        if effectiveness_text.is_empty():
+            continue
+
+        if multiple_targets:
+            feedback_lines.append(_actor_name(target) + ": " + effectiveness_text)
+        else:
+            feedback_lines.append(effectiveness_text)
+
+    if feedback_lines.is_empty():
+        return
+
+    var current_text: String = log_label.text.strip_edges()
+    var effectiveness_block: String = "[b]" + "\n".join(feedback_lines) + "[/b]"
+    log_label.text = effectiveness_block if current_text.is_empty() else current_text + "\n" + effectiveness_block
+
+
+func _resolved_effectiveness_feedback(multiplier: float, dealt_damage: bool) -> String:
+    if is_zero_approx(multiplier):
+        return "⛔ WIRKUNGSLOS!"
+    if not dealt_damage:
+        return ""
+    if multiplier >= 2.0:
+        return "🔥 SEHR EFFEKTIV!"
+    if multiplier < 1.0:
+        return "🛡️ NICHT SEHR EFFEKTIV!"
+    return ""
 
 
 func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
