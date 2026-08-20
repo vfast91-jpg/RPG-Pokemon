@@ -2,6 +2,8 @@ extends "res://scripts/battle_demo_chat_polish.gd"
 
 # Demo-route extension for real 1–4 vs. 1–4 encounters.
 # The normal configurable test battle remains unchanged.
+# Route battles keep all travelling team slots visible, including fainted
+# Pokémon. Fainted members are shown as K.O. but never receive turns.
 
 var _route_enemy_party: Array = []
 
@@ -35,13 +37,21 @@ func _route_begin_wave() -> void:
     player_setup.clear()
     enemy_setup.clear()
 
+    # The route panel represents the actual travelling team. Keep those same
+    # slots visible inside battle as well. Previously 0-KP members were omitted
+    # entirely, so a four-Pokémon team could look like a three-Pokémon team for
+    # several consecutive battles until the missing member was healed.
+    if not _route_has_living_member():
+        route_mode = false
+        visible = false
+        route_battle_finished.emit(false, _route_team_state.duplicate(true))
+        return
+
     for index: int in range(_route_team_state.size()):
         var member_value: Variant = _route_team_state[index]
         if not (member_value is Dictionary):
             continue
         var member: Dictionary = member_value
-        if int(member.get("hp", 0)) <= 0:
-            continue
         _route_active_indices.append(index)
         player_setup.append({
             "species_id": str(member.get("species_id", "")),
@@ -85,9 +95,15 @@ func _route_begin_wave() -> void:
 
     _refresh_cards()
     _set_log(
-        "Der Etappenkampf beginnt: %d gegen %d. KP und Status bleiben zwischen Kämpfen erhalten."
+        "Der Etappenkampf beginnt: %d gegen %d. KP und Status bleiben zwischen Kämpfen erhalten. K.O.-Pokémon bleiben sichtbar."
         % [player_team.size(), enemy_team.size()]
     )
+
+
+func _status_tokens(combatant: Dictionary) -> Array[String]:
+    if not bool(combatant.get("alive", false)):
+        return ["K.O."]
+    return super._status_tokens(combatant)
 
 
 func _route_store_current_state() -> void:
