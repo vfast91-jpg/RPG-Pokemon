@@ -65,6 +65,7 @@ func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
         picker.name = "FamilyPicker"
         picker.custom_minimum_size = Vector2(155.0, 24.0)
         picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        picker.fit_to_longest_item = false
         picker.clip_text = true
         picker.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
         picker.tooltip_text = "Pokemon-Familie. Die aktive Form wird aus dem Level berechnet."
