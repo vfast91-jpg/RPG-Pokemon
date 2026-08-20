@@ -2,7 +2,8 @@ extends "res://scripts/demo_route_levelup_hardmode.gd"
 
 # Demo-route balance polish:
 # - Capture level rises with route stage instead of staying fixed at level 3.
-# - Enemy levels are fixed by route stage and NEVER scale from the player's team.
+# - Encounter level uses the route stage as its baseline and compensates for
+#   action economy: 1 enemy +5, 2 enemies +2, 3 enemies +/-0, 4 enemies -2.
 # - Enemy count is rolled independently and varies from 1 to 4.
 # - Early stages strongly prefer smaller encounters; larger groups become more
 #   common later without letting repeated two-enemy fights dominate every run.
@@ -29,6 +30,25 @@ func _capture_level_for_stage(current_stage: int) -> int:
 
 func _enemy_level_for_stage(current_stage: int) -> int:
     return ENEMY_LEVEL_BY_STAGE[clampi(current_stage - 1, 0, ENEMY_LEVEL_BY_STAGE.size() - 1)]
+
+
+func _enemy_level_for_encounter(current_stage: int, enemy_count: int) -> int:
+    # The stage number is the neutral reference for a three-enemy encounter.
+    # Fewer enemies receive extra levels to compensate for having fewer turns;
+    # four enemies lose levels because four independent action bars are already
+    # a substantial tactical advantage.
+    var level_modifier: int = 0
+    match clampi(enemy_count, 1, 4):
+        1:
+            level_modifier = 5
+        2:
+            level_modifier = 2
+        3:
+            level_modifier = 0
+        4:
+            level_modifier = -2
+
+    return maxi(1, current_stage + level_modifier)
 
 
 func _choices_for_stage(current_stage: int) -> Array[Dictionary]:
@@ -179,7 +199,7 @@ func _enemy_party_for_stage(current_stage: int) -> Array:
         return []
 
     var enemy_count: int = _roll_enemy_count(current_stage)
-    var enemy_level: int = _enemy_level_for_stage(current_stage)
+    var enemy_level: int = _enemy_level_for_encounter(current_stage, enemy_count)
     var result: Array = []
 
     for _index: int in range(enemy_count):
