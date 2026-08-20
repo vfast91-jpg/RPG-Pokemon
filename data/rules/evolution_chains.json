@@ -23,6 +23,7 @@
     "rattata": {"target": "raticate", "level": 20},
     "spearow": {"target": "fearow", "level": 20},
     "ekans": {"target": "arbok", "level": 22},
+    "pichu": {"target": "pikachu", "level": 15},
     "pikachu": {"target": "raichu", "level": 30}
   }
 }
