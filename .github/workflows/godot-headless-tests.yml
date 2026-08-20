@@ -50,6 +50,9 @@ jobs:
       - name: Move preview accuracy regression test
         run: ./godot --headless --path . --script tests/move_preview_accuracy_test.gd
 
+      - name: Route level-up move details regression test
+        run: ./godot --headless --path . --script tests/route_levelup_move_details_test.gd
+
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
 
