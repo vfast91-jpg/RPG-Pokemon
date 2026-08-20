@@ -146,7 +146,8 @@ func _move_has_three_action_modifier(move: Dictionary) -> bool:
     for mechanic_value: Variant in mechanics_value:
         if not (mechanic_value is Dictionary):
             continue
-        var kind: String = str((mechanic_value as Dictionary).get("kind", ""))
+        var mechanic: Dictionary = mechanic_value
+        var kind: String = str(mechanic.get("kind", ""))
         if TEMP_EFFECT_KINDS.has(kind):
             return true
     return false
