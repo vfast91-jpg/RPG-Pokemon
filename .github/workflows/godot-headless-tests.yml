@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   godot-tests:
     runs-on: ubuntu-latest
@@ -15,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Godot 4.3
+        id: install
         shell: bash
         run: |
           set -euo pipefail
@@ -27,19 +32,67 @@ jobs:
           ./godot --version
 
       - name: Parse project headless
+        id: parse
         run: ./godot --headless --path . --editor --quit
 
       - name: Type system smoke test
+        id: type_system
         run: ./godot --headless --path . --script tests/type_system_smoke_test.gd
 
       - name: Special mechanics audit
+        id: special_mechanics
         run: ./godot --headless --path . --script tests/special_mechanics_audit_test.gd
 
       - name: Evolution resolver test
+        id: evolution
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
 
       - name: Meta progression test
+        id: meta
         run: ./godot --headless --path . --script tests/meta_progression_test.gd
 
       - name: Weather behavior test
+        id: weather
         run: ./godot --headless --path . --script tests/weather_system_test.gd
+
+      - name: Report test statuses
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          report_status() {
+            local outcome="$1"
+            local context="$2"
+            local label="$3"
+            local state="success"
+            if [[ "$outcome" != "success" ]]; then
+              state="failure"
+            fi
+
+            jq -nc \
+              --arg state "$state" \
+              --arg context "$context" \
+              --arg description "$label: $outcome" \
+              '{state:$state, context:$context, description:$description}' \
+              > status.json
+
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              --data @status.json \
+              > /dev/null
+          }
+
+          report_status "${{ steps.install.outcome }}" "godot-headless/install" "Godot 4.3 install"
+          report_status "${{ steps.parse.outcome }}" "godot-headless/parse" "Project parse"
+          report_status "${{ steps.type_system.outcome }}" "godot-headless/type-system" "Type system smoke"
+          report_status "${{ steps.special_mechanics.outcome }}" "godot-headless/special-mechanics" "Special mechanics audit"
+          report_status "${{ steps.evolution.outcome }}" "godot-headless/evolution" "Evolution resolver"
+          report_status "${{ steps.meta.outcome }}" "godot-headless/meta" "Meta progression"
+          report_status "${{ steps.weather.outcome }}" "godot-headless/weather" "Weather behavior"
