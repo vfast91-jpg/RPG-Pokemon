@@ -6,15 +6,19 @@ extends "res://scripts/demo_route_levelup_hardmode.gd"
 # - Enemy count is rolled independently and varies from 1 to 4.
 # - Early stages strongly prefer smaller encounters; larger groups become more
 #   common later without letting repeated two-enemy fights dominate every run.
+# - Every Pokémon that entered a stage battle receives XP after a victory,
+#   even if it was knocked out during that battle.
 
 const CAPTURE_LEVEL_BY_STAGE: Array[int] = [3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
 const ENEMY_LEVEL_BY_STAGE: Array[int] = [2, 3, 3, 4, 4, 5, 6, 7, 8, 9]
 
 var _last_enemy_count: int = 0
+var _battle_participant_indices: Array[int] = []
 
 
 func start_route() -> void:
     _last_enemy_count = 0
+    _battle_participant_indices.clear()
     super.start_route()
 
 
@@ -66,6 +70,52 @@ func _begin_capture_event() -> void:
     replace_button.text = "TEAM-POKÉMON ERSETZEN"
     replace_button.pressed.connect(_show_replace_choices)
     capture_actions.add_child(replace_button)
+
+
+func _start_stage_battle() -> void:
+    _battle_participant_indices.clear()
+    for index: int in range(team.size()):
+        var member_value: Variant = team[index]
+        if member_value is Dictionary and int((member_value as Dictionary).get("hp", 0)) > 0:
+            _battle_participant_indices.append(index)
+
+    super._start_stage_battle()
+
+
+func _award_experience(amount: int) -> Array[String]:
+    # The inherited level-up implementation skips Pokémon at 0 KP. A Pokémon
+    # that entered this battle still deserves XP even if it fainted during it.
+    # Temporarily mark only those fainted participants as eligible, run the
+    # normal XP/level-up pipeline, then restore their fainted KP state.
+    var fainted_participants: Array[Dictionary] = []
+
+    for index: int in _battle_participant_indices:
+        if index < 0 or index >= team.size():
+            continue
+        var member_value: Variant = team[index]
+        if not (member_value is Dictionary):
+            continue
+        var member: Dictionary = member_value
+        if int(member.get("hp", 0)) <= 0:
+            fainted_participants.append({
+                "index": index,
+                "hp": int(member.get("hp", 0))
+            })
+            member["hp"] = 1
+
+    var messages: Array[String] = super._award_experience(amount)
+
+    for restore_value: Dictionary in fainted_participants:
+        var index: int = int(restore_value.get("index", -1))
+        if index < 0 or index >= team.size():
+            continue
+        var member_value: Variant = team[index]
+        if member_value is Dictionary:
+            (member_value as Dictionary)["hp"] = int(restore_value.get("hp", 0))
+
+    _battle_participant_indices.clear()
+    _refresh_team_panel()
+    return messages
 
 
 func _enemy_party_for_stage(current_stage: int) -> Array:
