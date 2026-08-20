@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "level_evolution_is_mandatory": true,
+    "evolution_can_be_prevented": false,
+    "ignore_legacy_prevent_evolution_flags": true,
+    "ignore_legacy_evolution_optional_flags": true,
+    "missing_required_form_behavior": "exclude_from_generated_encounters"
+  },
+  "level_evolutions": {
+    "bulbasaur": {"target": "ivysaur", "level": 16},
+    "ivysaur": {"target": "venusaur", "level": 32},
+    "charmander": {"target": "charmeleon", "level": 16},
+    "charmeleon": {"target": "charizard", "level": 36},
+    "squirtle": {"target": "wartortle", "level": 16},
+    "wartortle": {"target": "blastoise", "level": 36},
+    "caterpie": {"target": "metapod", "level": 7},
+    "metapod": {"target": "butterfree", "level": 10},
+    "weedle": {"target": "kakuna", "level": 7},
+    "kakuna": {"target": "beedrill", "level": 10},
+    "pidgey": {"target": "pidgeotto", "level": 18},
+    "pidgeotto": {"target": "pidgeot", "level": 36},
+    "rattata": {"target": "raticate", "level": 20},
+    "spearow": {"target": "fearow", "level": 20},
+    "ekans": {"target": "arbok", "level": 22},
+    "pikachu": {"target": "raichu", "level": 30}
+  }
+}
