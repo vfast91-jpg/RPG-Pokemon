@@ -3,6 +3,112 @@ extends "res://scripts/battle_demo_feedback_polish.gd"
 # Compact type badges for the always-visible battle cards.
 # They reuse the combatant's existing `types` data and sit directly below the
 # Pokemon name while keeping 4-vs-4 battles inside the existing battle area.
+#
+# The active demo also removes the old hard level-10 cap from manual setup and
+# adds a configurable level limit that is used only by the ZUFALL button.
+
+const DEFAULT_RANDOM_LEVEL_LIMIT: int = 10
+const LEVEL_SPINBOX_SOFT_MAX: float = 100.0
+
+var random_level_limit: SpinBox
+
+
+func _build_config(root: Control) -> void:
+    super._build_config(root)
+
+    if config_panel == null or config_panel.get_child_count() == 0:
+        return
+
+    var outer: VBoxContainer = config_panel.get_child(0) as VBoxContainer
+    if outer == null:
+        return
+
+    # The inherited subtitle still advertises the former fixed 1-10 range.
+    if outer.get_child_count() > 1:
+        var subtitle: Label = outer.get_child(1) as Label
+        if subtitle != null:
+            subtitle.text = "Pokémon wählen · freie Levelwahl · 1–4 pro Seite"
+
+    var limit_row: HBoxContainer = HBoxContainer.new()
+    limit_row.alignment = BoxContainer.ALIGNMENT_CENTER
+    limit_row.add_theme_constant_override("separation", 6)
+
+    var limit_label: Label = Label.new()
+    limit_label.text = "Level-Limit (Zufall)"
+    limit_label.add_theme_font_size_override("font_size", 10)
+    limit_row.add_child(limit_label)
+
+    random_level_limit = SpinBox.new()
+    random_level_limit.min_value = 1.0
+    random_level_limit.max_value = LEVEL_SPINBOX_SOFT_MAX
+    random_level_limit.allow_greater = true
+    random_level_limit.step = 1.0
+    random_level_limit.value = float(DEFAULT_RANDOM_LEVEL_LIMIT)
+    random_level_limit.custom_minimum_size = Vector2(76, 24)
+    random_level_limit.tooltip_text = "Der ZUFALL-Button erzeugt Pokémon nur bis zu diesem Level. Manuell eingegebene Level bleiben frei."
+    limit_row.add_child(random_level_limit)
+
+    outer.add_child(limit_row)
+    # Keep the action buttons at the bottom of the configuration panel.
+    if outer.get_child_count() >= 2:
+        outer.move_child(limit_row, outer.get_child_count() - 2)
+
+
+func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
+    super._fill_rows(box, setup, own)
+
+    # The base demo creates level SpinBoxes with max_value = 10. Keep a normal
+    # soft range for convenient clicking, but allow any larger typed value.
+    for index: int in range(mini(box.get_child_count(), setup.size())):
+        var row: HBoxContainer = box.get_child(index) as HBoxContainer
+        if row == null:
+            continue
+
+        for child: Node in row.get_children():
+            var level_spin: SpinBox = child as SpinBox
+            if level_spin == null:
+                continue
+            level_spin.max_value = LEVEL_SPINBOX_SOFT_MAX
+            level_spin.allow_greater = true
+            level_spin.set_value_no_signal(float(maxi(1, int(setup[index].get("level", 1)))))
+            break
+
+
+func _level_changed(value: float, own: bool, index: int) -> void:
+    var setup: Array = player_setup if own else enemy_setup
+    if index >= setup.size():
+        return
+    # No gameplay level cap here. Level 1 is only the lower validity bound.
+    setup[index]["level"] = maxi(1, int(value))
+
+
+func _randomize_setup() -> void:
+    if species_ids.is_empty():
+        return
+
+    var level_limit: int = DEFAULT_RANDOM_LEVEL_LIMIT
+    if random_level_limit != null:
+        level_limit = maxi(1, int(random_level_limit.value))
+
+    var player_amount: int = randi_range(1, TEAM_MAX)
+    var enemy_amount: int = randi_range(1, TEAM_MAX)
+    player_setup.clear()
+    enemy_setup.clear()
+
+    for _index: int in range(player_amount):
+        player_setup.append({
+            "species_id": str(species_ids.pick_random()),
+            "level": randi_range(1, level_limit)
+        })
+    for _index: int in range(enemy_amount):
+        enemy_setup.append({
+            "species_id": str(species_ids.pick_random()),
+            "level": randi_range(1, level_limit)
+        })
+
+    player_count.set_value_no_signal(float(player_amount))
+    enemy_count.set_value_no_signal(float(enemy_amount))
+    _refresh_setup()
 
 
 func _make_card(combatant: Dictionary, enemy: bool) -> Control:
