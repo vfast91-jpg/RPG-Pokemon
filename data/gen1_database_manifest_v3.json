@@ -1,9 +1,23 @@
 {
   "schema_version": 3,
-  "database_file": "res://data/gen1_database_v3.json",
+  "species_meta_file": "res://data/gen1_database_meta_v3.json",
+  "species_files": [
+    "res://data/gen1_species_v3_1.json",
+    "res://data/gen1_species_v3_2.json",
+    "res://data/gen1_species_v3_3.json"
+  ],
+  "move_files": [
+    "res://data/gen1_moves_runtime_v3_1.json",
+    "res://data/gen1_moves_runtime_v3_2.json",
+    "res://data/gen1_moves_runtime_v3_3.json",
+    "res://data/gen1_moves_runtime_v3_4.json",
+    "res://data/gen1_moves_runtime_v3_5.json",
+    "res://data/gen1_moves_runtime_v3_6.json",
+    "res://data/gen1_moves_runtime_v3_7.json",
+    "res://data/gen1_moves_runtime_v3_8.json"
+  ],
   "species_count": 27,
   "move_count": 128,
   "route_root_count": 10,
-  "source_date": "2026-08-20",
-  "sha256": "a21f1d04a73d3fa3eb72d0df41848b51f96633e2ea5cda70ef7f8110f85cde59"
+  "source_date": "2026-08-20"
 }
