@@ -5,8 +5,29 @@ extends "res://scripts/battle_demo_opening_recovery.gd"
 # - Type immunities say WIRKUNGSLOS.
 # - Persistent/special mechanics are included in the feedback snapshot so
 #   successful effects such as Energiefokus, Egelsamen and Bindung are visible.
+# - Waiting grants a much stronger next-cycle speed advantage (0.45x cycle).
+
+const WAIT_CYCLE_MULTIPLIER: float = 0.45
 
 var _feedback_active_move_id: String = ""
+
+
+func _choose_wait() -> void:
+    if selected_actor.is_empty():
+        return
+
+    var actor: Dictionary = selected_actor
+    super._choose_wait()
+
+    # The inherited wait action uses 0.70x. Make waiting a much stronger tempo
+    # choice: the next personal charging cycle takes only 45% of normal time.
+    actor["cycle"] = WAIT_CYCLE_MULTIPLIER
+    _set_log(
+        _actor_name(actor)
+        + " wartet, senkt seine Aggro und bekommt einen starken Zeitvorteil: "
+        + "Der nächste Ladezyklus ist 55% kürzer."
+    )
+    _refresh_cards()
 
 
 func _execute_move(actor: Dictionary, move_id: String) -> void:
