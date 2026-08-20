@@ -3,6 +3,7 @@ extends "res://scripts/battle_demo_special_mechanics.gd"
 # Small player-facing polish layer:
 # - Damage move previews always show their power directly in the first line.
 # - The player-facing name of the internal `special` stat is "Status".
+# - Ruckzuckhieb uses the current opening-move balance value (Stärke 20).
 # - Opening/Runde-0 damage moves are audited against the central balance rule.
 
 const OPENING_BALANCE_PATH: String = "res://data/rules/opening_move_balance.json"
@@ -11,7 +12,22 @@ const FALLBACK_OPENING_POWER_CAP: int = 20
 
 func _load_data() -> void:
     super._load_data()
+    _apply_current_balance_overrides()
     _audit_opening_damage_balance()
+
+
+func _apply_current_balance_overrides() -> void:
+    var moves_value: Variant = data.get("moves", {})
+    if not (moves_value is Dictionary):
+        return
+
+    var moves: Dictionary = moves_value
+    var quick_attack_value: Variant = moves.get("quick_attack", {})
+    if quick_attack_value is Dictionary:
+        var quick_attack: Dictionary = quick_attack_value
+        quick_attack["power"] = 20
+        moves["quick_attack"] = quick_attack
+        data["moves"] = moves
 
 
 func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = false) -> void:
