@@ -5,14 +5,21 @@ extends Node
 ## Dieser Speicher ist absichtlich vom spaeteren Run-Save getrennt. Ein neuer Run
 ## darf den Pokedex daher nicht loeschen. Fangsysteme muessen nur
 ## `MetaProgression.record_caught(species_id)` aufrufen.
+##
+## Wichtig: Fuer spaetere Run-Starts wird nicht die konkret gefangene
+## Entwicklungsstufe freigeschaltet, sondern ihre Entwicklungslinie. Wird z. B.
+## Tauboga gefangen, wird die Taubsi-Linie freigeschaltet und Taubsi ist die
+## niedrige Startform fuer einen neuen Run.
 
 signal pokedex_changed(species_id: String)
 
-const SCHEMA_VERSION: int = 1
+const SCHEMA_VERSION: int = 2
 const DEFAULT_SAVE_PATH: String = "user://meta_progression.json"
+const EVOLUTION_RULES_PATH: String = "res://data/rules/evolution_chains.json"
 
 var save_path: String = DEFAULT_SAVE_PATH
 var _data: Dictionary = {}
+var _evolution_rules: Dictionary = {}
 
 
 func _ready() -> void:
@@ -21,6 +28,7 @@ func _ready() -> void:
 
 func load_progress() -> void:
     _data = _default_data()
+    _load_evolution_rules()
 
     if not FileAccess.file_exists(save_path):
         return
@@ -42,8 +50,9 @@ func load_progress() -> void:
         return
 
     _data = loaded
-    _data["schema_version"] = int(_data.get("schema_version", SCHEMA_VERSION))
-    _data["pokedex"] = pokedex_value
+    _ensure_structure()
+    _migrate_family_unlocks_from_caught_species()
+    _data["schema_version"] = SCHEMA_VERSION
 
 
 func save_progress() -> bool:
@@ -84,18 +93,27 @@ func record_caught(species_id: String) -> bool:
         push_warning("Leere species_id kann nicht im Pokedex registriert werden.")
         return false
 
-    var entry: Dictionary = _entry_for(sid)
-    if bool(entry.get("caught", false)):
-        return false
-
     var now: int = int(Time.get_unix_time_from_system())
+    var entry: Dictionary = _entry_for(sid)
+    var species_changed: bool = false
+
     if not bool(entry.get("seen", false)):
         entry["seen"] = true
         entry["first_seen_unix"] = now
+        species_changed = true
 
-    entry["caught"] = true
-    entry["first_caught_unix"] = now
-    _set_entry(sid, entry)
+    if not bool(entry.get("caught", false)):
+        entry["caught"] = true
+        entry["first_caught_unix"] = now
+        species_changed = true
+
+    if species_changed:
+        _set_entry(sid, entry)
+
+    var family_changed: bool = _unlock_evolution_family_for(sid, now)
+    if not species_changed and not family_changed:
+        return false
+
     save_progress()
     pokedex_changed.emit(sid)
     return true
@@ -107,6 +125,8 @@ func is_seen(species_id: String) -> bool:
 
 
 func is_caught(species_id: String) -> bool:
+    ## Bezieht sich weiterhin auf die konkret gefangene Form fuer eine spaetere
+    ## detaillierte Pokedex-Anzeige. Der Run-Start benutzt dagegen Familien.
     var entry: Dictionary = _entry_for(_normalize_species_id(species_id))
     return bool(entry.get("caught", false))
 
@@ -123,10 +143,63 @@ func get_caught_species_ids() -> Array[String]:
     return _species_ids_with_flag("caught")
 
 
+func get_evolution_family_base_species_id(species_id: String) -> String:
+    ## Liefert die niedrigste bekannte Form der Entwicklungslinie.
+    ## Beispiel: pidgeotto -> pidgey, pidgeot -> pidgey.
+    var sid: String = _normalize_species_id(species_id)
+    if sid.is_empty():
+        return ""
+
+    _load_evolution_rules()
+    var level_evolutions_value: Variant = _evolution_rules.get("level_evolutions", {})
+    if not (level_evolutions_value is Dictionary):
+        return sid
+
+    var level_evolutions: Dictionary = level_evolutions_value
+    var parent_by_target: Dictionary = {}
+    for source_value: Variant in level_evolutions.keys():
+        var source_id: String = str(source_value)
+        var rule_value: Variant = level_evolutions[source_value]
+        if not (rule_value is Dictionary):
+            continue
+        var target_id: String = str((rule_value as Dictionary).get("target", "")).strip_edges()
+        if not target_id.is_empty():
+            parent_by_target[target_id] = source_id
+
+    var current: String = sid
+    var visited: Dictionary = {}
+    while parent_by_target.has(current) and not visited.has(current):
+        visited[current] = true
+        current = str(parent_by_target[current])
+
+    return current
+
+
+func is_evolution_family_unlocked(species_id: String) -> bool:
+    var base_id: String = get_evolution_family_base_species_id(species_id)
+    if base_id.is_empty():
+        return false
+    _ensure_structure()
+    var families: Dictionary = _data["unlocked_evolution_families"]
+    return families.has(base_id)
+
+
+func get_unlocked_evolution_family_base_ids() -> Array[String]:
+    _ensure_structure()
+    var families: Dictionary = _data["unlocked_evolution_families"]
+    var result: Array[String] = []
+    for family_key: Variant in families.keys():
+        result.append(str(family_key))
+    result.sort()
+    return result
+
+
 func get_unlocked_run_start_species_ids() -> Array[String]:
     ## Grundlage fuer die spaetere Run-Start-Auswahl oder Zufallsauswahl.
+    ## Der Pool enthaelt bewusst die niedrigste Form jeder gefangenen
+    ## Entwicklungslinie, nicht die konkret gefangene Entwicklungsstufe.
     ## Welche UI/Regel daraus waehlt, wird bewusst erst spaeter entschieden.
-    return get_caught_species_ids()
+    return get_unlocked_evolution_family_base_ids()
 
 
 func reset_meta_progression() -> bool:
@@ -142,7 +215,8 @@ func reset_meta_progression() -> bool:
 func _default_data() -> Dictionary:
     return {
         "schema_version": SCHEMA_VERSION,
-        "pokedex": {}
+        "pokedex": {},
+        "unlocked_evolution_families": {}
     }
 
 
@@ -151,6 +225,8 @@ func _ensure_structure() -> void:
         _data = _default_data()
     if not (_data.get("pokedex", {}) is Dictionary):
         _data["pokedex"] = {}
+    if not (_data.get("unlocked_evolution_families", {}) is Dictionary):
+        _data["unlocked_evolution_families"] = {}
 
 
 func _normalize_species_id(species_id: String) -> String:
@@ -187,3 +263,54 @@ func _species_ids_with_flag(flag_name: String) -> Array[String]:
 
     result.sort()
     return result
+
+
+func _load_evolution_rules() -> void:
+    if not _evolution_rules.is_empty():
+        return
+
+    var file: FileAccess = FileAccess.open(EVOLUTION_RULES_PATH, FileAccess.READ)
+    if file == null:
+        push_warning("Entwicklungsregeln konnten fuer den Meta-Fortschritt nicht geladen werden.")
+        _evolution_rules = {"level_evolutions": {}}
+        return
+
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    if parsed is Dictionary:
+        _evolution_rules = parsed
+    else:
+        push_warning("Entwicklungsregeln sind unlesbar; Spezies werden vorlaeufig als eigene Familien behandelt.")
+        _evolution_rules = {"level_evolutions": {}}
+
+
+func _unlock_evolution_family_for(species_id: String, unlocked_at: int) -> bool:
+    var base_id: String = get_evolution_family_base_species_id(species_id)
+    if base_id.is_empty():
+        return false
+
+    _ensure_structure()
+    var families: Dictionary = _data["unlocked_evolution_families"]
+    if families.has(base_id):
+        return false
+
+    families[base_id] = {
+        "base_species_id": base_id,
+        "first_unlocked_by_species_id": species_id,
+        "first_unlocked_unix": unlocked_at
+    }
+    _data["unlocked_evolution_families"] = families
+    return true
+
+
+func _migrate_family_unlocks_from_caught_species() -> void:
+    ## Alte Schema-v1-Spielstaende hatten nur konkret gefangene Spezies.
+    ## Daraus werden beim Laden automatisch die passenden Familien erzeugt.
+    var changed: bool = false
+    for sid: String in get_caught_species_ids():
+        var entry: Dictionary = _entry_for(sid)
+        var caught_at: int = int(entry.get("first_caught_unix", 0))
+        if _unlock_evolution_family_for(sid, caught_at):
+            changed = true
+
+    if changed:
+        save_progress()
