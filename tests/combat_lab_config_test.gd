@@ -5,14 +5,9 @@ const CombatLabScript = preload("res://scripts/battle_demo_adaptive_family_ui.gd
 var failures: int = 0
 
 
-func _init() -> void:
-    call_deferred("_run")
-
-
-func _run() -> void:
+func _initialize() -> void:
     var lab = CombatLabScript.new()
     root.add_child(lab)
-    await process_frame
 
     _check(lab.random_level_min != null, "Zufallslevel-Untergrenze fehlt.")
     _check(lab.random_level_limit != null, "Zufallslevel-Obergrenze fehlt.")
@@ -23,10 +18,26 @@ func _run() -> void:
     if lab.random_level_limit != null:
         lab.random_level_limit.set_value_no_signal(20.0)
 
+    # Repeated randomization is the regression case from the broken lab: every
+    # stored and visible level must stay in the chosen 17–20 range, and family
+    # plus active form must always belong to the same row.
     for attempt: int in range(100):
         lab._randomize_setup()
         _validate_side(lab, lab.player_setup, lab.player_rows, 17, 20, "Spieler", attempt)
         _validate_side(lab, lab.enemy_setup, lab.enemy_rows, 17, 20, "Gegner", attempt)
+
+    # Force the maximum 4v4 setup and verify the compact rows stay structurally
+    # bounded instead of growing out of their half of the screen.
+    lab.player_setup.clear()
+    lab.enemy_setup.clear()
+    for index: int in range(4):
+        lab.player_setup.append(lab._random_family_setup(17, 20))
+        lab.enemy_setup.append(lab._random_family_setup(17, 20))
+    lab.player_count.set_value_no_signal(4.0)
+    lab.enemy_count.set_value_no_signal(4.0)
+    lab._refresh_setup()
+    _validate_side(lab, lab.player_setup, lab.player_rows, 17, 20, "Spieler 4v4", 100)
+    _validate_side(lab, lab.enemy_setup, lab.enemy_rows, 17, 20, "Gegner 4v4", 100)
 
     # A direct level change must update only that row and may never fall back to
     # the old prototype cap of 10.
@@ -35,7 +46,7 @@ func _run() -> void:
         lab._level_changed(19.0, true, 0)
         _check(int(lab.player_setup[0].get("level", 0)) == 19, "Direkter Levelwechsel wurde nicht als Lv.19 gespeichert.")
         _check(lab.player_rows.get_child_count() == before_count, "Levelwechsel hat die komplette Zeilenliste neu aufgebaut.")
-        _validate_side(lab, lab.player_setup, lab.player_rows, 1, 100, "Spieler nach Levelwechsel", 100)
+        _validate_side(lab, lab.player_setup, lab.player_rows, 1, 100, "Spieler nach Levelwechsel", 101)
 
     # Changing the family must keep the visible active form tied to the newly
     # selected family instead of leaking a form from another row.
@@ -46,7 +57,7 @@ func _run() -> void:
             var next_index: int = 1 if picker.selected != 1 else 0
             picker.select(next_index)
             lab._species_changed(next_index, true, 0, picker)
-            _validate_side(lab, lab.player_setup, lab.player_rows, 1, 100, "Spieler nach Familienwechsel", 101)
+            _validate_side(lab, lab.player_setup, lab.player_rows, 1, 100, "Spieler nach Familienwechsel", 102)
 
     lab.queue_free()
 
@@ -90,6 +101,12 @@ func _validate_side(lab, setup: Array, rows: VBoxContainer, min_level: int, max_
         _check(row != null, "%s Zeile %d: UI-Zeile hat falschen Typ." % [side_name, index + 1])
         if row == null:
             continue
+
+        _check(
+            row.get_combined_minimum_size().x <= 430.0,
+            "%s Zeile %d: Mindestbreite %.1f ist zu gross fuer eine Teamhaelfte."
+            % [side_name, index + 1, row.get_combined_minimum_size().x]
+        )
 
         var picker: OptionButton = row.get_node_or_null("FamilyPicker") as OptionButton
         var badge: PanelContainer = row.get_node_or_null("ActiveForm") as PanelContainer
