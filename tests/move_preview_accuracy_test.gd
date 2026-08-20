@@ -24,14 +24,14 @@ func _initialize() -> void:
     lab.selected_actor = {"accuracy_mult": 1.0}
     lab._preview_move("preview_accuracy_test", move, false)
     _check(
-        lab.log_label != null and lab.log_label.text.contains("Treffer: 75%"),
-        "Attackenvorschau zeigt die Treffergenauigkeit 75% nicht an."
+        lab.log_label != null and lab.log_label.text.contains("Genauigkeit: 75%"),
+        "Attackenvorschau zeigt die Genauigkeit 75% nicht an."
     )
 
     lab.selected_actor = {"accuracy_mult": 0.8}
     lab._preview_move("preview_accuracy_test", move, false)
     _check(
-        lab.log_label != null and lab.log_label.text.contains("Treffer: 60%"),
+        lab.log_label != null and lab.log_label.text.contains("Genauigkeit: 60%"),
         "Attackenvorschau berücksichtigt den aktiven Genauigkeitsmodifikator nicht."
     )
 
@@ -40,8 +40,8 @@ func _initialize() -> void:
     lab.selected_actor = {"accuracy_mult": 0.5}
     lab._preview_move("preview_accuracy_test", always_hit_move, false)
     _check(
-        lab.log_label != null and lab.log_label.text.contains("Treffer: sicher"),
-        "Attacken ohne Genauigkeitswurf werden nicht als sicherer Treffer angezeigt."
+        lab.log_label != null and lab.log_label.text.contains("Genauigkeit: sicher"),
+        "Attacken ohne Genauigkeitswurf werden nicht als sicher angezeigt."
     )
 
     lab.queue_free()
