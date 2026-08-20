@@ -1,24 +1,25 @@
 {
-  "schema_version": 2,
-  "rule_id": "opening_move_damage_balance_v2",
-  "description": "Schadensattacken, die bereits in der Eröffnungsphase/Runde 0 einsetzbar sind, erhalten einen deutlichen Schadensabschlag. Prioritätsattacken bezahlen den zusätzlichen Eröffnungsvorteil außerdem mit ATB-Rückstand für ihre erste normale Aktion.",
+  "schema_version": 3,
+  "rule_id": "opening_move_damage_balance_v3",
+  "description": "Prioritätsattacken können als echte Eröffnungsattacken definiert werden. Opening-only-Attacken sind ausschließlich in Runde 0 auswählbar und bezahlen ihren Sofortvorteil über eine sehr hohe normale ATB-Erholungsstufe.",
   "applies_when": {
-    "opening": true,
-    "has_damage_mechanic": true
+    "opening": true
   },
-  "default_power_cap": 20,
-  "default_priority_opening_atb_debt": 35,
-  "normal_combat_priority_move_policy": "allowed",
+  "default_power_cap": 30,
+  "default_priority_opening_atb_debt": 0,
+  "normal_combat_priority_move_policy": "opening_only_when_tagged",
   "opening_only_requires_explicit_tag": true,
   "exceptions_require_explicit_balance_note": true,
   "reference_move": {
     "id": "quick_attack",
     "name": "Ruckzuckhieb",
-    "power": 20,
+    "power": 30,
     "priority": 1,
-    "ap": 1,
-    "opening_atb_debt": 35,
-    "usable_during_normal_atb": true
+    "ap": 8,
+    "opening": true,
+    "opening_only": true,
+    "opening_atb_debt": 0,
+    "usable_during_normal_atb": false
   },
-  "design_note": "Runde 0 ist ein freiwilliger Tempo-Vorschuss, kein kostenloser Zusatzschaden. Ruckzuckhieb und vergleichbare Prioritätsattacken bleiben im normalen ATB-Kampf nutzbar; nur ihr Einsatz vor Kampfbeginn erzeugt den ATB-Rückstand. Echte Opening-only-Attacken müssen später ausdrücklich als solche markiert werden."
+  "design_note": "Ruckzuckhieb ist ein einmaliger Eröffnungsschlag: nur in Runde 0, Stärke 30 und AP-Stufe 8. Die AP-8-Erholung entspricht in der aktuellen Testkurve ungefähr 1,9× normaler Erholungszeit. Deshalb wird kein zusätzlicher negativer ATB-Schuldenwert gestapelt. Andere Attacken dürfen später separat als opening_only markiert werden."
 }
