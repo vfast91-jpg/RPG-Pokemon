@@ -14,7 +14,9 @@
       "priority": 0,
       "opening": false,
       "emoji": "🌧️",
-      "mechanics": [],
+      "mechanics": [
+        {"kind": "weather"}
+      ],
       "weather": {
         "weather_id": "rain",
         "strength_stat": "special",
