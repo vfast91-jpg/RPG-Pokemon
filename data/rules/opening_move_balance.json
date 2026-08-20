@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "rule_id": "opening_move_damage_balance_v1",
+  "description": "Schadensattacken, die bereits in der Eröffnungsphase/Runde 0 einsetzbar sind, erhalten einen deutlichen Schadensabschlag, weil sie Schaden vor dem normalen ATB-Kampfbeginn verteilen können.",
+  "applies_when": {
+    "opening": true,
+    "has_damage_mechanic": true
+  },
+  "default_power_cap": 20,
+  "exceptions_require_explicit_balance_note": true,
+  "reference_move": {
+    "id": "quick_attack",
+    "name": "Ruckzuckhieb",
+    "power": 20,
+    "priority": 1,
+    "ap": 1
+  },
+  "design_note": "Sehr schnelle Prioritäts-/Runde-0-Attacken dürfen nicht gleichzeitig normalen oder hohen Basisschaden besitzen. Ihr Tempo und der mögliche Schaden vor dem eigentlichen Kampfbeginn sind bereits ein starker Vorteil."
+}
