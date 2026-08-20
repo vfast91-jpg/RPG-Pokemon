@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_forced_evolution.gd"
+extends "res://scripts/battle_demo_interface_polish.gd"
 
 const WeatherStateScript = preload("res://scripts/battle/weather_state.gd")
 const WEATHER_RULE_PATH: String = "res://data/rules/weather_rules.json"
@@ -247,8 +247,6 @@ func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
 
 func _targets(actor: Dictionary, rule: String) -> Array:
     if rule == GLOBAL_BATTLEFIELD_TARGET:
-        # The effect is global. A single synthetic self target lets the inherited
-        # resolver execute the move exactly once without inventing an opponent.
         return [actor]
     return super._targets(actor, rule)
 
