@@ -1,10 +1,12 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": {
     "level_evolution_is_mandatory": true,
     "evolution_can_be_prevented": false,
     "ignore_legacy_prevent_evolution_flags": true,
     "ignore_legacy_evolution_optional_flags": true,
+    "multiple_valid_targets_require_player_choice": true,
+    "never_auto_pick_branch_for_owned_pokemon": true,
     "missing_required_form_behavior": "exclude_from_generated_encounters"
   },
   "level_evolutions": {

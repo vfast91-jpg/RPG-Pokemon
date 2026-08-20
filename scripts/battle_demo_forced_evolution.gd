@@ -50,6 +50,35 @@ func route_required_evolution(species_id: String, level: int) -> Dictionary:
     )
 
 
+func route_evolution_choices(species_id: String, level: int) -> Array:
+    return _mandatory_evolution.evolution_choices_for_level(
+        species_id,
+        maxi(1, level),
+        _runtime_species()
+    )
+
+
+func route_requires_evolution_choice(species_id: String, level: int) -> bool:
+    return _mandatory_evolution.requires_player_evolution_choice(
+        species_id,
+        maxi(1, level),
+        _runtime_species()
+    )
+
+
+func route_resolve_evolution_choice(
+    species_id: String,
+    target_species_id: String,
+    level: int
+) -> String:
+    return _mandatory_evolution.resolve_player_evolution_choice(
+        species_id,
+        target_species_id,
+        maxi(1, level),
+        _runtime_species()
+    )
+
+
 func route_species_is_available(species_id: String) -> bool:
     return _runtime_species().has(species_id)
 
@@ -67,7 +96,7 @@ func start_route_battle_party(team_state: Array, enemy_party: Array) -> void:
         )
         if resolved_id.is_empty():
             push_warning(
-                "Begegnung verworfen: Für %s Lv.%d fehlt die verpflichtende Entwicklungsform."
+                "Begegnung verworfen: Für %s Lv.%d fehlt eine eindeutig auflösbare verpflichtende Entwicklungsform."
                 % [str(enemy.get("species_id", "")), level]
             )
             continue

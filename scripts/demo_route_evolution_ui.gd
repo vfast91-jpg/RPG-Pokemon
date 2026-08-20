@@ -1,21 +1,11 @@
 extends "res://scripts/demo_route_balance_polish.gd"
 
-# Evolution presentation layer for the demo route.
+# Generic evolution presentation layer for the demo route.
 #
-# This intentionally does NOT decide when an evolution happens. The gameplay
-# system can later call queue_evolution_event(...) once an evolution was
-# accepted/resolved. That keeps evolution rules separate from presentation.
-#
-# Supported species-data contract (already used by the project design data):
-# evolution: {
-#     "evolves_into": "target_species_id",
-#     "evolution_level": 16,
-#     "evolution_optional": true
-# }
-# Individual monsters may suppress evolution with prevent_evolution = true.
-#
-# Sprite convention: assets/<German display name>.png
-# Example: res://assets/Bisasam.png
+# Rules and target validation live in EvolutionResolver. This file only presents
+# either a mandatory branch choice or the completed before/after evolution.
+# Branching data is intentionally generic: two, three or many targets all use
+# the same UI and no species-specific code is required here.
 
 var _evolution_queue: Array = []
 var _evolution_overlay: Control
@@ -28,13 +18,21 @@ var _evolution_after_missing: Label
 var _evolution_message: Label
 var _evolution_continue: Button
 
+var _evolution_choice_queue: Array = []
+var _evolution_choice_overlay: Control
+var _evolution_choice_title: Label
+var _evolution_choice_subtitle: Label
+var _evolution_choice_buttons: VBoxContainer
+var _active_evolution_choice: Dictionary = {}
+
 
 func _ready() -> void:
     super._ready()
     _build_evolution_popup()
+    _build_evolution_choice_popup()
 
 
-# Public presentation hook for the future evolution system.
+# Public presentation hook used after an evolution has actually been applied.
 func queue_evolution_event(
     before_species_id: String,
     after_species_id: String,
@@ -58,12 +56,30 @@ func queue_evolution_event(
     call_deferred("_try_show_evolution_popup")
 
 
-# Small data helper so later gameplay code can ask whether a member currently
-# has an evolution available without duplicating the species-data parsing.
-func route_available_evolution(member: Dictionary) -> Dictionary:
-    if bool(member.get("prevent_evolution", false)):
-        return {}
+# Public presentation hook for a branching evolution. `choices` is produced by
+# EvolutionResolver and may contain any number of targets.
+func queue_evolution_choice(
+    member_index: int,
+    before_species_id: String,
+    level: int,
+    choices: Array
+) -> void:
+    if choices.size() < 2:
+        push_warning("Entwicklungswahl benötigt mindestens zwei Ziele.")
+        return
 
+    _evolution_choice_queue.append({
+        "member_index": member_index,
+        "before_species_id": before_species_id,
+        "level": maxi(1, level),
+        "choices": choices.duplicate(true)
+    })
+    call_deferred("_try_show_evolution_choice_popup")
+
+
+# Compatibility/data helper for layers that do not use the central resolver.
+# New species packs may use either the legacy single target or `choices`.
+func route_available_evolution(member: Dictionary) -> Dictionary:
     var species_id: String = str(member.get("species_id", ""))
     var species: Dictionary = _evolution_species_data(species_id)
     var evolution_value: Variant = species.get("evolution", {})
@@ -71,20 +87,201 @@ func route_available_evolution(member: Dictionary) -> Dictionary:
         return {}
 
     var evolution: Dictionary = evolution_value
-    var target_species_id: String = str(evolution.get("evolves_into", ""))
-    var required_level: int = int(evolution.get("evolution_level", 0))
-    var current_level: int = int(member.get("level", 1))
-
-    if target_species_id.is_empty():
-        return {}
+    var current_level: int = maxi(1, int(member.get("level", 1)))
+    var required_level: int = int(evolution.get("evolution_level", evolution.get("level", 0)))
     if required_level > 0 and current_level < required_level:
+        return {}
+
+    var choices_value: Variant = evolution.get("choices", [])
+    if choices_value is Array and (choices_value as Array).size() > 1:
+        var normalized_choices: Array = []
+        for choice_value: Variant in choices_value:
+            if not (choice_value is Dictionary):
+                continue
+            var choice: Dictionary = choice_value
+            var target_id: String = str(choice.get("target", choice.get("evolves_into", "")))
+            if target_id.is_empty():
+                continue
+            normalized_choices.append({
+                "target_species_id": target_id,
+                "required_level": int(choice.get("level", choice.get("evolution_level", required_level))),
+                "target_available": not _evolution_species_data(target_id).is_empty()
+            })
+        if normalized_choices.size() > 1:
+            return {
+                "required_level": required_level,
+                "mandatory": true,
+                "requires_player_choice": true,
+                "choices": normalized_choices
+            }
+
+    var target_species_id: String = str(evolution.get("evolves_into", evolution.get("target", "")))
+    if target_species_id.is_empty():
         return {}
 
     return {
         "target_species_id": target_species_id,
         "required_level": required_level,
-        "optional": bool(evolution.get("evolution_optional", true))
+        "mandatory": true,
+        "requires_player_choice": false
     }
+
+
+func _build_evolution_choice_popup() -> void:
+    if root == null:
+        return
+
+    _evolution_choice_overlay = Control.new()
+    _evolution_choice_overlay.name = "EvolutionChoiceOverlay"
+    _evolution_choice_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _evolution_choice_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    _evolution_choice_overlay.z_index = 111
+    _evolution_choice_overlay.visible = false
+    root.add_child(_evolution_choice_overlay)
+
+    var shade := ColorRect.new()
+    shade.color = Color(0.0, 0.0, 0.0, 0.82)
+    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    shade.mouse_filter = Control.MOUSE_FILTER_STOP
+    _evolution_choice_overlay.add_child(shade)
+
+    var panel := PanelContainer.new()
+    panel.anchor_left = 0.5
+    panel.anchor_top = 0.5
+    panel.anchor_right = 0.5
+    panel.anchor_bottom = 0.5
+    panel.offset_left = -245.0
+    panel.offset_top = -230.0
+    panel.offset_right = 245.0
+    panel.offset_bottom = 230.0
+    panel.add_theme_stylebox_override(
+        "panel",
+        _panel(Color("172923"), Color("ffe576"), 12, 11.0)
+    )
+    _evolution_choice_overlay.add_child(panel)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 8)
+    panel.add_child(content)
+
+    _evolution_choice_title = Label.new()
+    _evolution_choice_title.text = "🌟 ENTWICKLUNG WÄHLEN"
+    _evolution_choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _evolution_choice_title.add_theme_font_size_override("font_size", 19)
+    _evolution_choice_title.add_theme_color_override("font_color", Color("ffe576"))
+    content.add_child(_evolution_choice_title)
+
+    _evolution_choice_subtitle = Label.new()
+    _evolution_choice_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _evolution_choice_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _evolution_choice_subtitle.custom_minimum_size = Vector2(0, 42)
+    _evolution_choice_subtitle.add_theme_font_size_override("font_size", 12)
+    _evolution_choice_subtitle.add_theme_color_override("font_color", Color("dce8e3"))
+    content.add_child(_evolution_choice_subtitle)
+
+    var scroll := ScrollContainer.new()
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    content.add_child(scroll)
+
+    _evolution_choice_buttons = VBoxContainer.new()
+    _evolution_choice_buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _evolution_choice_buttons.add_theme_constant_override("separation", 6)
+    scroll.add_child(_evolution_choice_buttons)
+
+    var note := Label.new()
+    note.text = "Die Entwicklung ist verpflichtend – nur das Ziel wird gewählt."
+    note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    note.add_theme_font_size_override("font_size", 9)
+    note.add_theme_color_override("font_color", Color("9fb2aa"))
+    content.add_child(note)
+
+
+func _try_show_evolution_choice_popup() -> void:
+    if _evolution_choice_overlay == null or _evolution_choice_overlay.visible:
+        return
+    if _levelup_overlay != null and _levelup_overlay.visible:
+        return
+    if _evolution_overlay != null and _evolution_overlay.visible:
+        return
+    if _evolution_choice_queue.is_empty():
+        return
+
+    _show_next_evolution_choice_popup()
+
+
+func _show_next_evolution_choice_popup() -> void:
+    if _evolution_choice_overlay == null:
+        return
+    if _evolution_choice_queue.is_empty():
+        _evolution_choice_overlay.visible = false
+        _active_evolution_choice = {}
+        return
+
+    var request_value: Variant = _evolution_choice_queue.pop_front()
+    if not (request_value is Dictionary):
+        _show_next_evolution_choice_popup()
+        return
+
+    _active_evolution_choice = (request_value as Dictionary).duplicate(true)
+    var before_species_id: String = str(_active_evolution_choice.get("before_species_id", ""))
+    var before_name: String = _evolution_species_name(before_species_id)
+    var level: int = maxi(1, int(_active_evolution_choice.get("level", 1)))
+    _evolution_choice_subtitle.text = "%s Lv.%d kann sich auf mehrere Arten entwickeln. Wähle die gewünschte Form:" % [before_name, level]
+
+    for child: Node in _evolution_choice_buttons.get_children():
+        child.queue_free()
+
+    var choices_value: Variant = _active_evolution_choice.get("choices", [])
+    var choices: Array = choices_value if choices_value is Array else []
+    var first_enabled_button: Button = null
+
+    for choice_value: Variant in choices:
+        if not (choice_value is Dictionary):
+            continue
+        var choice: Dictionary = choice_value
+        var target_id: String = str(choice.get("target_species_id", ""))
+        if target_id.is_empty():
+            continue
+
+        var target_name: String = _evolution_species_name(target_id)
+        var target_available: bool = bool(choice.get("target_available", true))
+        var button := Button.new()
+        button.text = target_name if target_available else "%s  ·  Daten fehlen" % target_name
+        button.custom_minimum_size = Vector2(0, 42)
+        button.disabled = not target_available
+        button.tooltip_text = "Entwickle %s zu %s" % [before_name, target_name]
+        button.pressed.connect(_on_evolution_choice_button.bind(target_id))
+        _evolution_choice_buttons.add_child(button)
+
+        if target_available and first_enabled_button == null:
+            first_enabled_button = button
+
+    _evolution_choice_overlay.visible = true
+    if first_enabled_button != null:
+        first_enabled_button.grab_focus()
+
+
+func _on_evolution_choice_button(target_species_id: String) -> void:
+    if _active_evolution_choice.is_empty():
+        return
+
+    var request: Dictionary = _active_evolution_choice.duplicate(true)
+    _active_evolution_choice = {}
+    _evolution_choice_overlay.visible = false
+    _on_evolution_choice_selected(request, target_species_id)
+
+    # A completed evolution result gets presentation priority. If the callback
+    # queued another branch immediately afterwards, it follows that result.
+    call_deferred("_try_show_evolution_popup")
+    call_deferred("_try_show_evolution_choice_popup")
+
+
+# Virtual callback implemented by the gameplay layer. The UI itself never
+# mutates Pokémon state and therefore cannot accidentally invent a target.
+func _on_evolution_choice_selected(_request: Dictionary, _target_species_id: String) -> void:
+    push_warning("Entwicklungswahl wurde angezeigt, aber kein Gameplay-Handler ist aktiv.")
 
 
 func _build_evolution_popup() -> void:
@@ -213,12 +410,10 @@ func _make_evolution_sprite_slot() -> VBoxContainer:
 func _try_show_evolution_popup() -> void:
     if _evolution_overlay == null or _evolution_overlay.visible:
         return
-
-    # Level-up details should always be read first. The evolution popup follows
-    # immediately afterwards instead of covering the existing Level-Up window.
     if _levelup_overlay != null and _levelup_overlay.visible:
         return
-
+    if _evolution_choice_overlay != null and _evolution_choice_overlay.visible:
+        return
     _show_next_evolution_popup()
 
 
@@ -227,6 +422,7 @@ func _show_next_evolution_popup() -> void:
         return
     if _evolution_queue.is_empty():
         _evolution_overlay.visible = false
+        call_deferred("_try_show_evolution_choice_popup")
         return
 
     var event_value: Variant = _evolution_queue.pop_front()
@@ -275,14 +471,12 @@ func _set_evolution_sprite(
 
 
 func _evolution_texture(species_id: String, display_name: String) -> Texture2D:
-    # Preferred convention requested for the project: German Pokémon name.
     var direct_path: String = "res://assets/%s.png" % display_name
     if ResourceLoader.exists(direct_path):
         var direct_value: Variant = load(direct_path)
         if direct_value is Texture2D:
             return direct_value
 
-    # Compatibility fallback for the current battle-demo asset resolver.
     if battle_demo != null and battle_demo.has_method("route_species_texture"):
         var texture_value: Variant = battle_demo.route_species_texture(species_id)
         if texture_value is Texture2D:
@@ -324,11 +518,13 @@ func _evolution_species_data(species_id: String) -> Dictionary:
 func _on_levelup_continue() -> void:
     super._on_levelup_continue()
     if _levelup_overlay != null and not _levelup_overlay.visible:
+        call_deferred("_try_show_evolution_choice_popup")
         call_deferred("_try_show_evolution_popup")
 
 
 func _on_evolution_continue() -> void:
     if _evolution_queue.is_empty():
         _evolution_overlay.visible = false
+        call_deferred("_try_show_evolution_choice_popup")
         return
     _show_next_evolution_popup()

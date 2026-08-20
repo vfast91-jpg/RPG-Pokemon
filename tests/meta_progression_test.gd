@@ -14,6 +14,8 @@ func _initialize() -> void:
     assert(progression.get_caught_species_ids().is_empty(), "Neuer Meta-Speicher muss ohne gefangene Spezies starten.")
     assert(not progression.is_caught("pikachu"), "Pikachu darf vor einem Fang nicht als gefangen gelten.")
 
+    _test_branching_family_roots(progression)
+
     assert(progression.record_seen("pikachu"), "Erstsichtung muss registriert werden.")
     assert(progression.is_seen("pikachu"), "Gesichtete Spezies muss im Pokedex sichtbar sein.")
     assert(not progression.is_caught("pikachu"), "Nur gesehen ist nicht automatisch gefangen.")
@@ -47,6 +49,36 @@ func _initialize() -> void:
     _remove_test_save()
     print("Meta progression tests: OK")
     quit(0)
+
+
+func _test_branching_family_roots(progression: Node) -> void:
+    var original_rules: Dictionary = progression._evolution_rules.duplicate(true)
+    progression._evolution_rules = {
+        "level_evolutions": {
+            "branch_base": {
+                "choices": [
+                    {"target": "branch_a", "level": 20},
+                    {"target": "branch_b", "level": 20},
+                    {"target": "branch_c", "level": 20}
+                ]
+            }
+        }
+    }
+
+    assert(
+        progression.get_evolution_family_base_species_id("branch_a") == "branch_base",
+        "Erster Zweig muss zur gemeinsamen Basisform zurückauflösen."
+    )
+    assert(
+        progression.get_evolution_family_base_species_id("branch_b") == "branch_base",
+        "Zweiter Zweig muss zur gemeinsamen Basisform zurückauflösen."
+    )
+    assert(
+        progression.get_evolution_family_base_species_id("branch_c") == "branch_base",
+        "Dritter Zweig muss zur gemeinsamen Basisform zurückauflösen."
+    )
+
+    progression._evolution_rules = original_rules
 
 
 func _remove_test_save() -> void:

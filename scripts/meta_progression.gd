@@ -144,8 +144,8 @@ func get_caught_species_ids() -> Array[String]:
 
 
 func get_evolution_family_base_species_id(species_id: String) -> String:
-    ## Liefert die niedrigste bekannte Form der Entwicklungslinie.
-    ## Beispiel: pidgeotto -> pidgey, pidgeot -> pidgey.
+    ## Liefert die niedrigste bekannte Form der Entwicklungslinie. Dabei werden
+    ## sowohl lineare `target`-Regeln als auch verzweigte `choices` verfolgt.
     var sid: String = _normalize_species_id(species_id)
     if sid.is_empty():
         return ""
@@ -162,9 +162,9 @@ func get_evolution_family_base_species_id(species_id: String) -> String:
         var rule_value: Variant = level_evolutions[source_value]
         if not (rule_value is Dictionary):
             continue
-        var target_id: String = str((rule_value as Dictionary).get("target", "")).strip_edges()
-        if not target_id.is_empty():
-            parent_by_target[target_id] = source_id
+        for target_id: String in _evolution_target_ids(rule_value as Dictionary):
+            if not target_id.is_empty() and not parent_by_target.has(target_id):
+                parent_by_target[target_id] = source_id
 
     var current: String = sid
     var visited: Dictionary = {}
@@ -281,6 +281,38 @@ func _load_evolution_rules() -> void:
     else:
         push_warning("Entwicklungsregeln sind unlesbar; Spezies werden vorlaeufig als eigene Familien behandelt.")
         _evolution_rules = {"level_evolutions": {}}
+
+
+func _evolution_target_ids(rule: Dictionary) -> Array[String]:
+    var result: Array[String] = []
+
+    var choices_value: Variant = rule.get("choices", [])
+    if choices_value is Array:
+        for choice_value: Variant in choices_value:
+            if choice_value is Dictionary:
+                var choice: Dictionary = choice_value
+                _append_evolution_target(
+                    result,
+                    choice.get("target", choice.get("evolves_into", ""))
+                )
+            else:
+                _append_evolution_target(result, choice_value)
+
+    var direct_value: Variant = rule.get("target", rule.get("evolves_into", ""))
+    if direct_value is Array:
+        for target_value: Variant in direct_value:
+            _append_evolution_target(result, target_value)
+    else:
+        _append_evolution_target(result, direct_value)
+
+    return result
+
+
+func _append_evolution_target(result: Array[String], target_value: Variant) -> void:
+    var target_id: String = str(target_value).strip_edges()
+    if target_id.is_empty() or result.has(target_id):
+        return
+    result.append(target_id)
 
 
 func _unlock_evolution_family_for(species_id: String, unlocked_at: int) -> bool:

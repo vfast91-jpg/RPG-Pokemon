@@ -5,17 +5,40 @@ Dieses Dokument hält verbindliche Spielregeln fest, die bei späteren Änderung
 ## Entwicklung
 
 - Entwicklungen können **nicht verhindert** werden.
-- Eine Level-Entwicklung erfolgt **automatisch und verpflichtend**, sobald das erforderliche Level erreicht ist.
+- Eine lineare Level-Entwicklung mit genau einem gültigen Ziel erfolgt **automatisch und verpflichtend**, sobald das erforderliche Level erreicht ist.
+- Gibt es bei einer fälligen Entwicklung **mehrere gültige Ziel-Spezies**, darf das Spiel **niemals automatisch, zufällig oder nach Listenreihenfolge** eine davon wählen.
+- Stattdessen zeigt das Spiel dem Spieler **alle definierten Entwicklungsziele** an. Der Spieler wählt bewusst die gewünschte Form; erst danach wird die Entwicklung angewendet.
+- Diese Verzweigungsregel ist allgemeingültig und darf nicht für einzelne Pokémon hartcodiert werden. Sie ist unter anderem für Familien wie Evoli, Rabauz, Duflor, Quaputzi und Sichlor vorgesehen.
+- Die Anzahl der Ziele ist nicht fest begrenzt: dieselbe Logik muss zwei, drei oder auch deutlich mehr Entwicklungsformen anzeigen können.
 - Alte Datenfelder wie `prevent_evolution: true` oder `evolution_optional: true` sind überholt und dürfen die aktuelle Regel nicht mehr verändern.
 - Zufällig erzeugte wilde oder gegnerische Pokémon müssen immer die Entwicklungsstufe besitzen, die zu ihrem Level gehört.
-- Beispiel Raupy-Reihe:
-  - bis Level 6: Raupy
-  - Level 7–9: Safcon
-  - ab Level 10: Smettbo
-- Fehlt für eine verpflichtende Entwicklungsstufe noch ein vollständiger Spieldatensatz, darf die vorherige Form nicht mit einem unpassenden Level erzeugt werden. Die betreffende Entwicklungsreihe wird für solche generierten Begegnungen vorübergehend ausgeschlossen.
-- Sobald die Zielspeziesdaten vorhanden sind, löst der zentrale Entwicklungsresolver automatisch auf die korrekte Form auf.
+- Automatisch erzeugte Pokémon dürfen bei einer Verzweigung **keinen stillen Zufallszweig** nehmen. Solange für generierte Begegnungen keine ausdrücklich definierte Branch-Regel existiert, wird eine auf diesem Level nicht eindeutig auflösbare Familie aus der Erzeugung ausgeschlossen.
+- Fehlt für eine definierte Entwicklungsstufe noch ein vollständiger Spieldatensatz, darf die vorherige Form nicht mit einem unpassenden Level erzeugt werden. Ein fehlendes Verzweigungsziel wird in einer Spielerwahl als nicht verfügbar behandelt und kann nicht ausgewählt werden.
+- Sobald die Zielspeziesdaten vorhanden sind, kann der zentrale Entwicklungsresolver sie ohne Pokémon-spezifische Zusatzlogik verwenden.
 
-Die technische Quelle dieser Regel ist `data/rules/evolution_chains.json`; die Auflösung erfolgt zentral über `scripts/evolution_resolver.gd`.
+### Datenformat
+
+Lineare Entwicklung bleibt kompatibel mit dem bisherigen Format:
+
+```json
+"caterpie": {"target": "metapod", "level": 7}
+```
+
+Eine Verzweigung wird datengetrieben über `choices` beschrieben:
+
+```json
+"example_base": {
+  "choices": [
+    {"target": "example_form_a", "level": 20},
+    {"target": "example_form_b", "level": 20},
+    {"target": "example_form_c", "level": 20}
+  ]
+}
+```
+
+Alternativ darf ein Spezies-Datenpaket dieselbe Struktur unter `evolution.choices` liefern. Der Resolver akzeptiert außerdem ein Array in `evolution.evolves_into`, damit spätere Datenimporte nicht unnötig starr sind.
+
+Die technische Quelle dieser Regel ist `data/rules/evolution_chains.json`; die Auflösung erfolgt zentral über `scripts/evolution_resolver.gd`. `scripts/battle_demo_forced_evolution.gd` stellt die Resolver-Funktionen für die Route bereit. `scripts/demo_route_evolution_ui.gd` besitzt den generischen Auswahlbildschirm und darf selbst keine Ziel-Spezies erfinden oder auswählen.
 
 ## Pokédex und run-übergreifender Fortschritt
 
@@ -26,6 +49,7 @@ Die technische Quelle dieser Regel ist `data/rules/evolution_chains.json`; die A
   2. Gleichzeitig wird die **gesamte Entwicklungslinie** dauerhaft für den Run-übergreifenden Fortschritt freigeschaltet.
 - Für die spätere Start-Pokémon-Auswahl eines neuen Runs zählt immer die **niedrigste bekannte Form der freigeschalteten Entwicklungslinie**, weil neue Runs mit Low-Level-Pokémon beginnen.
 - Beispiel: Wird **Tauboga** oder **Tauboss** gefangen, wird die **Taubsi-Linie** freigeschaltet. Ein späterer neuer Run bietet daraus **Taubsi**, nicht Tauboga oder Tauboss, als mögliche Startform an.
+- Verzweigte Entwicklungen gehören weiterhin zu derselben Ursprungsfamilie: Wird später beispielsweise eine Endform einer verzweigten Linie gefangen, muss der Meta-Fortschritt bis zur gemeinsamen niedrigsten bekannten Ausgangsform zurückauflösen können.
 - Der Fang einer höheren Entwicklung markiert die niedrigere Form **nicht fälschlich als konkret gefangen**. Die Unterscheidung zwischen konkreter Pokédex-Form und freigeschalteter Entwicklungslinie bleibt erhalten.
 - Sobald ein Fangsystem einen erfolgreichen Fang bestätigt, muss es `MetaProgression.record_caught(species_id)` aufrufen. Die Zuordnung zur Entwicklungslinie erfolgt automatisch über `data/rules/evolution_chains.json`.
 - Optional kann bereits bei einer Begegnung `MetaProgression.record_seen(species_id)` aufgerufen werden, damit später zwischen „gesehen“ und „gefangen“ unterschieden werden kann.
