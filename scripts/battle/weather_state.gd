@@ -3,7 +3,15 @@ class_name BattleWeatherState
 
 # Central runtime state for exactly one global battle weather.
 # Weather definitions are supplied by data/rules/weather_rules.json so new
-# weather IDs and type-damage coefficients do not require per-move code.
+# weather IDs and supported type-damage coefficients do not require per-move code.
+
+const SUPPORTED_DEFINITION_KEYS: Dictionary = {
+    "display_name": true,
+    "emoji": true,
+    "start_message": true,
+    "end_message": true,
+    "damage_type_strength_coefficients": true
+}
 
 var _definitions: Dictionary = {}
 var _state: Dictionary = {}
@@ -13,21 +21,57 @@ func configure(definitions: Dictionary) -> void:
     _definitions = definitions.duplicate(true)
     reset()
 
-    for weather_id_value: Variant in _definitions.keys():
+    for validation_error: String in validate_definitions(_definitions):
+        push_error(validation_error)
+
+
+func validate_definitions(definitions: Dictionary) -> Array[String]:
+    var errors: Array[String] = []
+
+    for weather_id_value: Variant in definitions.keys():
         var weather_id: String = str(weather_id_value)
-        var definition_value: Variant = _definitions.get(weather_id, {})
+        var definition_value: Variant = definitions.get(weather_id, {})
         if not (definition_value is Dictionary):
-            push_error("Wetterdefinition '%s' ist kein Dictionary." % weather_id)
+            errors.append("Wetterdefinition '%s' ist kein Dictionary." % weather_id)
             continue
+
         var definition: Dictionary = definition_value
+        for key_value: Variant in definition.keys():
+            var key: String = str(key_value)
+            if not SUPPORTED_DEFINITION_KEYS.has(key):
+                errors.append(
+                    "Wetterdefinition '%s' enthält die nicht unterstützte Wettermechanik/Eigenschaft '%s'."
+                    % [weather_id, key]
+                )
+
         if str(definition.get("display_name", "")).is_empty():
-            push_error("Wetterdefinition '%s' besitzt keinen display_name." % weather_id)
+            errors.append("Wetterdefinition '%s' besitzt keinen display_name." % weather_id)
+
         var damage_rules_value: Variant = definition.get("damage_type_strength_coefficients", {})
         if not (damage_rules_value is Dictionary):
-            push_error(
+            errors.append(
                 "Wetterdefinition '%s' besitzt keine gültigen damage_type_strength_coefficients."
                 % weather_id
             )
+            continue
+
+        var damage_rules: Dictionary = damage_rules_value
+        for move_type_value: Variant in damage_rules.keys():
+            var move_type: String = str(move_type_value)
+            if move_type.is_empty():
+                errors.append(
+                    "Wetterdefinition '%s' enthält einen leeren Schadenstyp."
+                    % weather_id
+                )
+                continue
+            var coefficient_value: Variant = damage_rules.get(move_type_value)
+            if not (coefficient_value is int or coefficient_value is float):
+                errors.append(
+                    "Wetterdefinition '%s' enthält für Typ '%s' keinen numerischen Wetterkoeffizienten."
+                    % [weather_id, move_type]
+                )
+
+    return errors
 
 
 func reset() -> void:
@@ -161,7 +205,15 @@ func damage_multiplier(move_type: String) -> float:
     if not rules.has(move_type):
         return 1.0
 
-    var coefficient: float = float(rules.get(move_type, 0.0))
+    var coefficient_value: Variant = rules.get(move_type, 0.0)
+    if not (coefficient_value is int or coefficient_value is float):
+        push_error(
+            "Wetter '%s' besitzt für Typ '%s' keinen numerischen Wetterkoeffizienten."
+            % [weather_id, move_type]
+        )
+        return 1.0
+
+    var coefficient: float = float(coefficient_value)
     var strength: float = float(_state.get("strength_percent", 0.0)) / 100.0
     return maxf(0.0, 1.0 + strength * coefficient)
 
