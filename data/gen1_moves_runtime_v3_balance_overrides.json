@@ -1,0 +1,33 @@
+{
+  "schema_version": 3,
+  "moves": {
+    "rapid_spin": {
+      "id": "rapid_spin",
+      "name": "Turbodreher",
+      "description": "Der Anwender dreht sich mit hoher Geschwindigkeit, greift an, befreit sich von störenden Effekten und beschleunigt seinen nächsten ATB-Zyklus.",
+      "type": "normal",
+      "category": "physical",
+      "power": 50,
+      "accuracy": 100.0,
+      "ap": 6,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": true,
+      "emoji": "🌀",
+      "effect_source": "[damage, cleanse(self: seeded+binding), field_cleanse(allied_side: entry_hazard), temporary_effect(next_atb_cycle_reduction, strength=special*1.0, duration=next_atb_cycle)]",
+      "special_rules": "Alle Sekundäreffekte nur bei erfolgreichem Treffer. next_atb_cycle_multiplier = 1 - special/100.",
+      "mechanics": [
+        {"kind": "damage"},
+        {"kind": "cleanse_self", "effects": ["seeded", "binding"]},
+        {"kind": "db_clear_allied_hazards"},
+        {"kind": "db_next_cycle_mod", "multiplier_from_special": -1.0}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "RPG-Balance: Stärke 50 + Selbst-Cleanse + Entfernung eigener Eintrittsgefahren + Statuswert-basierte Beschleunigung des nächsten ATB-Zyklus; bewusst AP6 statt PP-Mapping AP1"
+      }
+    }
+  }
+}
