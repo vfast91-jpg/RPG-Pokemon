@@ -56,6 +56,9 @@ jobs:
       - name: Route level-up move details regression test
         run: ./godot --headless --path . --script tests/route_levelup_move_details_test.gd
 
+      - name: Route encounter level curve regression test
+        run: ./godot --headless --path . --script tests/route_encounter_level_curve_test.gd
+
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
 
