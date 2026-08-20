@@ -1,8 +1,14 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "ruleset_id": "pokemon_modern_18_types_v1",
-  "description": "Zentrale Typen-Effektivität für Attackentyp gegen Pokémon-Typ. Nicht aufgeführte Kombinationen sind neutral (1.0). Bei zwei Verteidigertypen werden die Multiplikatoren multipliziert.",
+  "description": "Zentrale Typen-Effektivität für Attackentyp gegen Pokémon-Typ. Nicht aufgeführte Kombinationen sind neutral (1.0). Bei zwei Verteidigertypen werden die Multiplikatoren multipliziert. Zusätzlich ist der Same-Type-Attack-Bonus (STAB) zentral konfiguriert.",
   "default_multiplier": 1.0,
+  "same_type_bonus": {
+    "damage_multiplier": 1.5,
+    "scalable_status_multiplier": 1.5,
+    "standardized_status_base_effects_unchanged": true,
+    "description": "Stimmt der Attackentyp mit mindestens einem Typ des Anwenders überein, erhalten Schadensattacken x1.5 Schaden. Skalierbare Status-/Supportwirkungen erhalten x1.5 Effektstärke. Die feste Grundwirkung standardisierter Statuszustände wie Paralyse, Verbrennung oder Vergiftung wird dadurch nicht verändert."
+  },
   "types": [
     "normal",
     "fire",
