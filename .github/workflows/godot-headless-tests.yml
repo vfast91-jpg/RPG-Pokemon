@@ -47,6 +47,9 @@ jobs:
       - name: Combat roster layout regression test
         run: ./godot --headless --path . --script tests/combat_roster_layout_test.gd
 
+      - name: Move preview accuracy regression test
+        run: ./godot --headless --path . --script tests/move_preview_accuracy_test.gd
+
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
 
