@@ -49,3 +49,6 @@ jobs:
 
       - name: Weather runtime integration test
         run: ./godot --headless --path . --script tests/weather_runtime_integration_test.gd
+
+      - name: Weather validation test
+        run: ./godot --headless --path . --script tests/weather_validation_test.gd
