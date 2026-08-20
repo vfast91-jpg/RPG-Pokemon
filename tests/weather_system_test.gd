@@ -23,14 +23,14 @@ func _initialize() -> void:
 
 func _fresh_demo():
     var demo = BattleDemoScript.new()
-    demo._load_data()
-
-    var log: RichTextLabel = RichTextLabel.new()
-    log.bbcode_enabled = true
-    demo.log_label = log
-    demo.weather_label = Label.new()
+    demo.process_mode = Node.PROCESS_MODE_DISABLED
+    get_root().add_child(demo)
+    assert(not demo.data.is_empty(), "BattleDemo muss seine echten Laufzeitdaten geladen haben.")
+    assert(demo.log_label != null, "BattleDemo muss die echte Battle-Log-UI aufgebaut haben.")
+    assert(demo.weather_label != null, "BattleDemo muss die Wetteranzeige aufgebaut haben.")
     demo.battle_active = true
     demo.paused = false
+    demo.log_label.text = ""
     return demo
 
 
@@ -70,6 +70,12 @@ func _test_regentanz_data_contract() -> void:
     assert(int(move.get("ap", 0)) == 8, "Regentanz muss RPG-AP 8 besitzen.")
     assert(str(move.get("target", "")) == "global_battlefield", "Regentanz muss das globale Kampffeld zielen.")
     assert(str(move.get("emoji", "")) == "🌧️", "Regentanz muss das Emoji 🌧️ besitzen.")
+
+    var has_weather_mechanic: bool = false
+    for mechanic_value: Variant in move.get("mechanics", []):
+        if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == "weather":
+            has_weather_mechanic = true
+    assert(has_weather_mechanic, "Regentanz muss über die echte weather-Mechanik aufgelöst werden.")
 
     var weather_value: Variant = move.get("weather", {})
     assert(weather_value is Dictionary, "Regentanz braucht einen data-driven weather-Block.")
