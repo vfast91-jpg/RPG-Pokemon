@@ -3,6 +3,12 @@ extends "res://scripts/battle_demo.gd"
 # 640x360 layout layer: keeps the battle logic in battle_demo.gd and only
 # uses the extra screen space for a roomier combat presentation.
 
+var _active_move_type: String = "typeless"
+var _card_style_default: StyleBoxFlat = null
+var _card_style_active: StyleBoxFlat = null
+var _card_style_target: StyleBoxFlat = null
+
+
 func _build_battle(root: Control) -> void:
     battle_panel = Control.new()
     battle_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -178,3 +184,129 @@ func _prompt_player(actor: Dictionary) -> void:
     wait_button.tooltip_text = "Aggro senken und schneller wieder bereit werden."
     wait_button.pressed.connect(_choose_wait)
     action_grid.add_child(wait_button)
+
+    # Während der Auswahl ist sofort sichtbar, wer handelt und welches
+    # gegnerische Pokémon aufgrund der aktuellen Aggro das Ziel ist.
+    _refresh_cards()
+
+
+func _execute_move(actor: Dictionary, move_id: String) -> void:
+    _active_move_type = "typeless"
+    var moves_value: Variant = data.get("moves", {})
+    if moves_value is Dictionary:
+        var move_value: Variant = moves_value.get(move_id, {})
+        if move_value is Dictionary:
+            _active_move_type = str(move_value.get("type", "typeless"))
+
+    super._execute_move(actor, move_id)
+    _active_move_type = "typeless"
+
+
+func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
+    if power <= 0:
+        return 0
+
+    var offensive_stat: float = float(actor.get("attack", 10))
+    if category == "special":
+        offensive_stat = float(actor.get("special", 10))
+
+    var raw: float = (
+        ((2.0 * float(actor.get("level", 1)) / 5.0 + 2.0)
+        * float(power) * offensive_stat * float(actor.get("attack_mult", 1.0))
+        / maxf(1.0, float(target.get("defense", 10)))) / 50.0
+    ) + 2.0
+
+    raw /= maxf(0.25, float(target.get("defense_mult", 1.0)))
+    actor["attack_mult"] = 1.0
+    target["defense_mult"] = 1.0
+
+    var attacker_types: Array = _type_array(actor.get("types", []))
+    var defender_types: Array = _type_array(target.get("types", []))
+    var effectiveness: float = TypeSystem.get_multiplier(move_type, defender_types)
+    if is_zero_approx(effectiveness):
+        return 0
+
+    var stab: float = TypeSystem.get_same_type_damage_multiplier(move_type, attacker_types)
+    return maxi(1, int(round(raw * randf_range(0.88, 1.0) * effectiveness * stab)))
+
+
+func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
+    var kind: String = str(mechanic.get("kind", ""))
+
+    # Standardisierte Zustände behalten ihre feste Grundwirkung. Der Typenbonus
+    # verstärkt nur skalierbare Support-/Statuswerte.
+    if kind == "status":
+        return super._effect(actor, target, mechanic)
+
+    var attacker_types: Array = _type_array(actor.get("types", []))
+    var status_bonus: float = TypeSystem.get_same_type_status_multiplier(_active_move_type, attacker_types)
+    var special_percent: float = float(actor.get("special", 0)) / 100.0
+    var multiplier: float = float(mechanic.get("multiplier_from_special", 1.0))
+    var scaled_delta: float = special_percent * multiplier * status_bonus
+
+    if kind == "outgoing_damage_mod":
+        target["attack_mult"] = clampf(1.0 + scaled_delta, 0.25, 2.5)
+        return absf(scaled_delta) * 10.0
+    elif kind == "incoming_damage_mod":
+        target["defense_mult"] = clampf(1.0 - scaled_delta, 0.25, 2.5)
+        return absf(scaled_delta) * 10.0
+    elif kind == "accuracy_mod":
+        target["accuracy_mult"] = clampf(1.0 + scaled_delta, 0.2, 1.0)
+        return absf(scaled_delta) * 8.0
+    elif kind == "atb_cycle_mod":
+        target["next_cycle"] = clampf(1.0 + scaled_delta, 0.45, 2.5)
+        return absf(scaled_delta) * 8.0
+    elif kind == "atb_knockback":
+        if randf() <= float(mechanic.get("chance", 1.0)):
+            var amount: float = float(mechanic.get("amount", 0.25)) * status_bonus * 100.0
+            target["atb"] = maxf(0.0, float(target.get("atb", 0.0)) - amount)
+            return 3.0 * status_bonus
+        return 0.0
+
+    return super._effect(actor, target, mechanic)
+
+
+func _refresh_cards() -> void:
+    super._refresh_cards()
+    _ensure_card_highlight_styles()
+
+    var actor_id: String = ""
+    var target_id: String = ""
+    if not selected_actor.is_empty():
+        actor_id = str(selected_actor.get("id", ""))
+        var target: Dictionary = _highest_aggro(selected_actor)
+        if not target.is_empty():
+            target_id = str(target.get("id", ""))
+
+    for combatant_value: Variant in combatants:
+        var combatant: Dictionary = combatant_value
+        var ui_value: Variant = cards.get(str(combatant.get("id", "")), {})
+        if not (ui_value is Dictionary):
+            continue
+        var ui: Dictionary = ui_value
+        var card: PanelContainer = ui.get("card") as PanelContainer
+        if card == null:
+            continue
+
+        var combatant_id: String = str(combatant.get("id", ""))
+        if combatant_id == actor_id:
+            card.add_theme_stylebox_override("panel", _card_style_active)
+        elif combatant_id == target_id:
+            card.add_theme_stylebox_override("panel", _card_style_target)
+        else:
+            card.add_theme_stylebox_override("panel", _card_style_default)
+
+
+func _ensure_card_highlight_styles() -> void:
+    if _card_style_default != null:
+        return
+
+    _card_style_default = _panel(Color("f8f1dce8"), Color("34443d"), 6, 3.0)
+    _card_style_active = _panel(Color("f8f1dce8"), Color("39b965"), 6, 3.0)
+    _card_style_target = _panel(Color("f8f1dce8"), Color("dc3f3f"), 6, 3.0)
+    _card_style_active.set_border_width_all(4)
+    _card_style_target.set_border_width_all(4)
+
+
+func _type_array(value: Variant) -> Array:
+    return value.duplicate() if value is Array else []
