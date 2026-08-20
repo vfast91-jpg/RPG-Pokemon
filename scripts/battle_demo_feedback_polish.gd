@@ -31,6 +31,13 @@ func _feedback_result(target: Dictionary, before: Dictionary) -> Dictionary:
     var result: Dictionary = super._feedback_result(target, before)
     var text: String = str(result.get("text", "KEIN EFFEKT"))
     var kind: String = str(result.get("kind", "neutral"))
+
+    # Keep internal ATB mechanics untouched while removing the acronym from
+    # player-facing action feedback.
+    text = text.replace("ATB LANGSAMER", "AKTIONSLEISTE LANGSAMER")
+    text = text.replace("ATB SCHNELLER", "AKTIONSLEISTE SCHNELLER")
+    text = text.replace("ATB ↓", "AKTIONSLEISTE ↓")
+
     var extras: Array[String] = []
     var extra_positive: bool = false
     var extra_negative: bool = false
