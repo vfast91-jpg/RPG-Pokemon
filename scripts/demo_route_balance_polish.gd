@@ -2,15 +2,13 @@ extends "res://scripts/demo_route_levelup_hardmode.gd"
 
 # Demo-route balance polish:
 # - Capture level rises with route stage instead of staying fixed at level 3.
-# - Enemy count is rolled independently from player team size.
-# - Difficulty reacts to average living-team level, so a fresh capture does not
-#   instantly double the enemy level budget.
-# - Early stages strongly prefer smaller encounters; 1-4 enemies become
-#   increasingly common later and consecutive stages avoid repeating the same
-#   enemy count when possible.
+# - Enemy levels are fixed by route stage and NEVER scale from the player's team.
+# - Enemy count is rolled independently and varies from 1 to 4.
+# - Early stages strongly prefer smaller encounters; larger groups become more
+#   common later without letting repeated two-enemy fights dominate every run.
 
 const CAPTURE_LEVEL_BY_STAGE: Array[int] = [3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
-const BASE_ENEMY_LEVEL_BY_STAGE: Array[int] = [3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
+const ENEMY_LEVEL_BY_STAGE: Array[int] = [2, 3, 3, 4, 4, 5, 6, 7, 8, 9]
 
 var _last_enemy_count: int = 0
 
@@ -22,6 +20,10 @@ func start_route() -> void:
 
 func _capture_level_for_stage(current_stage: int) -> int:
     return CAPTURE_LEVEL_BY_STAGE[clampi(current_stage - 1, 0, CAPTURE_LEVEL_BY_STAGE.size() - 1)]
+
+
+func _enemy_level_for_stage(current_stage: int) -> int:
+    return ENEMY_LEVEL_BY_STAGE[clampi(current_stage - 1, 0, ENEMY_LEVEL_BY_STAGE.size() - 1)]
 
 
 func _choices_for_stage(current_stage: int) -> Array[Dictionary]:
@@ -71,43 +73,11 @@ func _enemy_party_for_stage(current_stage: int) -> Array:
     if ids.is_empty():
         return []
 
-    var living_level_sum: int = 0
-    var living_count: int = 0
-    for member_value: Variant in team:
-        if not (member_value is Dictionary):
-            continue
-        var member: Dictionary = member_value
-        if int(member.get("hp", 0)) <= 0:
-            continue
-        living_level_sum += maxi(1, int(member.get("level", 1)))
-        living_count += 1
-
-    var average_team_level: float = (
-        float(living_level_sum) / float(living_count)
-        if living_count > 0
-        else 1.0
-    )
-
-    var baseline_level: int = BASE_ENEMY_LEVEL_BY_STAGE[
-        clampi(current_stage - 1, 0, BASE_ENEMY_LEVEL_BY_STAGE.size() - 1)
-    ]
-    var adaptive_factor: float = 0.55 + float(current_stage) * 0.03
-    var adaptive_level: int = maxi(1, int(round(average_team_level * adaptive_factor)))
-    var center_level: int = maxi(baseline_level, adaptive_level)
-    center_level = mini(center_level, current_stage + 3)
-
     var enemy_count: int = _roll_enemy_count(current_stage)
-    var early_group_penalty: int = 1 if current_stage <= 2 and enemy_count >= 2 else 0
-    var max_enemy_level: int = current_stage + 4
-
+    var enemy_level: int = _enemy_level_for_stage(current_stage)
     var result: Array = []
+
     for _index: int in range(enemy_count):
-        var level_variation: int = randi_range(-1, 1)
-        var enemy_level: int = clampi(
-            center_level + level_variation - early_group_penalty,
-            1,
-            max_enemy_level
-        )
         result.append({
             "species_id": str(ids.pick_random()),
             "level": enemy_level
@@ -124,8 +94,7 @@ func _roll_enemy_count(current_stage: int) -> int:
         # Gentle opening: usually one opponent, occasionally two.
         desired = 1 if roll < 0.72 else 2
     elif current_stage <= 4:
-        # All four encounter sizes are possible from here, but large groups
-        # remain rare while the team is still developing.
+        # All four encounter sizes become possible, but 3-4 are still uncommon.
         if roll < 0.35:
             desired = 1
         elif roll < 0.80:
@@ -153,16 +122,18 @@ func _roll_enemy_count(current_stage: int) -> int:
         else:
             desired = 4
 
-    # Anti-streak protection makes the promised 1-4 variation actually visible
-    # during normal play instead of allowing long runs of identical 2-Pokémon
-    # encounters purely by chance.
+    # Prevent long streaks of the same encounter size while keeping early
+    # difficulty gentle. A repeat only moves one step up/down instead of
+    # rerolling into a surprise four-Pokémon fight.
     if desired == _last_enemy_count:
         if current_stage <= 2:
             desired = 2 if desired == 1 else 1
+        elif desired <= 1:
+            desired = 2
+        elif desired >= 4:
+            desired = 3
         else:
-            var alternatives: Array[int] = [1, 2, 3, 4]
-            alternatives.erase(desired)
-            desired = alternatives.pick_random()
+            desired += 1 if randf() < 0.5 else -1
 
     _last_enemy_count = desired
     return desired
