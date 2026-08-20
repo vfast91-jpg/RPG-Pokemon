@@ -3,6 +3,17 @@ extends "res://scripts/battle_demo_user_polish.gd"
 # Combat-lab family-selection layer.
 # A setup row has exactly one source of truth: family root + level.
 # The active evolution form is always derived from those two values.
+#
+# The project renders a 640x360 virtual viewport at 1280x720. Each team panel
+# therefore has only about 291 logical pixels for its setup rows. Keep every
+# row below that budget so the right-hand team can never push outside the frame.
+
+const LAB_ROW_SEPARATION: int = 3
+const LAB_ROW_SLOT_WIDTH: float = 16.0
+const LAB_ROW_PICKER_WIDTH: float = 100.0
+const LAB_ROW_FORM_WIDTH: float = 76.0
+const LAB_ROW_LEVEL_WIDTH: float = 68.0
+const LAB_ROW_MAXIMUM_MIN_WIDTH: float = 286.0
 
 
 func _load_data() -> void:
@@ -50,21 +61,23 @@ func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
         row.name = "SetupRow_%d" % index
         row.custom_minimum_size = Vector2(0.0, 28.0)
         row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        row.add_theme_constant_override("separation", 4)
+        row.add_theme_constant_override("separation", LAB_ROW_SEPARATION)
         box.add_child(row)
 
         var slot := Label.new()
         slot.name = "Slot"
         slot.text = "%d." % (index + 1)
-        slot.custom_minimum_size = Vector2(20.0, 24.0)
+        slot.custom_minimum_size = Vector2(LAB_ROW_SLOT_WIDTH, 24.0)
         slot.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         slot.add_theme_font_size_override("font_size", 10)
         row.add_child(slot)
 
         var picker := OptionButton.new()
         picker.name = "FamilyPicker"
-        picker.custom_minimum_size = Vector2(155.0, 24.0)
+        picker.custom_minimum_size = Vector2(LAB_ROW_PICKER_WIDTH, 24.0)
         picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        # Critical for the 640px virtual viewport: long names must be clipped,
+        # never allowed to redefine the dropdown's minimum width.
         picker.fit_to_longest_item = false
         picker.clip_text = true
         picker.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -93,7 +106,7 @@ func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
         level_spin.step = 1.0
         level_spin.prefix = "Lv. "
         level_spin.value = float(level_value)
-        level_spin.custom_minimum_size = Vector2(84.0, 24.0)
+        level_spin.custom_minimum_size = Vector2(LAB_ROW_LEVEL_WIDTH, 24.0)
         level_spin.tooltip_text = "Level 1–%d. Die Entwicklungsform folgt automatisch." % DATABASE_LEVEL_MAX
         row.add_child(level_spin)
 
@@ -104,11 +117,14 @@ func _fill_rows(box: VBoxContainer, setup: Array, own: bool) -> void:
 func _make_form_badge(family_id: String, level: int) -> PanelContainer:
     var badge := PanelContainer.new()
     badge.name = "ActiveForm"
-    badge.custom_minimum_size = Vector2(96.0, 23.0)
+    badge.custom_minimum_size = Vector2(LAB_ROW_FORM_WIDTH, 23.0)
+    badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    badge.clip_contents = true
     badge.mouse_filter = Control.MOUSE_FILTER_PASS
 
     var label := Label.new()
     label.name = "Label"
+    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.clip_text = true
