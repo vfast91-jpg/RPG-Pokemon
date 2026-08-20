@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           curl --fail --location --retry 3 \
             --output godot.zip \
-            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+            https://github.com/godotengine/godot-builds/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
           unzip -q godot.zip
           mv Godot_v4.3-stable_linux.x86_64 godot
           chmod +x godot
