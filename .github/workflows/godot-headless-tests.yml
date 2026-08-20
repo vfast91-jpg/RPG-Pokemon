@@ -41,6 +41,9 @@ jobs:
       - name: Evolution resolver test
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
 
+      - name: Combat lab config regression test
+        run: ./godot --headless --path . --script tests/combat_lab_config_test.gd
+
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
 
