@@ -1,0 +1,303 @@
+{
+  "schema_version": 2,
+  "pack_id": "bulbasaur_pre_evolution_pack_v1",
+  "purpose": "Vollstaendige Datenvorbereitung fuer Bisasam bis zur verpflichtenden Entwicklung zu Bisaknosp auf Level 16, inklusive drei erster Gen-9-TMs. Dieses Paket definiert nur Daten und programmiert noch kein Entwicklungs- oder TM-System.",
+  "source_basis": {
+    "species_design_guide": "POKEMON_SPECIES_DESIGN_GUIDE_V2",
+    "battle_rules": "RPG_POKEMON_KAMPFREGELN_MASTER_V2",
+    "move_design_guide": "RPG_POKEMON_ATTACKEN_DESIGN_GUIDE_V2",
+    "learnset_reference": "Pokemon Scarlet/Violet Generation 9",
+    "learnset_source": "https://pokemondb.net/pokedex/bulbasaur/moves/9"
+  },
+  "project_decisions": {
+    "evolution_can_be_prevented": false,
+    "store_level_moves_only_until_evolution": true,
+    "initial_tm_count_per_species": 3,
+    "tm_selection_rule": "first_three_compatible_tms_by_current_scarlet_violet_tm_number"
+  },
+  "species": {
+    "species_id": "bulbasaur",
+    "pokedex_number": 1,
+    "display_name": "Bisasam",
+    "pokedex_category": "Samen-Pokemon",
+    "asset_id": "bulbasaur",
+    "physical": {
+      "height_m": 0.7,
+      "weight_kg": 6.9
+    },
+    "types": {
+      "primary": "grass",
+      "secondary": "poison"
+    },
+    "base_stats": {
+      "hp": 45,
+      "attack": 60,
+      "defense": 60,
+      "special": 65,
+      "speed": 45
+    },
+    "balance_reference": {
+      "rpg_base_stat_total": 275,
+      "original_base_stat_total": 318,
+      "comparison_budget_5_of_6": 265
+    },
+    "progression": {
+      "experience_curve": "medium_slow",
+      "base_exp_yield": 64
+    },
+    "capture": {
+      "catch_rate": 45
+    },
+    "evolution": {
+      "evolves_into": "ivysaur",
+      "evolution_level": 16,
+      "method": "level",
+      "evolution_optional": false,
+      "forced_on_reaching_level": true
+    },
+    "learnset": {
+      "level_up": {
+        "1": ["tackle", "growl"],
+        "3": ["vine_whip"],
+        "6": ["growth"],
+        "9": ["leech_seed"],
+        "12": ["razor_leaf"],
+        "15": ["poison_powder", "sleep_powder"]
+      },
+      "tm_hm": {
+        "001": "take_down",
+        "002": "charm",
+        "007": "protect"
+      },
+      "other": []
+    }
+  },
+  "moves": {
+    "tackle": {
+      "name": "Tackle",
+      "type": "normal",
+      "category": "physical",
+      "power": 40,
+      "accuracy": 100,
+      "original_pp": 35,
+      "rpg_ap": 2,
+      "target": "enemy_highest_aggro",
+      "contact": true,
+      "area": false,
+      "effects": ["damage"],
+      "special_scaling": "none",
+      "aggro_from_damage": true,
+      "aggro_from_status": false,
+      "aggro_from_healing": false
+    },
+    "growl": {
+      "name": "Heuler",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 40,
+      "rpg_ap": 1,
+      "target": "all_enemies",
+      "contact": false,
+      "area": true,
+      "effects": [
+        "temporary_effect(outgoing_damage_reduction, strength=special*1.0, duration=next_damaging_action, consume=after_matching_action_resolves, trigger=successful_hit)"
+      ],
+      "special_scaling": "standard_1.0x",
+      "aggro_from_damage": false,
+      "aggro_from_status": true,
+      "aggro_from_healing": false
+    },
+    "vine_whip": {
+      "name": "Rankenhieb",
+      "type": "grass",
+      "category": "physical",
+      "power": 45,
+      "accuracy": 100,
+      "original_pp": 25,
+      "rpg_ap": 4,
+      "target": "enemy_highest_aggro",
+      "contact": true,
+      "area": false,
+      "effects": ["damage"],
+      "special_scaling": "none",
+      "aggro_from_damage": true,
+      "aggro_from_status": false,
+      "aggro_from_healing": false
+    },
+    "growth": {
+      "name": "Wachstum",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 20,
+      "rpg_ap": 5,
+      "target": "self",
+      "contact": false,
+      "area": false,
+      "effects": [
+        "temporary_effect(outgoing_damage_increase, strength=special*1.0, duration=next_damaging_action, consume=after_matching_action_resolves, trigger=on_use)"
+      ],
+      "special_scaling": "standard_1.0x",
+      "aggro_from_damage": false,
+      "aggro_from_status": true,
+      "aggro_from_healing": false,
+      "special_rules": ["sun_weather_may_use_special_ratio_2.0_when_weather_system_exists"]
+    },
+    "leech_seed": {
+      "name": "Egelsamen",
+      "type": "grass",
+      "category": "status",
+      "power": null,
+      "accuracy": 90,
+      "original_pp": 10,
+      "rpg_ap": 7,
+      "target": "enemy_highest_aggro",
+      "contact": false,
+      "area": false,
+      "effects": [
+        "persistent_effect(seeded, tick=after_target_action_resolves, damage=1/8_target_max_hp_min1, healing=actual_damage_dealt_to_source_team_position, duration=until_target_leaves_battlefield)"
+      ],
+      "special_scaling": "none",
+      "aggro_from_damage": true,
+      "aggro_from_status": true,
+      "aggro_from_healing": true,
+      "special_rules": ["fails_if_target_is_grass", "fails_if_target_already_seeded"]
+    },
+    "razor_leaf": {
+      "name": "Rasierblatt",
+      "type": "grass",
+      "category": "physical",
+      "power": 55,
+      "accuracy": 95,
+      "original_pp": 25,
+      "rpg_ap": 4,
+      "target": "all_enemies",
+      "contact": false,
+      "area": true,
+      "effects": ["damage"],
+      "special_scaling": "none",
+      "critical_hit_chance_override": 0.125,
+      "aggro_from_damage": true,
+      "aggro_from_status": false,
+      "aggro_from_healing": false,
+      "special_rules": ["accuracy_and_critical_roll_separately_per_target"]
+    },
+    "poison_powder": {
+      "name": "Giftpuder",
+      "type": "poison",
+      "category": "status",
+      "power": null,
+      "accuracy": 75,
+      "original_pp": 35,
+      "rpg_ap": 2,
+      "target": "enemy_highest_aggro",
+      "contact": false,
+      "area": false,
+      "effects": ["apply_status(poison, chance=1.0, trigger=successful_hit)"],
+      "status_reference": "poison",
+      "special_scaling": "none",
+      "aggro_from_damage": false,
+      "aggro_from_status": true,
+      "aggro_from_healing": false,
+      "special_rules": ["powder_move", "fails_against_grass_type_targets", "use_central_poison_immunities"]
+    },
+    "sleep_powder": {
+      "name": "Schlafpuder",
+      "type": "grass",
+      "category": "status",
+      "power": null,
+      "accuracy": 75,
+      "original_pp": 15,
+      "rpg_ap": 6,
+      "target": "enemy_highest_aggro",
+      "contact": false,
+      "area": false,
+      "effects": ["apply_status(sleep, chance=1.0, trigger=successful_hit)"],
+      "status_reference": "sleep",
+      "special_scaling": "none",
+      "aggro_from_damage": false,
+      "aggro_from_status": true,
+      "aggro_from_healing": false,
+      "special_rules": ["powder_move", "fails_against_grass_type_targets", "sleep_duration_uses_central_1_to_3_action_opportunities"]
+    },
+    "take_down": {
+      "name": "Bodycheck",
+      "type": "normal",
+      "category": "physical",
+      "power": 90,
+      "accuracy": 85,
+      "original_pp": 20,
+      "rpg_ap": 5,
+      "target": "enemy_highest_aggro",
+      "contact": true,
+      "area": false,
+      "effects": ["damage", "recoil(user, amount=0.25*actual_damage_dealt, trigger=after_damage)"],
+      "special_scaling": "none",
+      "aggro_from_damage": true,
+      "aggro_from_status": false,
+      "aggro_from_healing": false,
+      "special_rules": ["no_recoil_on_miss_or_zero_damage", "recoil_cannot_crit"]
+    },
+    "charm": {
+      "name": "Charme",
+      "type": "fairy",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 20,
+      "rpg_ap": 5,
+      "target": "enemy_highest_aggro",
+      "contact": false,
+      "area": false,
+      "effects": [
+        "temporary_effect(outgoing_damage_reduction, strength=special*2.0, duration=next_damaging_action, consume=after_matching_action_resolves, trigger=successful_hit)"
+      ],
+      "special_scaling": "enhanced_2.0x",
+      "aggro_from_damage": false,
+      "aggro_from_status": true,
+      "aggro_from_healing": false,
+      "special_rules": ["status_moves_do_not_consume_effect"]
+    },
+    "protect": {
+      "name": "Schutzschild",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 10,
+      "rpg_ap": 7,
+      "target": "self",
+      "contact": false,
+      "area": false,
+      "priority": 0,
+      "opening_phase": false,
+      "effects": [
+        "temporary_effect(protective_guard, block=next_hostile_move_affecting_self, duration=until_triggered, consume=after_block, trigger=on_use)"
+      ],
+      "special_scaling": "none",
+      "aggro_from_damage": false,
+      "aggro_from_status": true,
+      "aggro_from_healing": false,
+      "special_rules": [
+        "ATB_translation_blocks_exactly_next_hostile_move_affecting_self",
+        "original_plus4_priority_not_carried_into_ATB",
+        "consecutive_use_failure_penalty_not_active_in_this_simplified_RPG_translation"
+      ]
+    }
+  },
+  "status_dependencies": {
+    "poison": "Use central poison definition from RPG_POKEMON_KAMPFREGELN_MASTER_V2.",
+    "sleep": "Use central sleep definition from RPG_POKEMON_KAMPFREGELN_MASTER_V2."
+  },
+  "implementation_status": {
+    "species_data_ready": true,
+    "pre_evolution_move_data_ready": true,
+    "three_tm_move_data_ready": true,
+    "runtime_leveling_system_programmed_here": false,
+    "runtime_forced_evolution_system_programmed_here": false,
+    "runtime_tm_item_system_programmed_here": false
+  }
+}
