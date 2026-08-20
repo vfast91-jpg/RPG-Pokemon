@@ -5,6 +5,16 @@ const WEATHER_RULE_PATH: String = "res://data/rules/weather_rules.json"
 const WEATHER_MOVE_PACK_PATH: String = "res://data/WEATHER_MOVES.json"
 const GLOBAL_BATTLEFIELD_TARGET: String = "global_battlefield"
 const WEATHER_MECHANIC_KIND: String = "weather"
+const SUPPORTED_WEATHER_MOVE_KEYS: Dictionary = {
+    "weather_id": true,
+    "strength_stat": true,
+    "strength_cap": true,
+    "duration_actions": true,
+    "duration_unit": true
+}
+const SUPPORTED_WEATHER_MECHANIC_KEYS: Dictionary = {
+    "kind": true
+}
 
 var battle_weather = WeatherStateScript.new()
 var weather_label: Label = null
@@ -94,6 +104,8 @@ func _audit_weather_moves() -> void:
         if not (move_value is Dictionary):
             continue
         var move: Dictionary = move_value
+        _audit_weather_mechanic_entries(move_id, move)
+
         var weather_value: Variant = move.get("weather", null)
         var has_weather_mechanic: bool = _move_contains_weather_mechanic(move)
 
@@ -115,6 +127,8 @@ func _audit_weather_moves() -> void:
             )
 
         var weather: Dictionary = weather_value
+        _audit_weather_spec_keys(move_id, weather)
+
         var weather_id: String = str(weather.get("weather_id", ""))
         if weather_id.is_empty():
             push_error("Wetter-Audit: %s besitzt keine weather_id." % move_id)
@@ -137,6 +151,39 @@ func _audit_weather_moves() -> void:
         var strength_stat: String = str(weather.get("strength_stat", ""))
         if strength_stat.is_empty():
             push_error("Wetter-Audit: %s braucht strength_stat." % move_id)
+
+
+func _audit_weather_spec_keys(move_id: String, weather: Dictionary) -> bool:
+    var valid: bool = true
+    for key_value: Variant in weather.keys():
+        var key: String = str(key_value)
+        if not SUPPORTED_WEATHER_MOVE_KEYS.has(key):
+            push_error(
+                "Wetter-Audit: %s enthält das nicht unterstützte Wetterfeld '%s'."
+                % [move_id, key]
+            )
+            valid = false
+    return valid
+
+
+func _audit_weather_mechanic_entries(move_id: String, move: Dictionary) -> void:
+    var mechanics_value: Variant = move.get("mechanics", [])
+    if not (mechanics_value is Array):
+        return
+
+    for mechanic_value: Variant in mechanics_value:
+        if not (mechanic_value is Dictionary):
+            continue
+        var mechanic: Dictionary = mechanic_value
+        if str(mechanic.get("kind", "")) != WEATHER_MECHANIC_KIND:
+            continue
+        for key_value: Variant in mechanic.keys():
+            var key: String = str(key_value)
+            if not SUPPORTED_WEATHER_MECHANIC_KEYS.has(key):
+                push_error(
+                    "Wetter-Audit: %s enthält in der weather-Mechanik das nicht unterstützte Feld '%s'."
+                    % [move_id, key]
+                )
 
 
 func _move_contains_weather_mechanic(move: Dictionary) -> bool:
@@ -290,13 +337,27 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
         push_error("Wettermechanik wurde innerhalb derselben Attacke mehrfach aufgelöst.")
         return 0.0
 
+    for key_value: Variant in mechanic.keys():
+        var key: String = str(key_value)
+        if not SUPPORTED_WEATHER_MECHANIC_KEYS.has(key):
+            push_error(
+                "Wettermechanik enthält das nicht unterstützte Feld '%s'." % key
+            )
+            _weather_activation_result = {"ok": false, "reason": "unsupported_weather_mechanic_field"}
+            return 0.0
+
     var weather_value: Variant = _active_weather_move.get("weather", null)
     if not (weather_value is Dictionary):
         push_error("Wettermechanik wurde ohne gültigen weather-Datenblock ausgeführt.")
         _weather_activation_result = {"ok": false, "reason": "missing_weather_block"}
         return 0.0
 
-    _weather_activation_result = _activate_weather_from_move(actor, weather_value as Dictionary)
+    var weather: Dictionary = weather_value
+    if not _audit_weather_spec_keys(str(_active_weather_move.get("id", "Attacke")), weather):
+        _weather_activation_result = {"ok": false, "reason": "unsupported_weather_field"}
+        return 0.0
+
+    _weather_activation_result = _activate_weather_from_move(actor, weather)
     return 0.0
 
 
