@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_interface_polish.gd"
+extends "res://scripts/battle_demo_weather.gd"
 
 # Runtime bridge for route-earned TMs.
 #
