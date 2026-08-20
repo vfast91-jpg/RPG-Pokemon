@@ -657,20 +657,18 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     actor["atb"] = 0.0
     actor["cycle_mult"] = _cycle_multiplier_for_move(move)
 
-    if move_id == "growl":
-        var targets: Array[Dictionary] = _living_opponents(actor)
-        for target: Dictionary in targets:
-            target["attack_stage"] = maxi(-6, int(target.get("attack_stage", 0)) - 1)
-            _pulse_combatant(target, Color("80b6ff"))
-        actor["aggro"] = float(actor.get("aggro", 0.0)) + float(targets.size()) * 3.0
-        _set_log(_actor_name(actor) + " setzt [b]Heuler[/b] ein. Angriff aller Gegner sinkt!")
+    if str(move.get("category", "")) == "status":
+        _execute_status_move(actor, move_id, move)
     else:
         var target: Dictionary = _highest_aggro_target(actor)
         if target.is_empty():
             return
 
-        var effectiveness: float = _type_effectiveness(str(move.get("type", "normal")), target)
-        var damage: int = _calculate_damage(actor, target, int(move.get("power", 20)), effectiveness)
+        var move_type: String = str(move.get("type", "normal"))
+        var attack_result: Dictionary = TypeSystem.evaluate_attack(move_type, _combatant_types(actor), _combatant_types(target))
+        var effectiveness: float = float(attack_result.get("effectiveness_multiplier", 1.0))
+        var same_type_multiplier: float = float(attack_result.get("same_type_multiplier", 1.0))
+        var damage: int = _calculate_damage(actor, target, int(move.get("power", 20)), effectiveness, same_type_multiplier)
         target["hp"] = maxi(0, int(target["hp"]) - damage)
 
         # Aggro entsteht beim handelnden Pokémon aus der tatsächlichen Wirkung.
@@ -678,6 +676,8 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
 
         var paralysis_applied: bool = false
         if move_id == "nuzzle" and int(target["hp"]) > 0:
+            # Standardisierte Statuszustände behalten ihre feste zentrale Wirkung.
+            # Der Same-Type-Bonus verstärkt hier den Schaden, nicht die Paralyse-Grundwerte.
             target["paralyzed"] = true
             paralysis_applied = true
             actor["aggro"] = float(actor.get("aggro", 0.0)) + 3.0
@@ -689,7 +689,9 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
 
         var feedback: String = _effectiveness_text(effectiveness)
         var status_feedback: String = " + Paralyse!" if paralysis_applied else ""
+        var same_type_feedback: String = " [b]Typenbonus![/b]" if bool(attack_result.get("has_same_type_bonus", false)) else ""
         var log_text: String = _actor_name(actor) + " nutzt [b]" + str(move.get("name", move_id)) + "[/b] → " + str(damage) + " Schaden."
+        log_text += same_type_feedback
         if not feedback.is_empty():
             log_text += " [b]" + feedback + "[/b]"
         log_text += status_feedback
@@ -702,13 +704,62 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     _refresh_all_cards()
     _check_battle_end()
 
+func _execute_status_move(actor: Dictionary, move_id: String, move: Dictionary) -> void:
+    var targets: Array[Dictionary] = _living_opponents(actor)
+    var move_type: String = str(move.get("type", "normal"))
+    var status_multiplier: float = TypeSystem.get_same_type_status_multiplier(move_type, _combatant_types(actor))
+    var total_effect_strength: float = 0.0
+
+    for target: Dictionary in targets:
+        for effect_variant: Variant in move.get("effects", []):
+            if not (effect_variant is Dictionary):
+                continue
+            var effect: Dictionary = effect_variant
+            var kind: String = str(effect.get("kind", ""))
+
+            if kind == "modify_stat":
+                var stat: String = str(effect.get("stat", ""))
+                var base_stages: int = int(effect.get("stages", 0))
+                var scaled_stages: int = _scaled_stage_delta(base_stages, status_multiplier)
+
+                if stat == "attack":
+                    var old_stage: int = int(target.get("attack_stage", 0))
+                    var new_stage: int = clampi(old_stage + scaled_stages, -6, 6)
+                    target["attack_stage"] = new_stage
+                    total_effect_strength += float(absi(new_stage - old_stage))
+                    _pulse_combatant(target, Color("80b6ff"))
+
+            elif kind == "apply_status":
+                # Der Typenbonus verändert NICHT die feste Grundwirkung eines
+                # standardisierten Status. Nur attackenspezifisch skalierbare
+                # Parameter würden separat über TypeSystem verstärkt.
+                var status_id: String = str(effect.get("status", ""))
+                if status_id == "paralysis" and not bool(target.get("paralyzed", false)):
+                    target["paralyzed"] = true
+                    total_effect_strength += 1.0
+                    _pulse_combatant(target, Color("fff36c"))
+
+    actor["aggro"] = float(actor.get("aggro", 0.0)) + total_effect_strength * 3.0
+
+    var bonus_feedback: String = " [b]Typenbonus![/b]" if status_multiplier > 1.0 else ""
+    if move_id == "growl":
+        _set_log(_actor_name(actor) + " setzt [b]Heuler[/b] ein. Angriff aller Gegner sinkt!" + bonus_feedback)
+    else:
+        _set_log(_actor_name(actor) + " setzt [b]" + str(move.get("name", move_id)) + "[/b] ein." + bonus_feedback)
+
+func _scaled_stage_delta(base_stages: int, multiplier: float) -> int:
+    if base_stages == 0:
+        return 0
+    var magnitude: int = maxi(1, int(ceil(absf(float(base_stages)) * multiplier)))
+    return -magnitude if base_stages < 0 else magnitude
+
 func _cycle_multiplier_for_move(move: Dictionary) -> float:
     var rules: Dictionary = data.get("rules", {})
     var ap_rules: Dictionary = rules.get("ap_costs_demo", {})
     var curve: Dictionary = ap_rules.get("demo_atb_cycle_multiplier", {})
     return float(curve.get(str(int(move.get("ap_cost", 1))), 1.0))
 
-func _calculate_damage(actor: Dictionary, target: Dictionary, power: int, effectiveness: float) -> int:
+func _calculate_damage(actor: Dictionary, target: Dictionary, power: int, effectiveness: float, same_type_multiplier: float = 1.0) -> int:
     var stage: int = int(actor.get("attack_stage", 0))
     var rules: Dictionary = data.get("rules", {})
     var stage_rules: Dictionary = rules.get("stat_stages", {})
@@ -719,33 +770,27 @@ func _calculate_damage(actor: Dictionary, target: Dictionary, power: int, effect
     var defense_value: float = maxf(1.0, float(target.get("defense", 10)))
     var level_value: float = float(actor.get("level", 1))
     var raw: float = (((2.0 * level_value / 5.0 + 2.0) * float(power) * attack_value / defense_value) / 50.0) + 2.0
-    var varied: float = raw * randf_range(0.88, 1.0) * effectiveness
+    var varied: float = raw * randf_range(0.88, 1.0) * effectiveness * same_type_multiplier
     return maxi(1, int(round(varied)))
 
+func _combatant_types(combatant: Dictionary) -> Array:
+    var result: Array = []
+    var primary: String = str(combatant.get("type_primary", ""))
+    if not primary.is_empty():
+        result.append(primary)
+
+    var secondary_variant: Variant = combatant.get("type_secondary", null)
+    if secondary_variant != null:
+        var secondary: String = str(secondary_variant)
+        if not secondary.is_empty():
+            result.append(secondary)
+    return result
+
 func _type_effectiveness(move_type: String, target: Dictionary) -> float:
-    # Die Demo enthält derzeit ausschließlich Pikachu. Deshalb wird hier nur
-    # die aktuell benötigte Typbeziehung abgebildet; das vollständige Typensystem
-    # kann später zentral ersetzt werden.
-    var primary: String = str(target.get("type_primary", ""))
-    var secondary_variant: Variant = target.get("type_secondary", null)
-    var multiplier: float = 1.0
-
-    if move_type == "electric":
-        if primary == "electric":
-            multiplier *= 0.5
-        if secondary_variant != null and str(secondary_variant) == "electric":
-            multiplier *= 0.5
-
-    return multiplier
+    return TypeSystem.get_multiplier(move_type, _combatant_types(target))
 
 func _effectiveness_text(effectiveness: float) -> String:
-    if effectiveness <= 0.0:
-        return "Keine Wirkung!"
-    if effectiveness > 1.0:
-        return "Sehr effektiv!"
-    if effectiveness < 1.0:
-        return "Nicht sehr effektiv."
-    return ""
+    return TypeSystem.get_feedback_text(effectiveness)
 
 func _living_opponents(actor: Dictionary) -> Array[Dictionary]:
     var source_team: Array[Dictionary] = enemy_team if str(actor["side"]) == "player" else player_team
