@@ -41,6 +41,9 @@ jobs:
       - name: Evolution resolver test
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
 
+      - name: Gen1 database integration test
+        run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
+
       - name: Meta progression test
         run: ./godot --headless --path . --script tests/meta_progression_test.gd
 
