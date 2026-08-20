@@ -111,7 +111,8 @@ func _award_experience(amount: int) -> Array[String]:
             continue
         var member_value: Variant = team[index]
         if member_value is Dictionary:
-            (member_value as Dictionary)["hp"] = int(restore_value.get("hp", 0))
+            var restored_member: Dictionary = member_value
+            restored_member["hp"] = int(restore_value.get("hp", 0))
 
     _battle_participant_indices.clear()
     _refresh_team_panel()
