@@ -47,6 +47,9 @@ jobs:
       - name: Combat roster layout regression test
         run: ./godot --headless --path . --script tests/combat_roster_layout_test.gd
 
+      - name: Combat connector horizontal regression test
+        run: ./godot --headless --path . --script tests/combat_connector_horizontal_test.gd
+
       - name: Move preview accuracy regression test
         run: ./godot --headless --path . --script tests/move_preview_accuracy_test.gd
 
