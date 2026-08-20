@@ -1,12 +1,13 @@
 extends "res://scripts/battle_demo_status_hp_opening.gd"
 
-# Combat-lab cleanup/fix layer:
+# Combat-lab cleanup/critical-hit layer:
 # - Removes the battle protocol panel now that action feedback is readable enough.
 # - Restores the enemy cards to the left side once the protocol is gone.
-# - Implements Energiefokus / critical_focus as a real 3-action buff.
-# - Energiefokus grants +25 percentage points critical chance (from bonus_cap=25).
-# - Critical hits currently deal x1.5 damage as a provisional combat-lab test value.
+# - Uses the central V2 critical-hit rules: 5% base chance, x1.5 damage.
+# - Energiefokus adds min(Spezial, 25) percentage points until switch/battle end.
+# - Energiefokus is persistent and non-stackable; it is NOT a 3-action modifier.
 
+const BASE_CRITICAL_CHANCE: float = 0.05
 const CRITICAL_DAMAGE_MULTIPLIER: float = 1.5
 
 
@@ -29,38 +30,32 @@ func _layout_team(area: Control, team: Array, enemy: bool) -> void:
         area.add_child(card)
 
 
+func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
+    var combatant: Dictionary = super._make_combatant(side, index, setup)
+    combatant["critical_focus_bonus"] = 0.0
+    return combatant
+
+
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
     var kind: String = str(mechanic.get("kind", ""))
     if kind != "critical_focus":
         return super._effect(actor, target, mechanic)
 
     var bonus_cap_percent: float = float(mechanic.get("bonus_cap", 25.0))
-    var bonus: float = clampf(bonus_cap_percent / 100.0, 0.0, 1.0)
+    var bonus_percent: float = minf(float(actor.get("special", 0)), bonus_cap_percent)
+    var bonus: float = clampf(bonus_percent / 100.0, 0.0, 1.0)
 
-    _add_timed_modifier(
-        target,
-        "critical_focus",
-        1.0 + bonus,
-        _current_effect_move_name if not _current_effect_move_name.is_empty() else "Energiefokus",
-        _actor_name(actor)
+    # Non-stackable: using Energiefokus again replaces/refreshes the same state.
+    target["critical_focus_bonus"] = bonus
+    return bonus_percent / 10.0
+
+
+func _critical_chance(combatant: Dictionary) -> float:
+    return clampf(
+        BASE_CRITICAL_CHANCE + float(combatant.get("critical_focus_bonus", 0.0)),
+        0.0,
+        1.0
     )
-    return bonus_cap_percent / 10.0
-
-
-func _critical_bonus(combatant: Dictionary) -> float:
-    var bonus: float = 0.0
-    var modifiers_value: Variant = combatant.get("timed_modifiers", [])
-    if modifiers_value is Array:
-        for modifier_value: Variant in modifiers_value:
-            if not (modifier_value is Dictionary):
-                continue
-            var modifier: Dictionary = modifier_value
-            if str(modifier.get("kind", "")) != "critical_focus":
-                continue
-            bonus += maxf(0.0, float(modifier.get("multiplier", 1.0)) - 1.0)
-
-    # The move data explicitly caps the bonus at 25 percentage points.
-    return clampf(bonus, 0.0, 0.25)
 
 
 func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
@@ -68,12 +63,11 @@ func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: Strin
     if damage <= 0:
         return damage
 
-    # Confusion self-damage does not consume/benefit from Energiefokus.
+    # Confusion self-damage cannot critically hit.
     if str(actor.get("id", "")) == str(target.get("id", "")):
         return damage
 
-    var crit_chance: float = _critical_bonus(actor)
-    if crit_chance <= 0.0 or randf() >= crit_chance:
+    if randf() >= _critical_chance(actor):
         return damage
 
     var critical_damage: int = maxi(1, int(round(float(damage) * CRITICAL_DAMAGE_MULTIPLIER)))
@@ -83,26 +77,12 @@ func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: Strin
 
 func _status_tokens(combatant: Dictionary) -> Array[String]:
     var tokens: Array[String] = super._status_tokens(combatant)
-    if _active_modifier_count(combatant, "critical_focus") > 0:
-        tokens.append("🔥 KRIT+25%")
+    var bonus: float = float(combatant.get("critical_focus_bonus", 0.0))
+    if bonus > 0.0001:
+        tokens.append("🔥 KRIT+" + str(int(round(bonus * 100.0))) + "%")
     return tokens
 
 
-func _modifier_detail_text(kind: String, multiplier: float) -> String:
-    if kind == "critical_focus":
-        var percent: int = int(round(maxf(0.0, multiplier - 1.0) * 100.0))
-        return "Krit-Chance +" + str(percent) + " Prozentpunkte"
-    return super._modifier_detail_text(kind, multiplier)
-
-
 func _move_has_three_action_modifier(move: Dictionary) -> bool:
-    if super._move_has_three_action_modifier(move):
-        return true
-
-    var mechanics_value: Variant = move.get("mechanics", [])
-    if not (mechanics_value is Array):
-        return false
-    for mechanic_value: Variant in mechanics_value:
-        if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == "critical_focus":
-            return true
-    return false
+    # Energiefokus is intentionally excluded: it persists until switch/battle end.
+    return super._move_has_three_action_modifier(move)
