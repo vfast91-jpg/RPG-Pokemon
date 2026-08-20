@@ -14,7 +14,8 @@
     "res://data/gen1_moves_runtime_v3_5.json",
     "res://data/gen1_moves_runtime_v3_6.json",
     "res://data/gen1_moves_runtime_v3_7.json",
-    "res://data/gen1_moves_runtime_v3_8.json"
+    "res://data/gen1_moves_runtime_v3_8.json",
+    "res://data/gen1_moves_runtime_v3_balance_overrides.json"
   ],
   "species_count": 27,
   "move_count": 128,
