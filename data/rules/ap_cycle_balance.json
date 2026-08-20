@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "rule_id": "ap_cycle_balance_v1",
+  "status": "CURRENT_BINDING_RULE",
+  "description": "Verbindliche AP-zu-ATB-Erholungskurve. Hoehere AP-Stufen muessen als klarer taktischer Zeitpreis spuerbar sein.",
+  "ap_cycle_multiplier": {
+    "1": 1.00,
+    "2": 1.15,
+    "3": 1.30,
+    "4": 1.50,
+    "5": 1.75,
+    "6": 2.10,
+    "7": 2.60,
+    "8": 3.25
+  },
+  "design_note": "AP 1 ist die Referenz. AP 2 soll bereits merkbar sein; AP 5 ist eine deutliche Verpflichtung; AP 7 und 8 sind fuer besonders starke, kontrollierende oder einmalige Effekte gedacht. AP 8 bedeutet 3,25x normale Erholungszeit."
+}
