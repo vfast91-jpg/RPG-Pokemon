@@ -106,6 +106,7 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
 
     var details: Array[String] = []
     details.append("Ziel: " + _target_name(str(move.get("target", "enemy_highest_aggro"))))
+    details.append(_preview_accuracy_text(move))
 
     var effect_summary: String = _compact_effect_summary(move)
     effect_summary = effect_summary.replace("nächster ATB-Zyklus kürzer", "ATB-Zyklen kürzer")
@@ -118,6 +119,21 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
         details.append("[b]noch einmal tippen = AUSFÜHREN[/b]")
 
     log_label.text = line_one + "\n" + " · ".join(details)
+
+
+func _preview_accuracy_text(move: Dictionary) -> String:
+    var accuracy_value: Variant = move.get("accuracy", null)
+    if accuracy_value == null:
+        return "Treffer: sicher"
+
+    # Show the chance that will actually be rolled for the acting Pokemon,
+    # including a currently active accuracy modifier such as GEN-.
+    var effective_accuracy: float = float(accuracy_value)
+    if not selected_actor.is_empty():
+        effective_accuracy *= float(selected_actor.get("accuracy_mult", 1.0))
+    effective_accuracy = clampf(effective_accuracy, 0.0, 100.0)
+
+    return "Treffer: %d%%" % int(round(effective_accuracy))
 
 
 func _preview_wait() -> void:
