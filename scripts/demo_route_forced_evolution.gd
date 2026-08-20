@@ -122,7 +122,7 @@ func _enemy_party_for_stage(current_stage: int) -> Array:
         return []
 
     var enemy_count: int = _roll_enemy_count(current_stage)
-    var enemy_level: int = _enemy_level_for_stage(current_stage)
+    var enemy_level: int = _enemy_level_for_encounter(current_stage, enemy_count)
     var candidates: Array = battle_demo.route_species_ids_for_level(enemy_level)
     if candidates.is_empty():
         push_error(
