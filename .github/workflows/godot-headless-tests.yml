@@ -6,6 +6,9 @@ on:
       - main
     paths-ignore:
       - .github/HEADLESS_TEST_RESULT.json
+  issues:
+    types:
+      - opened
   workflow_dispatch:
 
 permissions:
