@@ -21,8 +21,8 @@ func _initialize() -> void:
     quit(0)
 
 
-func _fresh_demo() -> Node:
-    var demo: Node = BattleDemoScript.new()
+func _fresh_demo():
+    var demo = BattleDemoScript.new()
     demo._load_data()
 
     var log: RichTextLabel = RichTextLabel.new()
@@ -34,7 +34,7 @@ func _fresh_demo() -> Node:
     return demo
 
 
-func _combatants_for_demo(demo: Node) -> Dictionary:
+func _combatants_for_demo(demo) -> Dictionary:
     var source: Dictionary = demo._make_combatant(
         "player", 0, {"species_id": "squirtle", "level": 10}
     )
@@ -52,7 +52,7 @@ func _combatants_for_demo(demo: Node) -> Dictionary:
     return {"source": source, "target": target}
 
 
-func _activate_rain(demo: Node, source: Dictionary, special_value: int) -> void:
+func _activate_rain(demo, source: Dictionary, special_value: int) -> void:
     source["special"] = special_value
     demo.log_label.text = ""
     demo._execute_move(source, "rain_dance")
@@ -60,7 +60,7 @@ func _activate_rain(demo: Node, source: Dictionary, special_value: int) -> void:
 
 
 func _test_regentanz_data_contract() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var move: Dictionary = demo._move_data("rain_dance")
     assert(not move.is_empty(), "Regentanz muss in den Laufzeit-Attackendaten existieren.")
     assert(str(move.get("name", "")) == "Regentanz", "Regentanz: Name falsch.")
@@ -82,7 +82,7 @@ func _test_regentanz_data_contract() -> void:
 
 
 func _test_regentanz_activation_and_strength() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
 
@@ -95,7 +95,7 @@ func _test_regentanz_activation_and_strength() -> void:
 
 
 func _test_regentanz_strength_cap() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
 
@@ -108,7 +108,7 @@ func _test_regentanz_strength_cap() -> void:
 
 
 func _test_weather_damage_modifiers() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
     var target: Dictionary = setup["target"]
@@ -137,7 +137,7 @@ func _test_weather_damage_modifiers() -> void:
 
 
 func _test_weather_applies_to_both_teams() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
     var player_target: Dictionary = setup["target"]
@@ -167,7 +167,7 @@ func _test_weather_applies_to_both_teams() -> void:
 
 
 func _test_weather_applies_to_switched_in_combatant() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
     demo.battle_weather.activate("rain", source, 40.0, 3)
@@ -192,7 +192,7 @@ func _test_weather_applies_to_switched_in_combatant() -> void:
 
 
 func _test_duration_only_counts_source_actions() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
     var other: Dictionary = setup["target"]
@@ -208,7 +208,7 @@ func _test_duration_only_counts_source_actions() -> void:
 
 
 func _test_duration_ends_after_exactly_three_source_actions() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
 
@@ -223,7 +223,7 @@ func _test_duration_ends_after_exactly_three_source_actions() -> void:
 
 
 func _test_strength_is_snapshotted() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
 
@@ -268,7 +268,7 @@ func _test_weather_replacement_is_generic() -> void:
 
 
 func _test_no_multiplier_after_weather_end() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     var setup: Dictionary = _combatants_for_demo(demo)
     var source: Dictionary = setup["source"]
     var target: Dictionary = setup["target"]
@@ -290,7 +290,7 @@ func _test_no_multiplier_after_weather_end() -> void:
 
 
 func _test_ui_and_log_are_clear_without_weather() -> void:
-    var demo: Node = _fresh_demo()
+    var demo = _fresh_demo()
     demo.battle_weather.reset()
     demo.log_label.text = "Der Kampf läuft ohne Wetter."
     demo._update_weather_ui()
