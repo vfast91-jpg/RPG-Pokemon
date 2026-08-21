@@ -61,6 +61,14 @@ func open_config() -> void:
         config_scroll.scroll_vertical = 0
 
 
+func _compact_effect_summary(move: Dictionary) -> String:
+    # Sorgensamen has two technical database mechanics. Those internal db_*
+    # identifiers must never leak into the player-facing attack description.
+    if str(move.get("id", "")) == "worry_seed":
+        return "Schlaf entfernen · Schutz vor neuem Schlaf für 3 eigene Aktionen"
+    return super._compact_effect_summary(move)
+
+
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
     if str(mechanic.get("kind", "")) != "db_incoming_accuracy":
         return super._effect(actor, target, mechanic)
