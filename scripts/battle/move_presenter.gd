@@ -116,14 +116,20 @@ static func sanitize_tooltip(source: String) -> String:
         if clean.begins_with("Datenbank-Effekt:"):
             continue
         if (
-            lower.contains("effect_source")
+            clean.contains("×")
+            or lower.contains("effect_source")
             or lower.contains("incoming_damage_mod")
             or lower.contains("outgoing_damage_mod")
             or lower.contains("atb_cycle_mod")
             or lower.contains("db_")
+            or lower.contains("verwundbar")
+            or lower.contains("tempo")
         ):
             continue
-        kept.append(line)
+        var canonical: String = line
+        canonical = canonical.replace("Spezial ", "Statuswert ")
+        canonical = canonical.replace("Initiative ", "Geschwindigkeit ")
+        kept.append(canonical)
     return "\n".join(kept).strip_edges()
 
 
