@@ -28,6 +28,31 @@
         "runtime_supported": true,
         "balance_override_reason": "RPG-Balance: Stärke 50 + Selbst-Cleanse + Entfernung eigener Eintrittsgefahren + Statuswert-basierte Beschleunigung des nächsten ATB-Zyklus; bewusst AP6 statt PP-Mapping AP1"
       }
+    },
+    "light_screen": {
+      "id": "light_screen",
+      "name": "Lichtschild",
+      "description": "Schützt das gesamte eigene Team gegen spezielle Attackenkategorien. Die Stärke entspricht dem aktuellen Statuswert des Anwenders.",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 3,
+      "target": "all_allies",
+      "area": true,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🛡️",
+      "effect_source": "team_temporary_effect(special_category_damage_reduction,strength=special,duration=3_source_own_actions)",
+      "special_rules": "Kein künstliches 50%-Limit. Durchbruch kann den Schild entfernen. Kategorie-Metadaten physical/special bleiben relevant, obwohl ein zentraler Angriffs-/Verteidigungswert verwendet wird.",
+      "mechanics": [
+        {"kind": "db_light_screen", "duration_actions": 3}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Status soll für Lichtschild nicht ab 50 wirkungslos werden; vollständiger aktueller Statuswert wird verwendet."
+      }
     }
   }
 }
