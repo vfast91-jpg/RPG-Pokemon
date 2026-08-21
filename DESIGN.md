@@ -71,12 +71,14 @@ Damit bleibt jeder zusätzliche endliche Statuspunkt wirksam. Beispiele für `10
 Move-Gewichtungen wie 1×, 2× oder 3× bleiben erhalten und werden **nach** der Kurve angewendet:
 
 - Verstärkung oder Verlangsamung: `Multiplikator = 1 + Gewicht × R`
-- Abschwächung oder Beschleunigung: `Multiplikator = 1 / (1 + Gewicht × R)`
+- Abschwächung oder Beschleunigung: `Multiplikator = (1 − R) ^ Gewicht`
 - Natürlich auf 100 % begrenzte Wirkungen wie Heilung, Lichtschild und der Energiefokus-Bonus verwenden `100 × R` Prozent bzw. Prozentpunkte.
+
+Damit entspricht eine normale 1×-Senkung exakt der Kurve: Status 25 senkt um 25 %, Status 50 um 40 %, Status 100 um etwa 57,1 %. Bei 2×-/3×-Attacken wird der verbleibende Anteil potenziert; dadurch werden sie stärker, ohne bei einem endlichen Statuswert negative Werte oder einen künstlichen harten Cap zu erzeugen.
 
 Dadurch entstehen bei hohen Statuswerten keine negativen ATB-Zeiten, keine Schadensreduktion über 100 % und kein künstlicher Endpunkt bei Status 25, 50 oder 100. Heuler, Rutenschlag, Panzerschutz, Fadenschuss, Agilität, Charme, Falterreigen, Einrollen und alle anderen Mechaniken mit `multiplier_from_special` verwenden dieselbe zentrale Kurvenlogik.
 
-Technische Referenz: `data/rules/status_scaling.json` und `scripts/battle_demo_status_softcaps.gd`.
+Technische Referenz: `data/rules/status_scaling.json`, `scripts/battle_demo_status_softcaps.gd` und die finale Verfeinerung `scripts/battle_demo_status_curve_final.gd`.
 
 ## Wetter als eigenständiger globaler Kampfzustand
 
