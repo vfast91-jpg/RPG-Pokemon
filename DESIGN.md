@@ -87,6 +87,19 @@ Technische Referenz: `data/rules/status_scaling.json`, `scripts/battle_demo_stat
 - Regentanz → aktiviert `weather_id = rain`
 - Sonnentag → aktiviert `weather_id = sun`
 
-Die Attacke selbst bestimmt weder Wetterstärke noch Wetterwirkung noch die zentrale Wetterdauer. Diese Eigenschaften liegen ausschließlich in `data/rules/weather_rules.json` und werden durch `BattleWeatherState` verwaltet. Es kann gleichzeitig nur ein globales Wetter aktiv sein; ein neu aktiviertes Wetter ersetzt ein anderes aktives Wetter.
+Die Attacke selbst bestimmt weder Wetterstärke noch Wetterwirkung noch die zentrale Wetterdauer. Diese Eigenschaften liegen ausschließlich in `data/rules/weather_rules.json` und werden durch `BattleWeatherState` verwaltet. Es kann gleichzeitig nur ein globales Wetter aktiv sein; ein neu aktiviertes anderes Wetter ersetzt das aktive Wetter sofort.
+
+Für normales Timeflow-Wetter gilt verbindlich:
+
+- Ein Wetter besitzt **einen einzigen kontinuierlichen Zeitbalken**, keinen Runden- oder Anwender-Aktionszähler.
+- Die normale Wetterdauer beträgt **50 Sekunden aktive Kampfzeit**.
+- Während der Kampf wegen einer Spielerentscheidung/Aktionsauswahl pausiert ist, pausiert auch die Wetterzeit.
+- Die Wetterdauer ist vollständig unabhängig von Geschwindigkeit, AP, ATB und Aktionen des auslösenden Pokémon.
+- Wird ein **anderes** Wetter aktiviert, ersetzt es das bisherige sofort und beginnt mit seiner vollständigen eigenen Dauer.
+- Ist dasselbe Wetter bereits aktiv, kann es **nicht erneut ausgelöst, erneuert oder auf 50 Sekunden zurückgesetzt** werden. Seine aktuelle Restdauer bleibt unverändert.
+- Wetterattacken enthalten deshalb selbst nur die `weather_id`; Dauer und Wirkung dürfen nicht wieder in Regentanz, Sonnentag oder andere Wetterquellen hineinkopiert werden.
+- Im Kampf-HUD steht die Wetteranzeige zentral **direkt unter dem TYPEN-Button**: Wettername/Emoji und darunter der einzelne kontinuierlich leer laufende Wetterbalken.
 
 Das Architekturprinzip lautet: **Quelle → aktiviert Wetter-ID → Wettersystem übernimmt.** Dadurch können später Fähigkeiten, Items, Gebiete oder Bossmechaniken dasselbe Wetter auslösen, ohne Regentanz oder Sonnentag simulieren zu müssen.
+
+Technische Referenz: `data/rules/weather_rules.json`, `scripts/battle/weather_state.gd` und die aktive UI-/Runtime-Schicht `scripts/battle_demo_timeflow_weather.gd`.
