@@ -1,4 +1,4 @@
-extends "res://scripts/demo_route_user_polish.gd"
+extends "res://scripts/demo_route_encounter_rebalance.gd"
 
 # Route team-panel layout polish.
 # The travelling team is capped at four Pokémon, so the sidebar should show

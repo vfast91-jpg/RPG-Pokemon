@@ -4,9 +4,9 @@ const RouteScript = preload("res://scripts/demo_route_team_panel_fit.gd")
 
 const MODIFIERS := {
     1: 5,
-    2: 2,
-    3: 0,
-    4: -2
+    2: 1,
+    3: -1,
+    4: -3
 }
 const EARLY_LEVELS := {
     1: {1: 2},
@@ -55,7 +55,7 @@ func _initialize() -> void:
                 % [stage, enemy_count, expected, actual]
             )
 
-    # From stage 6 onward the universal action-economy formula applies.
+    # From stage 6 onward the revised universal action-economy formula applies.
     for stage: int in range(6, 21):
         _check(route._max_enemy_count_for_stage(stage) == 4, "Ab Etappe 6 müssen bis zu vier Gegner erlaubt sein.")
         for enemy_count: int in range(1, 5):
@@ -67,13 +67,17 @@ func _initialize() -> void:
                 % [stage, enemy_count, expected, actual]
             )
 
-    # Concrete checks for the agreed onboarding curve.
+    # Concrete checks for the agreed onboarding curve and revised later curve.
     _check(route._enemy_level_for_encounter(1, 1) == 2, "Etappe 1 / 1 Gegner muss Lv.2 sein.")
     _check(route._enemy_level_for_encounter(2, 2) == 1, "Etappe 2 / 2 Gegner müssen Lv.1 sein.")
     _check(route._enemy_level_for_encounter(3, 2) == 3, "Etappe 3 / 2 Gegner müssen Lv.3 sein.")
     _check(route._enemy_level_for_encounter(4, 3) == 2, "Etappe 4 / 3 Gegner müssen Lv.2 sein.")
     _check(route._enemy_level_for_encounter(5, 3) == 4, "Etappe 5 / 3 Gegner müssen Lv.4 sein.")
-    _check(route._enemy_level_for_encounter(6, 4) == 4, "Etappe 6 / 4 Gegner müssen Lv.4 sein.")
+    _check(route._enemy_level_for_encounter(6, 4) == 3, "Etappe 6 / 4 Gegner müssen Lv.3 sein.")
+    _check(route._enemy_level_for_encounter(11, 1) == 16, "Etappe 11 / 1 Gegner muss Lv.16 sein.")
+    _check(route._enemy_level_for_encounter(11, 2) == 12, "Etappe 11 / 2 Gegner müssen Lv.12 sein.")
+    _check(route._enemy_level_for_encounter(11, 3) == 10, "Etappe 11 / 3 Gegner müssen Lv.10 sein.")
+    _check(route._enemy_level_for_encounter(11, 4) == 8, "Etappe 11 / 4 Gegner müssen Lv.8 sein.")
 
     # End-to-end regression through the actual active route inheritance chain.
     # This catches later overrides of _enemy_party_for_stage that accidentally
