@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/battle_demo_config_scroll.gd" id="2_battle"]
+[ext_resource type="Script" path="res://scripts/battle_demo_substitute_position.gd" id="2_battle"]
 [ext_resource type="Script" path="res://scripts/demo_route_xp_progress_bonus.gd" id="3_route"]
 
 [node name="Main" type="Node2D"]
