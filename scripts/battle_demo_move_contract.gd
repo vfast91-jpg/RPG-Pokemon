@@ -220,7 +220,7 @@ func _status_tokens(combatant: Dictionary) -> Array[String]:
     for token_value: Variant in inherited:
         var token: String = str(token_value)
         var managed: bool = false
-n        for prefix: String in managed_prefixes:
+        for prefix: String in managed_prefixes:
             if token.begins_with(prefix):
                 managed = true
                 break
