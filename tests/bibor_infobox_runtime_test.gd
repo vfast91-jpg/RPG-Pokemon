@@ -148,8 +148,25 @@ func _initialize() -> void:
     _check(str(target.get("major_status", "")) == "bad_poison", "Zwei Lagen Giftspitzen verursachen keine schwere Vergiftung.")
     _check(int(target.get("tf_bad_poison_stage", 0)) == 1, "Schwere Vergiftung durch Giftspitzen startet nicht auf Stufe 1.")
 
-    lab._effect(source, source, {"kind":"db_clear_allied_hazards"})
-    _check(int(lab.get_meta("db_toxic_spikes_player", 0)) == 0, "Turbodreher/Feldreinigung entfernt eigene Giftspitzen nicht.")
+    # Non-contact physical moves do not trigger the hazard.
+    target["major_status"] = ""
+    lab._database_trigger_toxic_spikes_if_defined(target, {"category":"physical","contact":false}, true)
+    _check(str(target.get("major_status", "")).is_empty(), "Giftspitzen lösen fälschlich bei Nicht-Kontakt aus.")
+
+    # Poison types are immune to the hazard.
+    target["types"] = ["poison"]
+    lab._database_trigger_toxic_spikes_if_defined(target, {"category":"physical","contact":true}, true)
+    _check(str(target.get("major_status", "")).is_empty(), "Gift-Pokémon sind nicht immun gegen Giftspitzen.")
+
+    # Flying/non-grounded targets do not trigger the hazard.
+    target["types"] = ["flying"]
+    lab._database_trigger_toxic_spikes_if_defined(target, {"category":"physical","contact":true}, true)
+    _check(str(target.get("major_status", "")).is_empty(), "Nicht geerdete Pokémon lösen Giftspitzen aus.")
+
+    # The affected side removes its own hazard with Turbodreher/field cleanse.
+    target["types"] = ["normal"]
+    lab._effect(target, target, {"kind":"db_clear_allied_hazards"})
+    _check(int(lab.get_meta("db_toxic_spikes_enemy", 0)) == 0, "Turbodreher/Feldreinigung entfernt eigene Giftspitzen nicht.")
 
     lab.free()
 
