@@ -1,6 +1,7 @@
 extends SceneTree
 
 const MANIFEST_PATH: String = "res://data/gen1_database_manifest_v3.json"
+const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json"
 
 
 func _initialize() -> void:
@@ -41,7 +42,7 @@ func _initialize() -> void:
     assert(not bool(quick_runtime.get("normal_battle_available", true)), "Ruckzuckhieb darf außerhalb Runde 0 nicht angeboten werden.")
 
     _assert_rettan_moves(moves)
-    _assert_rettan_stat_profiles(species)
+    _assert_rettan_stat_profiles()
 
     var gaps: Dictionary = meta.get("data_gaps", {})
     assert((gaps.get("missing_move_definitions", []) as Array).is_empty(), "Alle regulären Level-Attacken der geladenen Pokémon müssen definiert sein.")
@@ -109,17 +110,19 @@ func _assert_rettan_moves(moves: Dictionary) -> void:
     assert(str(acid.get("target", "")) == "all_enemies" and bool(acid.get("area", false)), "Säure muss im 4v4 alle Gegner treffen.")
 
 
-func _assert_rettan_stat_profiles(species: Dictionary) -> void:
-    var ekans: Dictionary = species.get("ekans", {})
-    var ekans_stats: Dictionary = ekans.get("base_stats", {})
+func _assert_rettan_stat_profiles() -> void:
+    var profile_pack: Dictionary = _read_json(STAT_PROFILE_PATH)
+    assert(not profile_pack.is_empty(), "Die V4-Statprofil-Datei muss lesbar sein.")
+    var profiles: Dictionary = profile_pack.get("species", {})
+
+    var ekans_stats: Dictionary = profiles.get("ekans", {})
     assert(int(ekans_stats.get("hp", 0)) == 35, "Rettan KP-Basiswert muss 35 sein.")
     assert(int(ekans_stats.get("attack", 0)) == 55, "Rettan Angriff-Basiswert muss dem aktuellen Statprofil 55 entsprechen.")
     assert(int(ekans_stats.get("defense", 0)) == 35, "Rettan Verteidigung-Basiswert muss dem aktuellen Statprofil 35 entsprechen.")
     assert(int(ekans_stats.get("special", 0)) == 65, "Rettan Statuswert-Basiswert muss dem aktuellen Statprofil 65 entsprechen.")
     assert(int(ekans_stats.get("speed", 0)) == 55, "Rettan Geschwindigkeit-Basiswert muss 55 sein.")
 
-    var arbok: Dictionary = species.get("arbok", {})
-    var arbok_stats: Dictionary = arbok.get("base_stats", {})
+    var arbok_stats: Dictionary = profiles.get("arbok", {})
     assert(int(arbok_stats.get("hp", 0)) == 60, "Arbok KP-Basiswert muss 60 sein.")
     assert(int(arbok_stats.get("attack", 0)) == 105, "Arbok Angriff-Basiswert muss dem aktuellen Statprofil 105 entsprechen.")
     assert(int(arbok_stats.get("defense", 0)) == 55, "Arbok Verteidigung-Basiswert muss dem aktuellen Statprofil 55 entsprechen.")
