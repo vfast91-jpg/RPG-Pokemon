@@ -20,6 +20,13 @@ func _build_battle(root: Control) -> void:
     battle_background_path = ACTIVE_BATTLE_BACKGROUND_PATH
     super._build_battle(root)
 
+    # The full-screen turquoise ColorRect is a sibling of BattleArea. The
+    # reusable background layer historically used z_index = -10, which put the
+    # texture behind that ColorRect and therefore made it invisible. Keep the
+    # background above the sky fallback, but below shadows/connectors/cards.
+    if _battle_background_rect != null:
+        _battle_background_rect.z_index = 1
+
 
 func _load_data() -> void:
     super._load_data()
