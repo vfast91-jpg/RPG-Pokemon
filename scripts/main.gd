@@ -62,6 +62,20 @@ func _ready() -> void:
     _show_main_menu()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+    if not event.is_action_pressed("ui_cancel"):
+        return
+
+    if leaderboard_overlay != null and leaderboard_overlay.visible:
+        _hide_leaderboard()
+        get_viewport().set_input_as_handled()
+        return
+
+    if timeflow_overlay != null and timeflow_overlay.visible:
+        _hide_timeflow_help()
+        get_viewport().set_input_as_handled()
+
+
 func _build_main_menu() -> void:
     menu_layer = CanvasLayer.new()
     menu_layer.layer = 100
@@ -174,18 +188,18 @@ func _build_leaderboard_overlay() -> void:
     leaderboard_overlay.add_child(center)
 
     var panel := PanelContainer.new()
-    panel.custom_minimum_size = Vector2(620, 470)
-    panel.add_theme_stylebox_override("panel", _panel(Color("172823"), Color("e0c95f"), 12, 14.0))
+    panel.custom_minimum_size = Vector2(610, 338)
+    panel.add_theme_stylebox_override("panel", _panel(Color("172823"), Color("e0c95f"), 12, 10.0))
     center.add_child(panel)
 
     var content := VBoxContainer.new()
-    content.add_theme_constant_override("separation", 10)
+    content.add_theme_constant_override("separation", 6)
     panel.add_child(content)
 
     var title := Label.new()
     title.text = "BESTENLISTE"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 24)
+    title.add_theme_font_size_override("font_size", 22)
     title.add_theme_color_override("font_color", Color("ffe46f"))
     content.add_child(title)
 
@@ -200,14 +214,16 @@ func _build_leaderboard_overlay() -> void:
     leaderboard_text.bbcode_enabled = false
     leaderboard_text.fit_content = false
     leaderboard_text.scroll_active = true
-    leaderboard_text.custom_minimum_size = Vector2(570, 330)
+    leaderboard_text.custom_minimum_size = Vector2(570, 220)
+    leaderboard_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     leaderboard_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
     leaderboard_text.add_theme_font_size_override("normal_font_size", 12)
     content.add_child(leaderboard_text)
 
     var close_button := Button.new()
-    close_button.text = "SCHLIESSEN"
-    close_button.custom_minimum_size = Vector2(180, 36)
+    close_button.text = "ZURÜCK"
+    close_button.custom_minimum_size = Vector2(180, 32)
+    close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     close_button.pressed.connect(_hide_leaderboard)
     content.add_child(close_button)
 
