@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
   "generated_from": {
-    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-21_GLUMANDA_FAMILIE_V4_FINALSYNC.xlsx",
-    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-21_GLUMANDA_FAMILIE_V4_FINALSYNC.xlsx",
-    "generated_date": "2026-08-21",
-    "policy": "Spreadsheet Gate-1 values remain authoritative. The Bisasam and Glumanda-family TM packages are canonical in the manifest; Tera Blast is intentionally excluded from Timeflow. Special Timeflow translations are implemented centrally in final battle layers and covered by regression tests."
+    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_DESIGNSYNC.xlsx",
+    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_DESIGNSYNC.xlsx",
+    "generated_date": "2026-08-22",
+    "policy": "Spreadsheet Gate-1 values remain authoritative. Bisasam, Glumanda and Schiggy-family TM packages are canonical in the manifest; Tera Blast is intentionally excluded from Timeflow. Special Timeflow translations are implemented centrally in final battle layers and covered by regression tests."
   },
   "route_roots": [
     "bulbasaur",
@@ -21,20 +21,57 @@
   "data_gaps": {
     "missing_move_definitions": [],
     "missing_tm_move_definitions": [
-      "alluring_voice", "attract", "aura_sphere", "baton_pass", "blizzard", "body_press",
-      "charge", "charge_beam", "chilling_water", "cut", "dark_pulse", "defog",
-      "disarming_voice", "draining_kiss", "eerie_impulse", "electric_terrain", "encore", "flash",
-      "flip_turn", "gyro_ball", "ice_beam", "ice_punch", "ice_spinner", "icy_wind", "lash_out",
-      "leech_life", "liquidation", "mud_shot", "muddy_water", "pain_split", "payback", "play_rough",
-      "poison_tail", "pollen_puff", "psychic", "psychic_fangs", "reflect", "reversal", "rock_smash",
-      "scale_shot", "shadow_ball", "shock_wave", "skill_swap", "skitter_smack", "sludge_wave", "snarl",
-      "snore", "spite", "steel_wing", "strength", "surf", "swagger", "taunt", "thief", "throat_chop",
-      "u_turn", "upper_hand", "volt_switch", "water_pledge", "whirlpool", "wild_charge", "x_scissor",
-      "zen_headbutt"
+      "alluring_voice",
+      "attract",
+      "baton_pass",
+      "charge",
+      "charge_beam",
+      "cut",
+      "defog",
+      "disarming_voice",
+      "draining_kiss",
+      "eerie_impulse",
+      "electric_terrain",
+      "encore",
+      "flash",
+      "lash_out",
+      "leech_life",
+      "pain_split",
+      "payback",
+      "play_rough",
+      "poison_tail",
+      "pollen_puff",
+      "psychic",
+      "psychic_fangs",
+      "reflect",
+      "reversal",
+      "rock_smash",
+      "scale_shot",
+      "shadow_ball",
+      "shock_wave",
+      "skill_swap",
+      "skitter_smack",
+      "sludge_wave",
+      "snarl",
+      "snore",
+      "spite",
+      "steel_wing",
+      "strength",
+      "swagger",
+      "taunt",
+      "thief",
+      "throat_chop",
+      "u_turn",
+      "upper_hand",
+      "volt_switch",
+      "wild_charge",
+      "x_scissor"
     ],
-    "runtime_unsupported_moves": ["belch", "electro_ball"],
+    "runtime_unsupported_moves": [
+      "belch",
+      "electro_ball"
+    ],
     "runtime_partial_rules": [
-      "ice_fang: Gefrieren ist in der Datenbank definiert, aber die zentrale Gefrier-Statusregel fehlt; Schaden und Zurückschrecken funktionieren.",
       "bug_bite: Die frühere Beereninteraktion ist nicht Teil des itemfreien Timeflow-Designs; die Schadenswirkung ist aktiv.",
       "pluck: Die frühere Beereninteraktion ist nicht Teil des itemfreien Timeflow-Designs; die Schadenswirkung ist aktiv.",
       "belch: NICHT AKTIV – die Original-Beerenvoraussetzung besitzt im itemfreien Timeflow noch keine Ersatzregel.",
@@ -60,5 +97,17 @@
       "res://data/gen1_moves_runtime_v3_11_6_charmander_family_tms.json"
     ],
     "charmander_tm_species_override": "res://data/gen1_species_v3_charmander_tm_override.json"
+  },
+  "corrections_2026_08_22": {
+    "squirtle_family_move_packs": [
+      "res://data/gen1_moves_runtime_v3_12_1_squirtle_family_tms.json",
+      "res://data/gen1_moves_runtime_v3_12_2_squirtle_family_tms.json",
+      "res://data/gen1_moves_runtime_v3_12_3_squirtle_family_tms.json",
+      "res://data/gen1_moves_runtime_v3_12_4_squirtle_family_tms.json",
+      "res://data/gen1_moves_runtime_v3_12_5_squirtle_family_tms.json"
+    ],
+    "squirtle_tm_species_override": "res://data/gen1_species_v3_squirtle_tm_override.json",
+    "global_flinch_rule": "Zurückschrecken setzt die aktuelle ATB-Leiste des Ziels zentral auf 0 %.",
+    "freeze_rule": "Gefroren ist ein zentraler Hauptstatus und verhindert 1–3 eigene Aktionsmöglichkeiten."
   }
 }
