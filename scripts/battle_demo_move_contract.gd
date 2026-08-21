@@ -83,14 +83,126 @@ func _apply_move_contract() -> void:
     data["moves"] = moves
 
 
+func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = false) -> void:
+    super._preview_move(move_id, move, touch_confirm)
+    if log_label != null:
+        log_label.text = _humanize_action_load_time(log_label.text)
+
+
 func _move_tooltip(move: Dictionary) -> String:
-    var text: String = MovePresenter.sanitize_tooltip(super._move_tooltip(move))
+    var text: String = _humanize_action_load_time(super._move_tooltip(move))
+    text = MovePresenter.sanitize_tooltip(text)
     var summary: String = _compact_effect_summary(move)
     if summary.is_empty() or not MovePresenter.is_player_safe(summary):
         summary = MovePresenter.effect_summary(move)
     if not summary.is_empty() and not text.contains(summary):
         text += "\nEffekt: " + summary
-    return text.strip_edges()
+    return _humanize_action_load_time(text.strip_edges())
+
+
+func _humanize_action_load_time(source: String) -> String:
+    var text: String = source
+    text = _replace_action_load_multiplier(text, "Ladezeit der Aktionsleiste ×")
+    text = _replace_action_load_multiplier(text, "Ladezeit der Aktionsleiste x")
+    text = _replace_action_load_percent_delta(text)
+    return text
+
+
+func _replace_action_load_multiplier(source: String, marker: String) -> String:
+    var text: String = source
+    var search_from: int = 0
+
+    while true:
+        var marker_index: int = text.find(marker, search_from)
+        if marker_index < 0:
+            break
+
+        var number_start: int = marker_index + marker.length()
+        var number_end: int = number_start
+        while number_end < text.length():
+            var character: String = text.substr(number_end, 1)
+            if "0123456789.,".contains(character):
+                number_end += 1
+            else:
+                break
+
+        if number_end <= number_start:
+            search_from = number_start
+            continue
+
+        var raw_number: String = text.substr(
+            number_start,
+            number_end - number_start
+        ).replace(",", ".")
+        if not raw_number.is_valid_float():
+            search_from = number_end
+            continue
+
+        var multiplier: float = float(raw_number)
+        var replacement: String = (
+            "Ladezeit der Aktionsleiste "
+            + _action_load_delta_words(multiplier)
+        )
+        text = (
+            text.substr(0, marker_index)
+            + replacement
+            + text.substr(number_end)
+        )
+        search_from = marker_index + replacement.length()
+
+    return text
+
+
+func _replace_action_load_percent_delta(source: String) -> String:
+    var text: String = source
+    var marker: String = "Ladezeit der Aktionsleiste "
+    var search_from: int = 0
+
+    while true:
+        var marker_index: int = text.find(marker, search_from)
+        if marker_index < 0:
+            break
+
+        var value_start: int = marker_index + marker.length()
+        if value_start >= text.length():
+            break
+
+        var sign: String = text.substr(value_start, 1)
+        if sign != "+" and sign != "-" and sign != "−":
+            search_from = value_start
+            continue
+
+        var number_start: int = value_start + 1
+        var number_end: int = number_start
+        while number_end < text.length() and "0123456789".contains(text.substr(number_end, 1)):
+            number_end += 1
+
+        if number_end <= number_start or number_end >= text.length() or text.substr(number_end, 1) != "%":
+            search_from = number_start
+            continue
+
+        var amount: int = int(text.substr(number_start, number_end - number_start))
+        var wording: String = str(amount) + " % länger" if sign == "+" else str(amount) + " % kürzer"
+        if amount == 0:
+            wording = "unverändert"
+
+        var replacement: String = marker + wording
+        text = (
+            text.substr(0, marker_index)
+            + replacement
+            + text.substr(number_end + 1)
+        )
+        search_from = marker_index + replacement.length()
+
+    return text
+
+
+func _action_load_delta_words(multiplier: float) -> String:
+    if multiplier > 1.0001:
+        return "%d %% länger" % int(round((multiplier - 1.0) * 100.0))
+    if multiplier < 0.9999:
+        return "%d %% kürzer" % int(round((1.0 - multiplier) * 100.0))
+    return "unverändert"
 
 
 func _modifier_detail_text(kind: String, multiplier: float) -> String:
@@ -108,7 +220,7 @@ func _status_tokens(combatant: Dictionary) -> Array[String]:
     for token_value: Variant in inherited:
         var token: String = str(token_value)
         var managed: bool = false
-        for prefix: String in managed_prefixes:
+n        for prefix: String in managed_prefixes:
             if token.begins_with(prefix):
                 managed = true
                 break
