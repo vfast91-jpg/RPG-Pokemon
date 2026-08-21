@@ -57,3 +57,34 @@ Die technische Quelle dieser Regel ist `data/rules/evolution_chains.json`; die A
 - Die aktuelle Kampf-/Erkundungsdemo benötigt noch keine Pokédex-Oberfläche und muss durch diese Vorbereitung spielerisch nicht verändert werden.
 
 Die technische Grundlage liegt in `scripts/meta_progression.gd` und wird als Autoload `MetaProgression` geladen. Der persistente Speicher wird außerhalb der Projektdateien unter `user://meta_progression.json` angelegt. Ein späterer Run-Speicher muss separat geführt werden. Ältere Meta-Spielstände werden beim Laden automatisch so migriert, dass bereits konkret gefangene Spezies die passende Entwicklungslinie freischalten.
+
+## Zentrale Status-Skalierung
+
+Der Kampfwert **Status** (intern aus Kompatibilitätsgründen teilweise noch `special`) bestimmt weiterhin die Stärke von Buffs, Debuffs, Kontrolle, Heilung und unterstützenden Effekten. Die alte lineare Regel `Status = Prozent` mit harten Caps ist für Status-basierte Attacken überholt.
+
+Die zentrale Kurve lautet:
+
+`R = Status / (75 + Status)`
+
+Damit bleibt jeder zusätzliche endliche Statuspunkt wirksam. Beispiele für `100 × R`: Status 25 = 25 %, Status 50 = 40 %, Status 75 = 50 %, Status 100 ≈ 57,1 %, Status 200 ≈ 72,7 %, Status 300 = 80 %.
+
+Move-Gewichtungen wie 1×, 2× oder 3× bleiben erhalten und werden **nach** der Kurve angewendet:
+
+- Verstärkung oder Verlangsamung: `Multiplikator = 1 + Gewicht × R`
+- Abschwächung oder Beschleunigung: `Multiplikator = 1 / (1 + Gewicht × R)`
+- Natürlich auf 100 % begrenzte Wirkungen wie Heilung, Lichtschild und der Energiefokus-Bonus verwenden `100 × R` Prozent bzw. Prozentpunkte.
+
+Dadurch entstehen bei hohen Statuswerten keine negativen ATB-Zeiten, keine Schadensreduktion über 100 % und kein künstlicher Endpunkt bei Status 25, 50 oder 100. Heuler, Rutenschlag, Panzerschutz, Fadenschuss, Agilität, Charme, Falterreigen, Einrollen und alle anderen Mechaniken mit `multiplier_from_special` verwenden dieselbe zentrale Kurvenlogik.
+
+Technische Referenz: `data/rules/status_scaling.json` und `scripts/battle_demo_status_softcaps.gd`.
+
+## Wetter als eigenständiger globaler Kampfzustand
+
+**Regentanz** und **Sonnentag** skalieren nicht mit Status/Spezial. Die Attacken besitzen nur noch eine Aufgabe:
+
+- Regentanz → aktiviert `weather_id = rain`
+- Sonnentag → aktiviert `weather_id = sun`
+
+Die Attacke selbst bestimmt weder Wetterstärke noch Wetterwirkung noch die zentrale Wetterdauer. Diese Eigenschaften liegen ausschließlich in `data/rules/weather_rules.json` und werden durch `BattleWeatherState` verwaltet. Es kann gleichzeitig nur ein globales Wetter aktiv sein; ein neu aktiviertes Wetter ersetzt ein anderes aktives Wetter.
+
+Das Architekturprinzip lautet: **Quelle → aktiviert Wetter-ID → Wettersystem übernimmt.** Dadurch können später Fähigkeiten, Items, Gebiete oder Bossmechaniken dasselbe Wetter auslösen, ohne Regentanz oder Sonnentag simulieren zu müssen.
