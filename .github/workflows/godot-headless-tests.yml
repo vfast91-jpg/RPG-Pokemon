@@ -62,6 +62,9 @@ jobs:
       - name: Rettan level-up move regression test
         run: ./godot --headless --path . --script tests/rettan_levelup_move_regression_test.gd
 
+      - name: Rettan species source sync regression test
+        run: ./godot --headless --path . --script tests/rettan_species_source_sync_test.gd
+
       - name: Route XP progress bonus regression test
         run: ./godot --headless --path . --script tests/route_xp_progress_bonus_test.gd
 
