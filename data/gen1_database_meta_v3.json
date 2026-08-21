@@ -1,9 +1,9 @@
 {
   "schema_version": 3,
   "generated_from": {
-    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-20.xlsx",
-    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-20.xlsx",
-    "generated_date": "2026-08-20",
+    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-21_STATPROFILE.xlsx",
+    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-21_WORDING_V4_RETTAN_FIX.xlsx",
+    "generated_date": "2026-08-21",
     "policy": "Spreadsheet values are authoritative; unsupported or missing definitions are not invented. The approved 2026-08-21 V4 stat profiles are applied by the dedicated stat-profile runtime layer. Rettan and Arbok are additionally synchronized into the canonical species merge through gen1_species_v3_4_rettan_arbok_v4.json so stale base values cannot become active if the runtime profile layer changes. Rettan's three missing level-up move definitions were corrected from the 2026-08-21 V4 move workbook."
   },
   "route_roots": [
@@ -159,7 +159,7 @@
     "rettan_move_pack": "res://data/gen1_moves_runtime_v3_9.json",
     "rettan_arbok_species_pack": "res://data/gen1_species_v3_4_rettan_arbok_v4.json",
     "statprofile_pack": "res://data/gen1_species_stat_profiles_v4.json",
-    "move_source": "Attacken_Datenbank_AKTUALISIERT_2026-08-21_WORDING_V4.xlsx",
+    "move_source": "Attacken_Datenbank_AKTUALISIERT_2026-08-21_WORDING_V4_RETTAN_FIX.xlsx",
     "species_source": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-21_STATPROFILE.xlsx"
   }
 }
