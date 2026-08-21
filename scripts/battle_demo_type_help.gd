@@ -210,7 +210,7 @@ func _matrix_corner_cell() -> PanelContainer:
     )
 
     var label := Label.new()
-    label.text = "ANG\VER"
+    label.text = "ANG\\VER"
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.add_theme_font_size_override("font_size", 6)
