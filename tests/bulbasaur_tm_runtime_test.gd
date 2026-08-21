@@ -28,28 +28,33 @@ const NEW_MOVE_NAMES: Dictionary = {
 }
 
 const REQUIRED_SUMMARY_FRAGMENTS: Dictionary = {
-    "take_down": ["Rückstoß", "25 %"],
-    "charm": ["Angriff ↓", "3 eigene Aktionen"],
-    "protect": ["nächste feindliche Attacke", "33 %"],
-    "trailblaze": ["Geschwindigkeit ↑", "3 eigene Aktionen"],
-    "facade": ["Stärke 140", "Verbrennungs-Angriffsmalus"],
-    "magical_leaf": ["ohne normale Genauigkeitsprüfung", "Schutzschild"],
-    "endure": ["nicht unter 1", "indirekter/eigener Schaden"],
-    "sunny_day": ["Feuer-Schaden +50 %", "Wasser-Schaden −50 %", "Solarstrahl sofort"],
-    "bullet_seed": ["2–5 Treffer", "Volltrefferwurf je Treffer", "35/35/15/15 %"],
-    "sleep_talk": ["nur im Schlaf", "1 Schlafaktion", "keine zusätzlichen RPG-AP"],
-    "seed_bomb": ["direkter Schaden"],
+    "take_down": ["Rückstoß", "25 %", "KP-Schadens"],
+    "charm": ["Angriff ↓", "Statuswert", "3 Zielaktionen"],
+    "protect": ["nächste Feindattacke", "33", "laufende Effekte"],
+    "trailblaze": ["Geschwindigkeit ↑", "Statuswert", "3 eigene Aktionen"],
+    "facade": ["Stärke 140", "Verbrennung", "Vergiftung", "Paralyse", "Verbrennungs-Angriffsmalus"],
+    "magical_leaf": ["keine Genauigkeitsprüfung", "Schutzschild", "Unverwundbarkeit"],
+    "endure": ["direkte Feindattacken", "1 KP", "indirekter/eigener Schaden"],
+    "sunny_day": ["Sonne 50 s", "Feuer +50 %", "Wasser −50 %", "Solarstrahl sofort", "Wachstum stärker"],
+    "bullet_seed": ["2–5 Treffer", "35/35/15/15 %", "Genauigkeit 1×", "Volltreffer je Treffer"],
+    "sleep_talk": ["nur schlafend", "1 Schlafaktion", "Zufallsattacke", "keine Extra-RPG-AP"],
+    "seed_bomb": ["Schaden"],
     "grass_knot": ["Stärke 20–120", "Basisgewicht"],
-    "rest": ["volle KP", "2 eigene Aktionsmöglichkeiten"],
-    "substitute": ["25 % Max-KP", "Status-/Debuffeffekte", "kein Überschussschaden"],
-    "giga_drain": ["50 %", "tatsächlich verursachten KP-Schadens"],
-    "energy_ball": ["10 %", "Verteidigung ↓", "3 eigene Aktionen"],
-    "helping_hand": ["gewählter Verbündeter", "Angriff ↑", "3 eigene Aktionen"],
-    "grassy_terrain": ["Pflanzen-Schaden +30 %", "1/16 Max-KP"],
-    "grass_pledge": ["Stärke 150", "1/8 Max-KP", "Geschwindigkeit −50 %"],
-    "sludge_bomb": ["30 % Chance auf Vergiftung"],
-    "solar_beam": ["aufladen", "Zielplatz bleibt fest", "unter Sonne ohne Aufladen"]
+    "rest": ["volle KP", "Hauptstatus", "2 Schlafaktionen", "Schlafschutz"],
+    "substitute": ["25 % Max-KP", "Delegator", "Feindstatus/Senkungen", "kein Überschussschaden"],
+    "giga_drain": ["50 %", "KP-Schadens", "0 Schaden = 0 Heilung"],
+    "energy_ball": ["10 %", "Verteidigung ↓", "Statuswert", "3 Zielaktionen"],
+    "helping_hand": ["Verbündeter", "Angriff ↑", "Statuswert", "3 Aktionen", "nicht auf sich selbst"],
+    "grassy_terrain": ["3 eigene Aktionen", "Pflanze +30 %", "1/16 Max-KP"],
+    "grass_pledge": ["Stärke 80", "Kombination 150", "1/8 Max-KP", "Geschwindigkeit −50 %"],
+    "sludge_bomb": ["30 % Vergiftung"],
+    "solar_beam": ["1 eigene Aktion laden", "automatisch angreifen", "Zielplatz fest", "Sonne: sofort"]
 }
+
+const FORBIDDEN_PLAYER_TERMS: Array[String] = [
+    "db_", "bulba_", "enemy_highest_aggro", "effect_source",
+    "Debuff", "debuff", "damage", "target", "ally", "runtime", "multi_hit"
+]
 
 
 func _initialize() -> void:
@@ -82,21 +87,21 @@ func _initialize() -> void:
         var runtime_value: Variant = move.get("runtime", {})
         assert(runtime_value is Dictionary and bool((runtime_value as Dictionary).get("runtime_supported", false)), "Runtime nicht aktiv: " + move_id)
 
-    # Every Bisasam TM must now explain all relevant effects in the compact
-    # battle preview, without leaking implementation/database vocabulary.
+    # Every Bisasam TM must explain its relevant battle effects in compact
+    # German player text, without exposing implementation/database vocabulary.
     for move_id: String in EXPECTED_BULBASAUR_TMS:
         var move: Dictionary = lab._move_data(move_id)
         assert(not move.is_empty(), "Textprüfung: Attacke fehlt: " + move_id)
         var summary: String = lab._compact_effect_summary(move)
         assert(not summary.is_empty(), "Textprüfung: Effektbeschreibung fehlt: " + move_id)
-        assert(not summary.contains("db_"), "Textprüfung: db_-Begriff sichtbar: " + move_id)
-        assert(not summary.contains("bulba_"), "Textprüfung: bulba_-Begriff sichtbar: " + move_id)
-        assert(not summary.contains("enemy_highest_aggro"), "Textprüfung: technisches Ziel sichtbar: " + move_id)
 
         var tooltip: String = lab._move_tooltip(move)
+        assert(tooltip.contains("Effekt: " + summary), "Textprüfung: kanonische Beschreibung fehlt im Tooltip: " + move_id)
         assert(not tooltip.contains("Datenbank-Effekt:"), "Textprüfung: internes effect_source sichtbar: " + move_id)
-        assert(not tooltip.contains("db_"), "Textprüfung: db_-Begriff im Tooltip sichtbar: " + move_id)
-        assert(not tooltip.contains("bulba_"), "Textprüfung: bulba_-Begriff im Tooltip sichtbar: " + move_id)
+
+        for forbidden: String in FORBIDDEN_PLAYER_TERMS:
+            assert(not summary.contains(forbidden), "Textprüfung: technischer/englischer Begriff '%s' sichtbar bei %s" % [forbidden, move_id])
+            assert(not tooltip.contains(forbidden), "Textprüfung: technischer/englischer Begriff '%s' im Tooltip bei %s" % [forbidden, move_id])
 
         var required_value: Variant = REQUIRED_SUMMARY_FRAGMENTS.get(move_id, [])
         if required_value is Array:
