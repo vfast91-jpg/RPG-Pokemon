@@ -431,3 +431,115 @@ func _cf_heat_crash_power(attacker_weight: float, target_weight: float) -> int:
     if ratio <= 0.50:
         return 60
     return 40
+
+
+# These helpers are used by this runtime layer itself. They must live in the
+# runtime class (or an ancestor), not only in the later pledge subclass;
+# otherwise Godot cannot resolve battle_demo_charmander_family_runtime.gd as a
+# standalone base class and every descendant fails with "Could not resolve class".
+func _cf_pledge_type(move: Dictionary) -> String:
+    var runtime_value: Variant = move.get("runtime", {})
+    if runtime_value is Dictionary:
+        var runtime_data: Dictionary = runtime_value
+        var pledge: String = str(
+            runtime_data.get("timeflow_pledge", runtime_data.get("bulba_pledge", ""))
+        )
+        if not pledge.is_empty():
+            return pledge
+    match str(move.get("id", "")):
+        "grass_pledge":
+            return "grass"
+        "fire_pledge":
+            return "fire"
+        "water_pledge":
+            return "water"
+    return ""
+
+
+func _cf_pledge_combo_for(actor: Dictionary, current: String, pending: Dictionary) -> String:
+    if pending.is_empty():
+        return ""
+    if str(pending.get("actor_id", "")) == str(actor.get("id", "")):
+        return ""
+    return _cf_pledge_combo_kind(str(pending.get("pledge", "")), current)
+
+
+func _cf_pledge_combo_kind(first: String, second: String) -> String:
+    var pair: Array[String] = [first, second]
+    if pair.has("fire") and pair.has("grass"):
+        return "fire_field"
+    if pair.has("fire") and pair.has("water"):
+        return "rainbow"
+    return ""
+
+
+func _cf_pending_pledge(side: String) -> Dictionary:
+    var value: Variant = _cf_pledge_pending.get(side, {})
+    return value if value is Dictionary else {}
+
+
+func _cf_set_pending_pledge(side: String, value: Dictionary) -> void:
+    if side.is_empty():
+        return
+    _cf_pledge_pending[side] = value.duplicate(true)
+
+
+func _cf_apply_pledge_combo(actor: Dictionary, combo: String) -> void:
+    if combo == "fire_field":
+        var enemy_side: String = "enemy" if str(actor.get("side", "")) == "player" else "player"
+        for target_value: Variant in _team_for_side(enemy_side):
+            if not (target_value is Dictionary):
+                continue
+            var target: Dictionary = target_value
+            if not bool(target.get("alive", false)) or _type_array(target.get("types", [])).has("fire"):
+                continue
+            target["cf_fire_pledge_ticks"] = 3
+            target["cf_fire_pledge_source_id"] = str(actor.get("id", ""))
+        _spawn_feedback_label(actor, "🔥 FEUERMEER", Color("f3aa73"))
+        return
+
+    if combo == "rainbow":
+        for ally_value: Variant in _team_for_side(str(actor.get("side", ""))):
+            if ally_value is Dictionary and bool((ally_value as Dictionary).get("alive", false)):
+                (ally_value as Dictionary)["cf_rainbow_actions"] = 3
+        _spawn_feedback_label(actor, "🌈 REGENBOGEN", Color("e8d5ff"))
+
+
+func _cf_apply_dragon_cheer(actor: Dictionary) -> bool:
+    var affected: int = 0
+    for ally_value: Variant in _team_for_side(str(actor.get("side", ""))):
+        if not (ally_value is Dictionary):
+            continue
+        var ally: Dictionary = ally_value
+        if (
+            not bool(ally.get("alive", false))
+            or str(ally.get("id", "")) == str(actor.get("id", ""))
+            or not _cf_dragon_cheer_eligible(ally)
+        ):
+            continue
+
+        var stage: int = _cf_dragon_cheer_stage_for(ally)
+        ally["cf_dragon_cheer_stage"] = stage
+        ally["cf_dragon_cheer_actions"] = 3
+        actor["aggro"] = float(actor.get("aggro", 0.0)) + _hp_scaled_aggro(ally, 0.04)
+        affected += 1
+        _spawn_feedback_label(
+            ally,
+            "🐉 KRIT +" + str(stage) + " · 3 AKTIONEN",
+            Color("d7c4ff")
+        )
+    return affected > 0
+
+
+func _cf_dragon_cheer_eligible(ally: Dictionary) -> bool:
+    if int(ally.get("cf_dragon_cheer_actions", 0)) > 0:
+        return false
+    if float(ally.get("db_focus_energy_bonus_pp", 0.0)) > 0.0:
+        return false
+    if float(ally.get("critical_focus_bonus", 0.0)) > 0.0:
+        return false
+    return true
+
+
+func _cf_dragon_cheer_stage_for(ally: Dictionary) -> int:
+    return 2 if _type_array(ally.get("types", [])).has("dragon") else 1
