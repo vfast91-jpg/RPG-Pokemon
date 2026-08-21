@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_config_scroll.gd"
+extends "res://scripts/battle_demo_substitute_position.gd"
 
 # Final player-facing text layer for the Bisasam-family TM test set.
 #
