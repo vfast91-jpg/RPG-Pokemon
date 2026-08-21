@@ -98,21 +98,6 @@ func _decorate_route_boss_cards() -> void:
                 shadow.position = sprite.position + Vector2(boss_size.x * 0.5, boss_size.y - 5.0)
                 shadow.scale = Vector2(ROUTE_BOSS_SPRITE_SCALE, 1.25)
 
-            var badge := Label.new()
-            badge.name = "BossBadge_" + combatant_id
-            badge.text = "👑 MINI-BOSS"
-            badge.position = sprite.position + Vector2(-4.0, -16.0)
-            badge.size = Vector2(boss_size.x + 20.0, 16.0)
-            badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-            badge.add_theme_font_size_override("font_size", 11)
-            badge.add_theme_color_override("font_color", Color("ffe16b"))
-            badge.add_theme_constant_override("outline_size", 2)
-            badge.add_theme_color_override("font_outline_color", Color("382b12"))
-            badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            badge.z_index = 12
-            area.add_child(badge)
-            ui["boss_badge"] = badge
-
         cards[combatant_id] = ui
 
 
