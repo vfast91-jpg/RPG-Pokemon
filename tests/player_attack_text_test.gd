@@ -29,6 +29,16 @@ func _initialize() -> void:
         "Gestapelte Verteidigung wird noch als Multiplikator angezeigt."
     )
     _check_equal(
+        lab._final_attack_text("Ladezeit der Aktionsleiste ×2,10"),
+        "Ladezeit der Aktionsleiste +110%",
+        "Aktionsleisten-Ladezeit wird noch als Multiplikator angezeigt."
+    )
+    _check_equal(
+        lab._final_attack_text("Ladezeit der Aktionsleiste ×0,90"),
+        "Ladezeit der Aktionsleiste −10%",
+        "Verkürzte Aktionsleisten-Ladezeit wird nicht als Prozentwert angezeigt."
+    )
+    _check_equal(
         lab._modifier_detail_text("incoming_damage_mod", 0.80),
         "Verteidigung −20%",
         "Einzelner Verteidigungs-Debuff verwendet nicht den Attribut-Prozenttext."
