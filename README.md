@@ -1,4 +1,4 @@
-# RPG-Pokemon – Godot Demo 0.3
+# Pokemon Timeflow – Godot Demo 0.3
 
 Die Demo enthält jetzt die begehbare Route **und einen Pikachu-Testkampf**.
 

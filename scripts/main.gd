@@ -1,5 +1,7 @@
 extends Node2D
 
+const MAIN_MENU_BACKGROUND: Texture2D = preload("res://assets/main_menu_background.jpg")
+
 @onready var battle_demo: CanvasLayer = $BattleDemo
 @onready var demo_route: CanvasLayer = $DemoRoute
 
@@ -29,16 +31,28 @@ func _build_main_menu() -> void:
     menu_root.mouse_filter = Control.MOUSE_FILTER_STOP
     menu_layer.add_child(menu_root)
 
-    var background := ColorRect.new()
-    background.color = Color("0f1c19")
+    var background := TextureRect.new()
+    background.texture = MAIN_MENU_BACKGROUND
+    background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
     background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    background.mouse_filter = Control.MOUSE_FILTER_IGNORE
     menu_root.add_child(background)
 
+    var dimmer := ColorRect.new()
+    dimmer.color = Color(0.0, 0.0, 0.0, 0.22)
+    dimmer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dimmer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    menu_root.add_child(dimmer)
+
+    var center := CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    menu_root.add_child(center)
+
     var frame := PanelContainer.new()
-    frame.position = Vector2(62, 38)
-    frame.size = Vector2(356, 244)
+    frame.custom_minimum_size = Vector2(388, 244)
     frame.add_theme_stylebox_override("panel", _panel(Color("172823"), Color("e0c95f"), 12, 14.0))
-    menu_root.add_child(frame)
+    center.add_child(frame)
 
     var content := VBoxContainer.new()
     content.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -46,9 +60,9 @@ func _build_main_menu() -> void:
     frame.add_child(content)
 
     var title := Label.new()
-    title.text = "RPG POKÉMON"
+    title.text = "POKEMON TIMEFLOW"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.add_theme_font_size_override("font_size", 28)
+    title.add_theme_font_size_override("font_size", 26)
     title.add_theme_color_override("font_color", Color("ffe46f"))
     content.add_child(title)
 

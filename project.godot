@@ -1,11 +1,11 @@
 ; Engine configuration file.
-; RPG-Pokemon exploration prototype – Godot 4.x
+; Pokemon Timeflow exploration prototype – Godot 4.x
 
 config_version=5
 
 [application]
 
-config/name="RPG-Pokemon"
+config/name="Pokemon Timeflow"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 
