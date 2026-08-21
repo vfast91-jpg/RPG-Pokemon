@@ -10,8 +10,13 @@ extends "res://scripts/battle_demo_lab_tm_toggle.gd"
 const TIMEFLOW_WEATHER_MOVE_KEYS: Dictionary = {
     "weather_id": true
 }
+const WEATHER_ATB_BLUE: Color = Color("42aef5")
+const WEATHER_BAR_BACKGROUND: Color = Color("b5b5aa")
+const WEATHER_BAR_BORDER: Color = Color("34443d")
 
 var weather_bar: ProgressBar = null
+var weather_bar_frame: PanelContainer = null
+var weather_interaction: Button = null
 var _same_weather_rejected_id: String = ""
 
 
@@ -77,6 +82,19 @@ func _audit_weather_spec_keys(move_id: String, weather: Dictionary) -> bool:
     return valid
 
 
+func _weather_frame_style() -> StyleBoxFlat:
+    var style: StyleBoxFlat = StyleBoxFlat.new()
+    style.bg_color = WEATHER_BAR_BACKGROUND
+    style.border_color = WEATHER_BAR_BORDER
+    style.set_border_width_all(1)
+    style.set_corner_radius_all(3)
+    style.content_margin_left = 1.0
+    style.content_margin_right = 1.0
+    style.content_margin_top = 1.0
+    style.content_margin_bottom = 1.0
+    return style
+
+
 func _build_battle(root: Control) -> void:
     super._build_battle(root)
 
@@ -90,34 +108,57 @@ func _build_battle(root: Control) -> void:
         weather_label.offset_right = 48.0
         weather_label.offset_bottom = 46.0
         weather_label.add_theme_font_size_override("font_size", 10)
-        weather_label.tooltip_text = (
-            "Globales Wetter · läuft nur während aktiver Kampfzeit"
-        )
+        weather_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    weather_bar_frame = PanelContainer.new()
+    weather_bar_frame.name = "WeatherTimeflowFrame"
+    weather_bar_frame.anchor_left = 0.5
+    weather_bar_frame.anchor_right = 0.5
+    weather_bar_frame.offset_left = -49.0
+    weather_bar_frame.offset_top = 47.0
+    weather_bar_frame.offset_right = 49.0
+    weather_bar_frame.offset_bottom = 55.0
+    weather_bar_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    weather_bar_frame.z_index = 150
+    weather_bar_frame.add_theme_stylebox_override("panel", _weather_frame_style())
+    battle_panel.add_child(weather_bar_frame)
 
     weather_bar = ProgressBar.new()
     weather_bar.name = "WeatherTimeflowBar"
-    weather_bar.anchor_left = 0.5
-    weather_bar.anchor_right = 0.5
-    weather_bar.offset_left = -48.0
-    weather_bar.offset_top = 47.0
-    weather_bar.offset_right = 48.0
-    weather_bar.offset_bottom = 53.0
     weather_bar.min_value = 0.0
     weather_bar.max_value = 1.0
     weather_bar.value = 0.0
     weather_bar.show_percentage = false
     weather_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    weather_bar.z_index = 150
-    weather_bar.tooltip_text = (
-        "Wetterdauer: 50 Sekunden aktive Kampfzeit · pausiert bei Aktionsauswahl"
+    weather_bar.add_theme_stylebox_override(
+        "background", _bar(WEATHER_BAR_BACKGROUND, 2)
     )
     weather_bar.add_theme_stylebox_override(
-        "background", _bar(Color("17211fcc"), 2)
+        "fill", _bar(WEATHER_ATB_BLUE, 2)
     )
-    weather_bar.add_theme_stylebox_override(
-        "fill", _bar(Color("f5df78"), 2)
-    )
-    battle_panel.add_child(weather_bar)
+    weather_bar_frame.add_child(weather_bar)
+
+    # Desktop: hovering this invisible hit area shows a normal tooltip.
+    # Mobile/Touch: one tap opens the existing pause-safe details overlay.
+    weather_interaction = Button.new()
+    weather_interaction.name = "WeatherInteraction"
+    weather_interaction.anchor_left = 0.5
+    weather_interaction.anchor_right = 0.5
+    weather_interaction.offset_left = -54.0
+    weather_interaction.offset_top = 31.0
+    weather_interaction.offset_right = 54.0
+    weather_interaction.offset_bottom = 58.0
+    weather_interaction.text = ""
+    weather_interaction.flat = true
+    weather_interaction.focus_mode = Control.FOCUS_NONE
+    weather_interaction.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    weather_interaction.z_index = 151
+    var empty_style: StyleBoxEmpty = StyleBoxEmpty.new()
+    for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+        weather_interaction.add_theme_stylebox_override(state, empty_style)
+    weather_interaction.pressed.connect(_show_weather_info)
+    battle_panel.add_child(weather_interaction)
+
     _update_weather_ui()
 
 
@@ -229,6 +270,95 @@ func _weather_id_for_move(move: Dictionary) -> String:
     return str((weather_value as Dictionary).get("weather_id", ""))
 
 
+func _weather_effect_lines(weather_id: String) -> Array[String]:
+    var lines: Array[String] = []
+    var definition: Dictionary = battle_weather.definition(weather_id)
+    var rules_value: Variant = definition.get("damage_type_strength_coefficients", {})
+    if not (rules_value is Dictionary):
+        return lines
+
+    var strength_percent: float = float(definition.get("effect_strength_percent", 0.0))
+    var state: Dictionary = battle_weather.snapshot()
+    if weather_id == battle_weather.current_id():
+        strength_percent = float(state.get("strength_percent", strength_percent))
+
+    for type_value: Variant in (rules_value as Dictionary).keys():
+        var coefficient_value: Variant = (rules_value as Dictionary).get(type_value, 0.0)
+        if not (coefficient_value is int or coefficient_value is float):
+            continue
+        var delta_percent: float = strength_percent * float(coefficient_value)
+        if is_zero_approx(delta_percent):
+            continue
+        var sign: String = "+" if delta_percent > 0.0 else ""
+        lines.append(
+            _type_name(str(type_value)) + "-Attacken: "
+            + sign + str(int(round(delta_percent))) + "% Schaden"
+        )
+    return lines
+
+
+func _weather_tooltip_text() -> String:
+    if not battle_weather.is_active():
+        return ""
+
+    var weather_id: String = battle_weather.current_id()
+    var lines: Array[String] = [battle_weather.weather_name(weather_id)]
+    for effect_line: String in _weather_effect_lines(weather_id):
+        lines.append(effect_line)
+    lines.append(
+        "Restdauer: %.1f von %.0f Sekunden aktiver Kampfzeit"
+        % [battle_weather.remaining_seconds(), battle_weather.duration_seconds(weather_id)]
+    )
+    lines.append("Bei der Aktionsauswahl pausiert auch die Wetterzeit.")
+    lines.append("Klicken/Tippen für Details.")
+    return "\n".join(lines)
+
+
+func _weather_detail_text() -> String:
+    if not battle_weather.is_active():
+        return ""
+
+    var weather_id: String = battle_weather.current_id()
+    var state: Dictionary = battle_weather.snapshot()
+    var lines: Array[String] = []
+    lines.append("[b]KAMPFEFFEKT[/b]")
+    var effect_lines: Array[String] = _weather_effect_lines(weather_id)
+    if effect_lines.is_empty():
+        lines.append("• Keine Schadensmodifikatoren")
+    else:
+        for effect_line: String in effect_lines:
+            lines.append("• " + effect_line)
+
+    lines.append("")
+    lines.append("[b]TIMEFLOW[/b]")
+    lines.append(
+        "Restdauer: %.1f von %.0f Sekunden"
+        % [battle_weather.remaining_seconds(), battle_weather.duration_seconds(weather_id)]
+    )
+    lines.append("• Die Wetterzeit läuft nur während aktiver Kampfzeit.")
+    lines.append("• Während deiner Aktionsauswahl steht die Wetterzeit still.")
+    lines.append("• Dasselbe aktive Wetter kann seine Dauer nicht erneuern.")
+    lines.append("• Ein anderes Wetter ersetzt das aktuell aktive Wetter sofort.")
+
+    var source_name: String = str(state.get("source_name", ""))
+    if not source_name.is_empty():
+        lines.append("")
+        lines.append("Ausgelöst von: " + source_name)
+    return "\n".join(lines)
+
+
+func _show_weather_info() -> void:
+    if not battle_weather.is_active() or info_panel == null:
+        return
+
+    info_was_paused = paused
+    paused = true
+    info_title.text = battle_weather.weather_name(battle_weather.current_id())
+    info_body.text = _weather_detail_text()
+    info_shade.visible = true
+    info_panel.visible = true
+
+
 func _update_weather_ui() -> void:
     var active: bool = battle_weather.is_active()
 
@@ -236,11 +366,13 @@ func _update_weather_ui() -> void:
         weather_label.text = battle_weather.display_text() if active else ""
         weather_label.visible = active
 
+    if weather_bar_frame != null:
+        weather_bar_frame.visible = active
+
     if weather_bar != null:
         weather_bar.value = battle_weather.remaining_fraction() if active else 0.0
         weather_bar.visible = active
-        if active:
-            weather_bar.tooltip_text = (
-                "Wetterdauer: %.1f von %.0f Sekunden aktive Kampfzeit"
-                % [battle_weather.remaining_seconds(), battle_weather.duration_seconds()]
-            )
+
+    if weather_interaction != null:
+        weather_interaction.visible = active
+        weather_interaction.tooltip_text = _weather_tooltip_text() if active else ""
