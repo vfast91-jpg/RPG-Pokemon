@@ -3,6 +3,43 @@ extends Node2D
 const MAIN_MENU_BACKGROUND: Texture2D = preload("res://assets/main_menu_background.jpg")
 const LeaderboardStore = preload("res://scripts/demo_route_leaderboard.gd")
 
+const TIMEFLOW_HELP_TEXT: String = """Pokémon Timeflow spielt sich anders als ein klassischer Pokémon-Kampf. Im Mittelpunkt stehen Zeit, Aggro und taktische Entscheidungen. Wer wann handelt, welche Attacke wie viel Zeit kostet und welches Pokémon die Aufmerksamkeit der Gegner auf sich zieht, kann einen Kampf entscheidend verändern.
+
+[b]⏱ ZEITFLOW & AKTIONSLEISTE[/b]
+In Pokémon Timeflow gibt es keine klassischen Runden. Jedes Pokémon besitzt eine eigene Aktionsleiste, die sich abhängig von seiner Geschwindigkeit füllt. Sobald ein Pokémon bereit ist, kann es handeln. Danach beginnt die Zeit bis zu seiner nächsten Aktion.
+
+Während du eine Aktion auswählst, pausiert der Kampf. Timeflow ist also kein hektisches Echtzeitsystem: Du kannst in Ruhe überlegen, welcher Zug im richtigen Moment die beste Entscheidung ist.
+
+[b]⚡ AP – DIE ZEITKOSTEN EINER ATTACKE[/b]
+AP sind keine Ressource, die verbraucht wird. Sie bestimmen, wie lange ein Pokémon nach einer Attacke warten muss, bevor es wieder handeln kann.
+
+Eine mächtige Attacke kann einen großen unmittelbaren Nutzen haben, dafür aber mehr Zeit kosten. Eine schnellere, kleinere Aktion kann dazu führen, dass das Pokémon deutlich früher wieder bereit ist. Die Stärke einer Attacke besteht deshalb nicht nur in ihrem Effekt, sondern auch darin, wie viel Zeit sie kostet.
+
+[b]🎯 AGGRO[/b]
+Aggro bestimmt, welches Pokémon die Aufmerksamkeit der Gegner auf sich zieht. Normale offensive Einzelziel-Attacken richten sich grundsätzlich gegen das gegnerische Pokémon mit der höchsten Aggro.
+
+Aggro entsteht durch Wirkung im Kampf – zum Beispiel durch Schaden, Heilung oder andere taktisch bedeutende Effekte. Dadurch lässt sich beeinflussen, welches eigene Pokémon angegriffen wird. Aggro ist deshalb nicht nur eine Folge deiner Aktionen, sondern ein Werkzeug, das du gezielt einsetzen kannst.
+
+[b]🔮 STATUS[/b]
+Status bestimmt, wie wirkungsvoll ein Pokémon viele taktische Effekte einsetzen kann. Dazu gehören unter anderem Buffs und Debuffs, Heilung, Schutz, Statuskontrolle sowie verschiedene Effekte auf Genauigkeit oder den Zeitfluss des Kampfes.
+
+Ein hoher Status-Wert macht ein Pokémon deshalb nicht automatisch zu einem stärkeren direkten Angreifer. Stattdessen wird es besser darin, den Verlauf eines Kampfes zu beeinflussen.
+
+[b]⏳ WARTEN[/b]
+Warten bedeutet nicht einfach, eine Aktion zu verschenken. Das Pokémon führt keine Attacke aus, senkt seine eigene Aggro deutlich und ist danach wesentlich schneller wieder aktionsbereit.
+
+Das kann strategisch sehr wertvoll sein: Ein Pokémon kann Aufmerksamkeit abbauen, einen ungünstigen Moment verstreichen lassen oder bewusst auf eine bessere Gelegenheit für seine nächste Aktion hinarbeiten.
+
+[b]🛡 VORNE![/b]
+Mit VORNE! verdoppelt ein Pokémon seine aktuelle Aggro. Die Aktion reduziert keinen Schaden – sie dient ausschließlich dazu, die Aufmerksamkeit der Gegner gezielt auf dieses Pokémon zu ziehen.
+
+So kann ein Pokémon bewusst zum bevorzugten Ziel normaler Einzelziel-Attacken werden und dadurch Verbündete entlasten. VORNE! kostet die aktuelle Aktion und ist damit eine bewusste taktische Entscheidung.
+
+[b]❗ ERÖFFNUNGSATTACKEN · RUNDE 0[/b]
+Einige Attacken können bereits eingesetzt werden, bevor der eigentliche Timeflow beginnt. Diese Eröffnungsattacken sind freiwillig und ermöglichen es, den Kampf schon vor der ersten normalen Aktion vorzubereiten oder zu beeinflussen.
+
+Wenn mehrere Pokémon eine solche Attacke einsetzen, entscheidet ihre Geschwindigkeit über die Reihenfolge. Danach beginnt der normale Timeflow."""
+
 @onready var battle_demo: CanvasLayer = $BattleDemo
 @onready var demo_route: CanvasLayer = $DemoRoute
 
@@ -10,6 +47,7 @@ var menu_layer: CanvasLayer
 var menu_root: Control
 var leaderboard_overlay: Control
 var leaderboard_text: RichTextLabel
+var timeflow_overlay: Control
 
 
 func _ready() -> void:
@@ -97,6 +135,13 @@ func _build_main_menu() -> void:
     leaderboard_button.pressed.connect(_show_leaderboard)
     content.add_child(leaderboard_button)
 
+    var timeflow_button := Button.new()
+    timeflow_button.text = "WAS IST TIMEFLOW?"
+    timeflow_button.custom_minimum_size = Vector2(240, 36)
+    timeflow_button.tooltip_text = "Erklärt Zeitfluss, AP, Aggro, Status und die taktischen Grundaktionen."
+    timeflow_button.pressed.connect(_show_timeflow_help)
+    content.add_child(timeflow_button)
+
     var hint := Label.new()
     hint.text = "Die Demo-Route startet mit einem zufälligen Pokémon auf Level 5 und führt bis Etappe 90."
     hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -106,6 +151,7 @@ func _build_main_menu() -> void:
     content.add_child(hint)
 
     _build_leaderboard_overlay()
+    _build_timeflow_overlay()
 
 
 func _build_leaderboard_overlay() -> void:
@@ -166,7 +212,65 @@ func _build_leaderboard_overlay() -> void:
     content.add_child(close_button)
 
 
+func _build_timeflow_overlay() -> void:
+    timeflow_overlay = Control.new()
+    timeflow_overlay.name = "TimeflowHelpOverlay"
+    timeflow_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    timeflow_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    timeflow_overlay.z_index = 40
+    timeflow_overlay.visible = false
+    menu_root.add_child(timeflow_overlay)
+
+    var shade := ColorRect.new()
+    shade.color = Color(0.0, 0.0, 0.0, 0.78)
+    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    shade.mouse_filter = Control.MOUSE_FILTER_STOP
+    timeflow_overlay.add_child(shade)
+
+    var center := CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    timeflow_overlay.add_child(center)
+
+    var panel := PanelContainer.new()
+    panel.custom_minimum_size = Vector2(610, 338)
+    panel.add_theme_stylebox_override("panel", _panel(Color("172823"), Color("e0c95f"), 12, 10.0))
+    center.add_child(panel)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 6)
+    panel.add_child(content)
+
+    var title := Label.new()
+    title.text = "WAS IST TIMEFLOW?"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 22)
+    title.add_theme_color_override("font_color", Color("ffe46f"))
+    content.add_child(title)
+
+    var help_text := RichTextLabel.new()
+    help_text.bbcode_enabled = true
+    help_text.fit_content = false
+    help_text.scroll_active = true
+    help_text.scroll_following = false
+    help_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    help_text.custom_minimum_size = Vector2(570, 244)
+    help_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    help_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    help_text.add_theme_font_size_override("normal_font_size", 11)
+    help_text.add_theme_font_size_override("bold_font_size", 12)
+    help_text.add_theme_color_override("default_color", Color("e7f0eb"))
+    help_text.text = TIMEFLOW_HELP_TEXT
+    content.add_child(help_text)
+
+    var close_button := Button.new()
+    close_button.text = "ZURÜCK"
+    close_button.custom_minimum_size = Vector2(180, 32)
+    close_button.pressed.connect(_hide_timeflow_help)
+    content.add_child(close_button)
+
+
 func _show_leaderboard() -> void:
+    _hide_timeflow_help()
     _refresh_leaderboard()
     leaderboard_overlay.visible = true
 
@@ -174,6 +278,17 @@ func _show_leaderboard() -> void:
 func _hide_leaderboard() -> void:
     if leaderboard_overlay != null:
         leaderboard_overlay.visible = false
+
+
+func _show_timeflow_help() -> void:
+    _hide_leaderboard()
+    if timeflow_overlay != null:
+        timeflow_overlay.visible = true
+
+
+func _hide_timeflow_help() -> void:
+    if timeflow_overlay != null:
+        timeflow_overlay.visible = false
 
 
 func _refresh_leaderboard() -> void:
@@ -220,6 +335,7 @@ func _panel(bg: Color, border: Color, radius: int = 8, margin: float = 7.0) -> S
 
 func _start_test_battle() -> void:
     _hide_leaderboard()
+    _hide_timeflow_help()
     menu_layer.visible = false
     demo_route.visible = false
     battle_demo.visible = true
@@ -228,6 +344,7 @@ func _start_test_battle() -> void:
 
 func _start_demo_route() -> void:
     _hide_leaderboard()
+    _hide_timeflow_help()
     menu_layer.visible = false
     battle_demo.visible = false
     demo_route.call("start_route")
@@ -237,5 +354,6 @@ func _show_main_menu() -> void:
     battle_demo.visible = false
     demo_route.visible = false
     _hide_leaderboard()
+    _hide_timeflow_help()
     if menu_layer != null:
         menu_layer.visible = true
