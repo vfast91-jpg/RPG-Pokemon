@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "moves": {
     "rain_dance": {
       "id": "rain_dance",
@@ -18,11 +18,27 @@
         {"kind": "weather"}
       ],
       "weather": {
-        "weather_id": "rain",
-        "strength_stat": "special",
-        "strength_cap": 50.0,
-        "duration_actions": 3,
-        "duration_unit": "source_actions"
+        "weather_id": "rain"
+      }
+    },
+    "sunny_day": {
+      "id": "sunny_day",
+      "name": "Sonnentag",
+      "type": "fire",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 8,
+      "target": "global_battlefield",
+      "area": true,
+      "priority": 0,
+      "opening": false,
+      "emoji": "☀️",
+      "mechanics": [
+        {"kind": "weather"}
+      ],
+      "weather": {
+        "weather_id": "sun"
       }
     }
   }
