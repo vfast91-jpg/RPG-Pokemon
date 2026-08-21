@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_three_action_effects.gd"
+extends "res://scripts/battle_demo_tempo_normalization.gd"
 
 # Combat-lab presentation/mobile layer:
 # - Battle protocol sits on the left; enemy cards move toward the center.
