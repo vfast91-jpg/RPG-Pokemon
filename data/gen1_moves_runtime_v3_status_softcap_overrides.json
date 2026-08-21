@@ -50,6 +50,37 @@
         "runtime_supported": true,
         "balance_override_reason": "ATB-Pausendauer verwendet die zentrale Statuskurve statt einer unkalibrierten linearen Statusdauer."
       }
+    },
+    "sweet_scent": {
+      "id": "sweet_scent",
+      "name": "Lockduft",
+      "description": "Ein süßer Duft erhöht für die nächsten drei eigenen Aktionen der betroffenen Gegner die Genauigkeit von Attacken gegen sie.",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100.0,
+      "ap": 5,
+      "target": "all_enemies",
+      "area": true,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🌸",
+      "effect_source": "temporary_effect(incoming_accuracy_multiplier=1+2*R(special), duration=3_target_own_actions, scope=all_enemies)",
+      "special_rules": "final_accuracy=min(100, base_accuracy×(1+2R)); R=Status/(75+Status); Effekt pro Ziel separat.",
+      "mechanics": [
+        {
+          "kind": "db_incoming_accuracy",
+          "direction": "bonus",
+          "multiplier_from_special": 2.0,
+          "softcap_base": 75.0,
+          "duration_actions": 3
+        }
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Lockduft verwendet die kanonische Status-Soft-Cap-Formel und zeigt den laufenden Effekt sichtbar am Ziel an."
+      }
     }
   }
 }
