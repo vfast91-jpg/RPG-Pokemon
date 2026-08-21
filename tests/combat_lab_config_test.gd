@@ -1,6 +1,7 @@
 extends SceneTree
 
 const CombatLabScript = preload("res://scripts/battle_demo_adaptive_family_ui.gd")
+const CombatLabTmScript = preload("res://scripts/battle_demo_lab_tm_toggle.gd")
 
 var failures: int = 0
 
@@ -59,6 +60,7 @@ func _initialize() -> void:
             lab._species_changed(next_index, true, 0, picker)
             _validate_side(lab, lab.player_setup, lab.player_rows, 1, 100, "Spieler nach Familienwechsel", 102)
 
+    _validate_tm_toggle()
     lab.queue_free()
 
     if failures == 0:
@@ -67,6 +69,48 @@ func _initialize() -> void:
     else:
         push_error("Combat lab config test: %d Fehler" % failures)
         quit(1)
+
+
+func _validate_tm_toggle() -> void:
+    var lab = CombatLabTmScript.new()
+    root.add_child(lab)
+
+    _check(lab.lab_all_tms_toggle != null, "Checkbox für alle verfügbaren TMs fehlt.")
+    if lab.lab_all_tms_toggle == null:
+        lab.queue_free()
+        return
+
+    _check(not lab.lab_all_tms_toggle.button_pressed, "TM-Testcheckbox muss standardmäßig deaktiviert sein.")
+
+    var setup: Dictionary = {"species_id": "bulbasaur", "level": 5}
+    var normal: Dictionary = lab._make_combatant("player", 0, setup)
+    var normal_moves: Array = normal.get("moves", [])
+    _check(not normal_moves.has("protect"), "Schutzschild wurde ohne aktivierten TM-Testmodus vergeben.")
+
+    lab.lab_all_tms_toggle.button_pressed = true
+    var tm_player: Dictionary = lab._make_combatant("player", 0, setup)
+    var active_species_id: String = str(tm_player.get("species_id", ""))
+    var available_tms: Array = lab._lab_available_tm_moves(active_species_id)
+    var player_moves: Array = tm_player.get("moves", [])
+
+    _check(not available_tms.is_empty(), "Bisasam hat im TM-Testmodus keine verfügbaren TM-Attacken.")
+    for move_value: Variant in available_tms:
+        var move_id: String = str(move_value)
+        _check(player_moves.has(move_id), "TM-Attacke %s fehlt beim Spieler-Pokémon." % move_id)
+    _check(player_moves.has("protect"), "Schutzschild fehlt trotz aktivierter TM-Testcheckbox.")
+
+    var tm_enemy: Dictionary = lab._make_combatant("enemy", 0, setup)
+    var enemy_moves: Array = tm_enemy.get("moves", [])
+    _check(enemy_moves.has("protect"), "TM-Testmodus wurde nicht auf Gegner-Pokémon angewendet.")
+
+    # The same BattleDemo node is reused by the route. The lab-only checkbox may
+    # never bypass route-earned TM progression there, even if it remains checked.
+    lab.route_mode = true
+    var route_combatant: Dictionary = lab._make_combatant("player", 0, setup)
+    var route_moves: Array = route_combatant.get("moves", [])
+    _check(not route_moves.has("protect"), "TM-Testcheckbox verändert fälschlich die Demo-Route.")
+
+    lab.queue_free()
 
 
 func _validate_side(lab, setup: Array, rows: VBoxContainer, min_level: int, max_level: int, side_name: String, attempt: int) -> void:
