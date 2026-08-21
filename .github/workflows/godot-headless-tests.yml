@@ -56,6 +56,9 @@ jobs:
       - name: Move preview accuracy regression test
         run: ./godot --headless --path . --script tests/move_preview_accuracy_test.gd
 
+      - name: Miss ATB recovery regression test
+        run: ./godot --headless --path . --script tests/miss_atb_recovery_test.gd
+
       - name: Player attack text regression test
         run: ./godot --headless --path . --script tests/player_attack_text_test.gd
 
