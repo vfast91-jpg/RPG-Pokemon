@@ -8,10 +8,13 @@ extends "res://scripts/demo_route_radar_hp_normalized.gd"
 
 const CAPTURE_DECLINE_XP_MULTIPLIER: float = 1.25
 
+var main_menu_confirmation: ConfirmationDialog
+
 
 func _ready() -> void:
     super._ready()
     _hide_legacy_storage_ui()
+    _build_main_menu_confirmation()
 
 
 func start_route() -> void:
@@ -33,6 +36,35 @@ func _hide_legacy_storage_ui() -> void:
     storage_label.text = ""
     storage_label.tooltip_text = ""
     storage_label.visible = false
+
+
+func _build_main_menu_confirmation() -> void:
+    if main_menu_confirmation != null:
+        return
+
+    main_menu_confirmation = ConfirmationDialog.new()
+    main_menu_confirmation.title = "Demo-Route abbrechen?"
+    main_menu_confirmation.dialog_text = (
+        "Willst du deinen aktuellen Durchlauf wirklich abbrechen?\n"
+        + "Dein Fortschritt in dieser Demo-Route geht verloren."
+    )
+    main_menu_confirmation.ok_button_text = "DURCHLAUF ABBRECHEN"
+    main_menu_confirmation.cancel_button_text = "WEITERSPIELEN"
+    main_menu_confirmation.unresizable = true
+    main_menu_confirmation.exclusive = true
+    main_menu_confirmation.confirmed.connect(_confirm_main_menu)
+    add_child(main_menu_confirmation)
+
+
+func _go_main_menu() -> void:
+    if main_menu_confirmation == null:
+        _build_main_menu_confirmation()
+    main_menu_confirmation.popup_centered(Vector2i(420, 180))
+
+
+func _confirm_main_menu() -> void:
+    visible = false
+    request_main_menu.emit()
 
 
 func _begin_capture_event() -> void:
