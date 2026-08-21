@@ -74,6 +74,9 @@ jobs:
       - name: Player attack text regression test
         run: ./godot --headless --path . --script tests/player_attack_text_test.gd
 
+      - name: Bibor infobox and Toxic Spikes regression test
+        run: ./godot --headless --path . --script tests/bibor_infobox_runtime_test.gd
+
       - name: Lockduft regression test
         run: ./godot --headless --path . --script tests/lockduft_regression_test.gd
 
