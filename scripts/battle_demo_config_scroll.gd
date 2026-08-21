@@ -123,30 +123,85 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
     target["db_incoming_accuracy_mult"] = clampf(accuracy_multiplier, 0.2, 2.5)
     target["db_incoming_accuracy_expires"] = int(target.get("action_serial", 0)) + duration_actions
 
+    var source_name: String = str(_database_active_move.get("name", "")).strip_edges()
+    if source_name.is_empty():
+        source_name = str(_active_special_move.get("name", "")).strip_edges()
+    target["db_incoming_accuracy_source"] = source_name
+
     if battle_panel != null:
         var percent: int = int(round(bonus * 100.0))
+        var action_word: String = "AKTION" if duration_actions == 1 else "AKTIONEN"
         var label_text: String = (
             "🌸 LEICHTER TREFFBAR +" + str(percent) + "% · "
-            + str(duration_actions) + " AKT."
+            + str(duration_actions) + " " + action_word
             if direction == "bonus"
-            else "🌸 SCHWERER TREFFBAR · " + str(duration_actions) + " AKT."
+            else "🌸 SCHWERER TREFFBAR · " + str(duration_actions) + " " + action_word
         )
         _spawn_feedback_label(target, label_text, Color("f1b6d8"))
 
     return bonus * 8.0
 
 
-func _status_tokens(combatant: Dictionary) -> Array[String]:
-    var tokens: Array[String] = super._status_tokens(combatant)
+func _incoming_accuracy_state(combatant: Dictionary) -> Dictionary:
     var current_action: int = int(combatant.get("action_serial", 0))
     var expires_after: int = int(combatant.get("db_incoming_accuracy_expires", 0))
     if current_action >= expires_after:
-        return tokens
+        return {}
 
     var multiplier: float = float(combatant.get("db_incoming_accuracy_mult", 1.0))
-    var remaining: int = maxi(0, expires_after - current_action)
-    if multiplier > 1.001:
-        tokens.append("TREFFER↑" + str(remaining) + "A")
-    elif multiplier < 0.999:
-        tokens.append("TREFFER↓" + str(remaining) + "A")
+    if is_equal_approx(multiplier, 1.0):
+        return {}
+
+    return {
+        "multiplier": multiplier,
+        "remaining": maxi(0, expires_after - current_action)
+    }
+
+
+func _status_tokens(combatant: Dictionary) -> Array[String]:
+    var tokens: Array[String] = super._status_tokens(combatant)
+    var state: Dictionary = _incoming_accuracy_state(combatant)
+    if state.is_empty():
+        return tokens
+
+    var multiplier: float = float(state.get("multiplier", 1.0))
+    var remaining: int = int(state.get("remaining", 0))
+    var percent: int = int(round(absf(multiplier - 1.0) * 100.0))
+    var sign: String = "+" if multiplier > 1.0 else "-"
+
+    # Never expose the cryptic old "1A" notation. "Akt." explicitly means the
+    # target's own remaining actions, and Lockduft is prioritized so it cannot
+    # disappear behind less important card tokens.
+    tokens.push_front(
+        "🌸 TREFFER " + sign + str(percent) + "% · " + str(remaining) + " Akt."
+    )
     return tokens
+
+
+func _detail_info(combatant: Dictionary) -> String:
+    var text: String = super._detail_info(combatant)
+    var state: Dictionary = _incoming_accuracy_state(combatant)
+    if state.is_empty():
+        return text
+
+    var multiplier: float = float(state.get("multiplier", 1.0))
+    var remaining: int = int(state.get("remaining", 0))
+    var percent: int = int(round(absf(multiplier - 1.0) * 100.0))
+    var sign: String = "+" if multiplier > 1.0 else "-"
+    var action_word: String = "eigene Aktion" if remaining == 1 else "eigene Aktionen"
+    var source_name: String = str(combatant.get("db_incoming_accuracy_source", "")).strip_edges()
+    var source_prefix: String = source_name + ": " if not source_name.is_empty() else ""
+    var effect_line: String = (
+        source_prefix
+        + "Treffchance von Attacken gegen dieses Pokémon "
+        + sign + str(percent) + "% · noch " + str(remaining) + " " + action_word
+        + " (tatsächliche Trefferchance maximal 100%)."
+    )
+
+    var heading: String = "[b]AKTIVE EFFEKTE[/b]"
+    var empty_block: String = heading + "\n• Keine aktiven Veränderungen"
+    if text.contains(empty_block):
+        return text.replace(empty_block, heading + "\n• " + effect_line)
+    if text.contains(heading):
+        return text.replace(heading, heading + "\n• " + effect_line)
+    return text + "\n\n" + heading + "\n• " + effect_line
