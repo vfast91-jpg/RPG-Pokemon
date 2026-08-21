@@ -84,7 +84,7 @@ func _initialize() -> void:
         assert(ResourceLoader.exists("res://assets/monsters/" + display_name + ".png"), "Fehlendes Pokémon-Bild: " + display_name)
 
     var scene_text: String = FileAccess.get_file_as_string("res://main.tscn")
-    assert(scene_text.contains("res://scripts/battle_demo_bulbasaur_family_tm_final.gd"), "main.tscn muss die vollständige Familien-TM-Runtime laden.")
+    assert(scene_text.contains("res://scripts/battle_demo_periodic_wait_fix.gd"), "main.tscn muss die vollständige Familien-TM-Runtime inklusive Warteticks laden.")
     assert(scene_text.contains("res://scripts/demo_route_tm_decline_xp.gd"), "main.tscn muss den aktuellen Demo-Routen-Einstieg laden.")
 
     print("Gen1 database integration tests: OK")

@@ -56,6 +56,9 @@ jobs:
       - name: Bisasam family TM mechanics test
         run: ./godot --headless --path . --script tests/bulbasaur_family_tm_mechanics_test.gd
 
+      - name: Periodic wait effects regression test
+        run: ./godot --headless --path . --script tests/periodic_wait_effects_test.gd
+
       - name: Combat roster layout regression test
         run: ./godot --headless --path . --script tests/combat_roster_layout_test.gd
 
