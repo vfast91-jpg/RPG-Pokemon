@@ -1,6 +1,7 @@
 extends SceneTree
 
 const AttackTextScript = preload("res://scripts/battle_demo_attack_text_final.gd")
+const CurrentBattleScript = preload("res://scripts/battle_demo_miss_recovery.gd")
 
 var failures: int = 0
 
@@ -50,6 +51,21 @@ func _initialize() -> void:
     )
 
     lab.free()
+
+    var current_lab = CurrentBattleScript.new()
+    _check_equal(
+        current_lab._compact_effect_summary({
+            "id": "petal_dance",
+            "name": "Blättertanz",
+            "mechanics": [{"kind": "damage"}],
+            "runtime": {
+                "forced_sequence": {"min": 2, "max": 3, "confuse_after": true}
+            }
+        }),
+        "direkter Schaden · 2–3 eigene Aktionen: Attacke wird automatisch fortgesetzt · danach Verwirrung",
+        "Blättertanz erklärt die erzwungene 2–3-Aktionen-Sequenz nicht in der Attackeninfo."
+    )
+    current_lab.free()
 
     if failures == 0:
         print("Player attack text test: PASS")
