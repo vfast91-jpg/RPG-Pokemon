@@ -50,8 +50,11 @@ jobs:
       - name: Local PvP flow regression test
         run: ./godot --headless --path . --script tests/pvp_flow_test.gd
 
-      - name: Bisasam TM runtime test
+      - name: Bisasam family TM inventory/runtime test
         run: ./godot --headless --path . --script tests/bulbasaur_tm_runtime_test.gd
+
+      - name: Bisasam family TM mechanics test
+        run: ./godot --headless --path . --script tests/bulbasaur_family_tm_mechanics_test.gd
 
       - name: Combat roster layout regression test
         run: ./godot --headless --path . --script tests/combat_roster_layout_test.gd

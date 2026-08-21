@@ -5,7 +5,8 @@
     "res://data/gen1_species_v3_1.json",
     "res://data/gen1_species_v3_2.json",
     "res://data/gen1_species_v3_3.json",
-    "res://data/gen1_species_v3_4_rettan_arbok_v4.json"
+    "res://data/gen1_species_v3_4_rettan_arbok_v4.json",
+    "res://data/gen1_species_v3_bulbasaur_family_tm_overrides.json"
   ],
   "move_files": [
     "res://data/gen1_moves_runtime_v3_1.json",
@@ -17,11 +18,13 @@
     "res://data/gen1_moves_runtime_v3_7.json",
     "res://data/gen1_moves_runtime_v3_8.json",
     "res://data/gen1_moves_runtime_v3_9.json",
+    "res://data/gen1_moves_runtime_v3_bulbasaur_tms.json",
+    "res://data/gen1_moves_runtime_v3_10_bulbasaur_family_tms.json",
     "res://data/gen1_moves_runtime_v3_balance_overrides.json",
     "res://data/gen1_moves_runtime_v3_status_softcap_overrides.json"
   ],
   "species_count": 27,
-  "move_count": 131,
+  "move_count": 159,
   "route_root_count": 10,
   "source_date": "2026-08-21"
 }
