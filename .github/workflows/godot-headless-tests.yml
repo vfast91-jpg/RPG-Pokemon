@@ -59,6 +59,9 @@ jobs:
       - name: Route level-up move details regression test
         run: ./godot --headless --path . --script tests/route_levelup_move_details_test.gd
 
+      - name: Route XP progress bonus regression test
+        run: ./godot --headless --path . --script tests/route_xp_progress_bonus_test.gd
+
       - name: Route encounter level curve regression test
         run: ./godot --headless --path . --script tests/route_encounter_level_curve_test.gd
 
