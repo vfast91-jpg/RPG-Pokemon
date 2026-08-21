@@ -10,7 +10,9 @@ extends "res://scripts/battle_demo_bulbasaur_family_tm_final.gd"
 # layers began stopping _process() while the action menu is paused. The marker
 # must keep its calm sinusoidal bob during player decisions, stay anchored to
 # the actual Pokemon sprite even inside nested card layouts, and work for both
-# human sides in local PvP.
+# human sides in local PvP. Runde 0 uses the same marker globally: hovering a
+# priority/opening move may replace the info text, but it must never hide which
+# Pokemon the player is currently choosing that opening action for.
 
 
 func _layout_team(area: Control, team: Array, enemy: bool) -> void:
@@ -111,6 +113,38 @@ func _update_turn_markers() -> void:
             sprite_origin_in_marker_parent.y + anchor.y
         )
         marker.position = Vector2(center_x, base_y + bob_offset)
+
+
+func _show_opening_choice(actor: Dictionary, opening_moves: Array[String]) -> void:
+    super._show_opening_choice(actor, opening_moves)
+
+    # Runde 0 previously described the acting Pokemon only in the log. Hovering
+    # a move replaces that text with the move preview, so the player lost the
+    # visual context of whose priority action is being chosen. Treat the current
+    # opening candidate as the selected actor as well; the global marker system
+    # can then communicate the same information without competing with previews.
+    if not battle_active or not opening_phase_active:
+        return
+    if actor.is_empty() or not bool(actor.get("alive", false)):
+        return
+
+    selected_actor = actor
+    _update_turn_markers()
+
+
+func _choose_opening_move(actor: Dictionary, move_id: String) -> void:
+    # The marker represents a pending human decision, not the later resolution
+    # animation. Clear it first; if another Pokemon still needs a Runde-0 choice,
+    # its _show_opening_choice() call immediately moves the marker to that actor.
+    selected_actor = {}
+    _update_turn_markers()
+    super._choose_opening_move(actor, move_id)
+
+
+func _skip_opening_move() -> void:
+    selected_actor = {}
+    _update_turn_markers()
+    super._skip_opening_move()
 
 
 func _choose_wait() -> void:
