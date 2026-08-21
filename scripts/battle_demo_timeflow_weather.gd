@@ -233,8 +233,29 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
         _same_weather_rejected_id = ""
 
 
+func _choose_move(move_id: String) -> void:
+    if selected_actor.is_empty():
+        return
+
+    var move: Dictionary = _move_data(move_id)
+    if _same_active_weather_move(move):
+        var weather_id: String = _weather_id_for_move(move)
+        _set_log(
+            "[b]" + battle_weather.weather_name(weather_id)
+            + "[/b] ist bereits aktiv. Wähle eine andere Aktion."
+        )
+        _disable_active_weather_move_buttons(selected_actor)
+        return
+
+    super._choose_move(move_id)
+
+
 func _prompt_player(actor: Dictionary) -> void:
     super._prompt_player(actor)
+    _disable_active_weather_move_buttons(actor)
+
+
+func _disable_active_weather_move_buttons(actor: Dictionary) -> void:
     if action_grid == null or not battle_weather.is_active():
         return
 
@@ -242,25 +263,47 @@ func _prompt_player(actor: Dictionary) -> void:
     if not (actor_moves_value is Array):
         return
 
-    var move_buttons: Array[Button] = []
-    for child: Node in action_grid.get_children():
-        if child is Button:
-            move_buttons.append(child as Button)
-
-    var actor_moves: Array = actor_moves_value
-    for move_index: int in range(mini(actor_moves.size(), move_buttons.size())):
-        var move_id: String = str(actor_moves[move_index])
+    var note: String = "Dieses Wetter ist bereits aktiv und kann nicht erneuert werden."
+    for move_value: Variant in actor_moves_value:
+        var move_id: String = str(move_value)
         var move: Dictionary = _move_data(move_id)
-        var weather_id: String = _weather_id_for_move(move)
-        if weather_id.is_empty() or weather_id != battle_weather.current_id():
+        if not _same_active_weather_move(move):
             continue
 
-        var button: Button = move_buttons[move_index]
-        button.disabled = true
-        var note: String = "Dieses Wetter ist bereits aktiv und kann nicht erneuert werden."
-        button.tooltip_text = (
-            note if button.tooltip_text.is_empty() else button.tooltip_text + "\n" + note
-        )
+        for child: Node in action_grid.get_children():
+            if not (child is Button):
+                continue
+            var button: Button = child as Button
+            if not _action_button_matches_move(button, move, move_id):
+                continue
+            button.disabled = true
+            if not button.tooltip_text.contains(note):
+                button.tooltip_text = (
+                    note if button.tooltip_text.is_empty()
+                    else button.tooltip_text + "\n" + note
+                )
+
+
+func _same_active_weather_move(move: Dictionary) -> bool:
+    if not battle_weather.is_active():
+        return false
+    var weather_id: String = _weather_id_for_move(move)
+    return not weather_id.is_empty() and weather_id == battle_weather.current_id()
+
+
+func _action_button_matches_move(
+    button: Button,
+    move: Dictionary,
+    move_id: String
+) -> bool:
+    var move_name: String = str(move.get("name", move_id))
+    if move_name.is_empty():
+        return false
+
+    # Do not rely on button position. Other UI layers may add or reorder action
+    # buttons, which previously caused only some Pokémon to receive the weather
+    # lock. The displayed move name is stable across those presentation layers.
+    return button.text.contains(move_name) or button.tooltip_text.begins_with(move_name)
 
 
 func _weather_id_for_move(move: Dictionary) -> String:
