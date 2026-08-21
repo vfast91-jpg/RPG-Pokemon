@@ -225,7 +225,7 @@ func _matrix_header_cell(type_id: String, top: bool) -> PanelContainer:
     cell.tooltip_text = _type_help_name(type_id)
     cell.add_theme_stylebox_override(
         "panel",
-        _matrix_cell_style(Color("2e3c37"), Color("5d746a"))
+        _matrix_cell_style(_type_help_header_color(type_id), Color("5d746a"))
     )
 
     var label := Label.new()
@@ -234,7 +234,9 @@ func _matrix_header_cell(type_id: String, top: bool) -> PanelContainer:
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.clip_text = true
     label.add_theme_font_size_override("font_size", 6 if top else 7)
-    label.add_theme_color_override("font_color", Color("e8eee9"))
+    label.add_theme_color_override("font_color", Color("ffffff"))
+    label.add_theme_color_override("font_outline_color", Color("17211f"))
+    label.add_theme_constant_override("outline_size", 1)
     cell.add_child(label)
     return cell
 
@@ -312,6 +314,48 @@ func _matrix_cell_style(background: Color, border: Color) -> StyleBoxFlat:
     style.content_margin_top = 0.0
     style.content_margin_bottom = 0.0
     return style
+
+
+func _type_help_header_color(type_id: String) -> Color:
+    match type_id:
+        "normal":
+            return Color("8f989a")
+        "fire":
+            return Color("d85b45")
+        "water":
+            return Color("4f86cf")
+        "electric":
+            return Color("c9a51f")
+        "grass":
+            return Color("5b9f55")
+        "ice":
+            return Color("63aeb4")
+        "fighting":
+            return Color("b34b45")
+        "poison":
+            return Color("9250a3")
+        "ground":
+            return Color("a87845")
+        "flying":
+            return Color("7187c7")
+        "psychic":
+            return Color("c95b86")
+        "bug":
+            return Color("7f9637")
+        "rock":
+            return Color("9b8647")
+        "ghost":
+            return Color("655c94")
+        "dragon":
+            return Color("6352b4")
+        "dark":
+            return Color("66564f")
+        "steel":
+            return Color("77858f")
+        "fairy":
+            return Color("c97fa5")
+        _:
+            return Color("68736f")
 
 
 func _type_help_name(type_id: String) -> String:
