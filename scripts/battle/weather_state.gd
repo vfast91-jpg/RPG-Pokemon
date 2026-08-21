@@ -1,10 +1,11 @@
 extends RefCounted
 class_name BattleWeatherState
 
-# Exactly one global weather can be active. A source only activates a weather
-# ID; strength, duration and combat effects come from data/rules/weather_rules.json.
-# This lets moves, abilities, items, areas and boss mechanics share the same
-# weather without duplicating move-specific strength logic.
+# Exactly one global weather can be active. Sources only activate a weather ID;
+# strength, duration and combat effects live in data/rules/weather_rules.json.
+# Normal Timeflow weather uses one continuous timer measured in active battle
+# seconds. Player decision pauses therefore pause weather automatically because
+# the battle layer does not advance this state while combat is paused.
 
 const SUPPORTED_DEFINITION_KEYS: Dictionary = {
     "display_name": true,
@@ -12,10 +13,11 @@ const SUPPORTED_DEFINITION_KEYS: Dictionary = {
     "start_message": true,
     "end_message": true,
     "effect_strength_percent": true,
-    "duration_actions": true,
+    "duration_seconds": true,
     "duration_mode": true,
     "damage_type_strength_coefficients": true
 }
+const ACTIVE_BATTLE_TIME_MODE: String = "active_battle_time"
 
 var _definitions: Dictionary = {}
 var _state: Dictionary = {}
@@ -36,28 +38,46 @@ func validate_definitions(definitions: Dictionary) -> Array[String]:
         if not (definition_value is Dictionary):
             errors.append("Wetterdefinition '%s' ist kein Dictionary." % weather_id)
             continue
-        var definition: Dictionary = definition_value
-        for key_value: Variant in definition.keys():
+
+        var weather_definition: Dictionary = definition_value
+        for key_value: Variant in weather_definition.keys():
             var key: String = str(key_value)
             if not SUPPORTED_DEFINITION_KEYS.has(key):
-                errors.append("Wetterdefinition '%s' enthält die nicht unterstützte Eigenschaft '%s'." % [weather_id, key])
-        if str(definition.get("display_name", "")).is_empty():
-            errors.append("Wetterdefinition '%s' besitzt keinen display_name." % weather_id)
-        if float(definition.get("effect_strength_percent", -1.0)) < 0.0:
-            errors.append("Wetterdefinition '%s' braucht effect_strength_percent >= 0." % weather_id)
-        if int(definition.get("duration_actions", 0)) <= 0:
-            errors.append("Wetterdefinition '%s' braucht duration_actions > 0." % weather_id)
-        if str(definition.get("duration_mode", "source_actions")) != "source_actions":
-            errors.append("Wetterdefinition '%s' verwendet eine nicht unterstützte duration_mode." % weather_id)
+                errors.append(
+                    "Wetterdefinition '%s' enthält die nicht unterstützte Eigenschaft '%s'."
+                    % [weather_id, key]
+                )
 
-        var damage_rules_value: Variant = definition.get("damage_type_strength_coefficients", {})
+        if str(weather_definition.get("display_name", "")).is_empty():
+            errors.append("Wetterdefinition '%s' besitzt keinen display_name." % weather_id)
+        if float(weather_definition.get("effect_strength_percent", -1.0)) < 0.0:
+            errors.append("Wetterdefinition '%s' braucht effect_strength_percent >= 0." % weather_id)
+        if float(weather_definition.get("duration_seconds", 0.0)) <= 0.0:
+            errors.append("Wetterdefinition '%s' braucht duration_seconds > 0." % weather_id)
+        if str(weather_definition.get("duration_mode", "")) != ACTIVE_BATTLE_TIME_MODE:
+            errors.append(
+                "Wetterdefinition '%s' muss duration_mode '%s' verwenden."
+                % [weather_id, ACTIVE_BATTLE_TIME_MODE]
+            )
+
+        var damage_rules_value: Variant = weather_definition.get(
+            "damage_type_strength_coefficients", {}
+        )
         if not (damage_rules_value is Dictionary):
-            errors.append("Wetterdefinition '%s' besitzt keine gültigen Schadenskoeffizienten." % weather_id)
+            errors.append(
+                "Wetterdefinition '%s' besitzt keine gültigen Schadenskoeffizienten."
+                % weather_id
+            )
             continue
         for move_type_value: Variant in (damage_rules_value as Dictionary).keys():
-            var coefficient_value: Variant = (damage_rules_value as Dictionary).get(move_type_value)
+            var coefficient_value: Variant = (
+                damage_rules_value as Dictionary
+            ).get(move_type_value)
             if not (coefficient_value is int or coefficient_value is float):
-                errors.append("Wetterdefinition '%s' besitzt für Typ '%s' keinen numerischen Koeffizienten." % [weather_id, str(move_type_value)])
+                errors.append(
+                    "Wetterdefinition '%s' besitzt für Typ '%s' keinen numerischen Koeffizienten."
+                    % [weather_id, str(move_type_value)]
+                )
     return errors
 
 
@@ -86,28 +106,61 @@ func definition(weather_id: String) -> Dictionary:
     return value if value is Dictionary else {}
 
 
+func duration_seconds(weather_id: String = "") -> float:
+    var resolved_id: String = weather_id if not weather_id.is_empty() else current_id()
+    if resolved_id.is_empty():
+        return 0.0
+    return maxf(0.0, float(definition(resolved_id).get("duration_seconds", 0.0)))
+
+
+func remaining_seconds() -> float:
+    return maxf(0.0, float(_state.get("remaining_seconds", 0.0)))
+
+
+func remaining_fraction() -> float:
+    var total: float = maxf(0.0001, float(_state.get("duration_seconds", 0.0)))
+    return clampf(remaining_seconds() / total, 0.0, 1.0) if is_active() else 0.0
+
+
 func activate(
     weather_id: String,
     source: Dictionary,
     _legacy_strength_percent: float = -1.0,
     _legacy_duration_actions: int = -1
 ) -> Dictionary:
-    # Legacy optional arguments are deliberately ignored. They remain only so
-    # older callers cannot accidentally break while the move layer migrates.
+    # Optional legacy arguments stay accepted so older callers cannot crash.
+    # Timeflow weather strength and duration are always read centrally.
     if not has_weather(weather_id):
         push_error("Unbekannte weather_id '%s' kann nicht aktiviert werden." % weather_id)
         return {"ok": false, "reason": "unknown_weather_id", "weather_id": weather_id}
 
-    var source_instance_id: String = str(source.get("battle_instance_id", source.get("id", "")))
+    var previous_weather_id: String = current_id()
+    if previous_weather_id == weather_id:
+        # Core Timeflow rule: identical weather never refreshes or restarts its timer.
+        return {
+            "ok": false,
+            "reason": "already_active",
+            "weather_id": weather_id,
+            "previous_weather_id": previous_weather_id,
+            "unchanged": true
+        }
+
+    var source_instance_id: String = str(
+        source.get("battle_instance_id", source.get("id", ""))
+    )
     if source_instance_id.is_empty():
         push_error("Wetterquelle besitzt keine stabile Kampf-Identität.")
         return {"ok": false, "reason": "missing_source_identity", "weather_id": weather_id}
 
     var weather_definition: Dictionary = definition(weather_id)
-    var strength_percent: float = maxf(0.0, float(weather_definition.get("effect_strength_percent", 0.0)))
-    var duration_actions: int = maxi(1, int(weather_definition.get("duration_actions", 1)))
-    var previous_weather_id: String = current_id()
-    var action_serial: int = int(source.get("action_serial", 0))
+    var strength_percent: float = maxf(
+        0.0,
+        float(weather_definition.get("effect_strength_percent", 0.0))
+    )
+    var total_seconds: float = maxf(
+        0.001,
+        float(weather_definition.get("duration_seconds", 0.0))
+    )
 
     _state = {
         "weather_id": weather_id,
@@ -117,14 +170,10 @@ func activate(
         "source_index": int(source.get("index", -1)),
         "source_species_id": str(source.get("species_id", "")),
         "source_name": str(source.get("name", "Quelle")),
-        # Kept in the snapshot for compatibility with existing feedback code,
-        # but it is now copied from the weather definition, never from Status.
         "strength_percent": strength_percent,
-        "remaining_actions": duration_actions,
-        "duration_actions": duration_actions,
-        "duration_mode": "source_actions",
-        "activation_action_serial": action_serial,
-        "last_counted_action_serial": action_serial
+        "remaining_seconds": total_seconds,
+        "duration_seconds": total_seconds,
+        "duration_mode": ACTIVE_BATTLE_TIME_MODE
     }
 
     return {
@@ -132,32 +181,40 @@ func activate(
         "weather_id": weather_id,
         "previous_weather_id": previous_weather_id,
         "replaced": not previous_weather_id.is_empty() and previous_weather_id != weather_id,
-        "refreshed": previous_weather_id == weather_id
+        "refreshed": false
     }
 
 
-func complete_action(actor: Dictionary) -> Dictionary:
-    if not is_active():
-        return {"counted": false, "ended": false}
-    var actor_instance_id: String = str(actor.get("battle_instance_id", actor.get("id", "")))
-    if actor_instance_id != str(_state.get("source_instance_id", "")):
-        return {"counted": false, "ended": false}
+func advance_time(delta_seconds: float) -> Dictionary:
+    if not is_active() or delta_seconds <= 0.0:
+        return {"advanced": false, "ended": false}
 
-    var action_serial: int = int(actor.get("action_serial", 0))
-    var last_counted: int = int(_state.get("last_counted_action_serial", 0))
-    if action_serial <= last_counted:
-        return {"counted": false, "ended": false}
-
-    _state["last_counted_action_serial"] = action_serial
-    var remaining: int = maxi(0, int(_state.get("remaining_actions", 0)) - 1)
-    _state["remaining_actions"] = remaining
-    if remaining > 0:
-        return {"counted": true, "ended": false, "weather_id": current_id(), "remaining_actions": remaining}
+    var remaining: float = maxf(0.0, remaining_seconds() - delta_seconds)
+    _state["remaining_seconds"] = remaining
+    if remaining > 0.0:
+        return {
+            "advanced": true,
+            "ended": false,
+            "weather_id": current_id(),
+            "remaining_seconds": remaining
+        }
 
     var ended_weather_id: String = current_id()
     var ended_definition: Dictionary = definition(ended_weather_id).duplicate(true)
     reset()
-    return {"counted": true, "ended": true, "weather_id": ended_weather_id, "remaining_actions": 0, "definition": ended_definition}
+    return {
+        "advanced": true,
+        "ended": true,
+        "weather_id": ended_weather_id,
+        "remaining_seconds": 0.0,
+        "definition": ended_definition
+    }
+
+
+func complete_action(_actor: Dictionary) -> Dictionary:
+    # Compatibility hook for older battle layers. Weather no longer counts any
+    # Pokémon's actions; only advance_time() can consume its duration.
+    return {"counted": false, "ended": false}
 
 
 func damage_multiplier(move_type: String) -> float:
@@ -166,7 +223,9 @@ func damage_multiplier(move_type: String) -> float:
     var active_definition: Dictionary = definition(current_id())
     if active_definition.is_empty():
         return 1.0
-    var rules_value: Variant = active_definition.get("damage_type_strength_coefficients", {})
+    var rules_value: Variant = active_definition.get(
+        "damage_type_strength_coefficients", {}
+    )
     if not (rules_value is Dictionary) or not (rules_value as Dictionary).has(move_type):
         return 1.0
     var coefficient_value: Variant = (rules_value as Dictionary).get(move_type, 0.0)
@@ -180,13 +239,7 @@ func damage_multiplier(move_type: String) -> float:
 func display_text() -> String:
     if not is_active():
         return ""
-    var active_definition: Dictionary = definition(current_id())
-    if active_definition.is_empty():
-        return ""
-    var emoji: String = str(active_definition.get("emoji", ""))
-    var display_name: String = str(active_definition.get("display_name", current_id()))
-    var remaining: int = int(_state.get("remaining_actions", 0))
-    return (emoji + " " if not emoji.is_empty() else "") + display_name + " · " + str(remaining) + " Aktionen"
+    return weather_name(current_id())
 
 
 func start_message(weather_id: String) -> String:
@@ -194,7 +247,9 @@ func start_message(weather_id: String) -> String:
 
 
 func end_message(weather_id: String, supplied_definition: Dictionary = {}) -> String:
-    var weather_definition: Dictionary = supplied_definition if not supplied_definition.is_empty() else definition(weather_id)
+    var weather_definition: Dictionary = (
+        supplied_definition if not supplied_definition.is_empty() else definition(weather_id)
+    )
     return str(weather_definition.get("end_message", ""))
 
 
