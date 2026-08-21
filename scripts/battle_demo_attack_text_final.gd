@@ -20,11 +20,24 @@ func _target_name(rule: String) -> String:
 
 
 func _move_tooltip(move: Dictionary) -> String:
-    return _final_attack_text(super._move_tooltip(move))
+    return _sleep_powder_player_text(
+        move,
+        _final_attack_text(super._move_tooltip(move))
+    )
 
 
 func _compact_effect_summary(move: Dictionary) -> String:
-    return _final_attack_text(super._compact_effect_summary(move))
+    return _sleep_powder_player_text(
+        move,
+        _final_attack_text(super._compact_effect_summary(move))
+    )
+
+
+func _sleep_powder_player_text(move: Dictionary, source: String) -> String:
+    if str(move.get("id", "")) != "sleep_powder":
+        return source
+    var text: String = source.replace("db status", "Treffer: Schlaf")
+    return text.replace("db_status", "Treffer: Schlaf")
 
 
 func _detail_info(combatant: Dictionary) -> String:
