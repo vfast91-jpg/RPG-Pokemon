@@ -18,6 +18,7 @@ func _initialize() -> void:
 
     _assert_inventory_and_contract(lab)
     _assert_gate1_ap_corrections(lab)
+    _assert_charmander_tm031_compatibility(lab)
     _assert_weight_system(lab)
     _assert_semi_invulnerable_states(lab)
     _assert_fling_uses_status(lab)
@@ -54,6 +55,26 @@ func _assert_gate1_ap_corrections(lab) -> void:
     assert(int(lab._move_data("scorching_sands").get("ap", 0)) == 7, "Brandsand muss RPG-AP 7 haben.")
     assert(int(lab._move_data("acrobatics").get("ap", 0)) == 7, "Akrobatik nutzt bewusst RPG-AP 7.")
     assert(int(lab._move_data("fling").get("power", 0)) == 70, "Schleuder muss feste Stärke 70 haben.")
+
+
+func _assert_charmander_tm031_compatibility(lab) -> void:
+    var species_value: Variant = lab._canonical_pack.get("species", {})
+    assert(species_value is Dictionary, "Kanonischer Spezies-Pool fehlt.")
+    var species: Dictionary = species_value
+    var charmander: Dictionary = species.get("charmander", {})
+    var charmeleon: Dictionary = species.get("charmeleon", {})
+    var charizard: Dictionary = species.get("charizard", {})
+
+    var charmander_learnset: Dictionary = charmander.get("learnset", {})
+    var charmeleon_learnset: Dictionary = charmeleon.get("learnset", {})
+    var charizard_learnset: Dictionary = charizard.get("learnset", {})
+    var charmander_tms: Dictionary = charmander_learnset.get("tm_hm", {})
+    var charmeleon_tms: Dictionary = charmeleon_learnset.get("tm_hm", {})
+    var charizard_tms: Dictionary = charizard_learnset.get("tm_hm", {})
+
+    assert(str(charmander_tms.get("TM031", "")) == "metal_claw", "Nur Glumanda muss TM031 Metallklaue lernen können.")
+    assert(not charmeleon_tms.has("TM031"), "Glutexo darf in Gen 9 TM031 Metallklaue nicht lernen.")
+    assert(not charizard_tms.has("TM031"), "Glurak darf in Gen 9 TM031 Metallklaue nicht lernen.")
 
 
 func _assert_weight_system(lab) -> void:
