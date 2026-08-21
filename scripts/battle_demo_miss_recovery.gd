@@ -53,6 +53,38 @@ func _build_battle(root: Control) -> void:
     weather_bar.visible = battle_weather.is_active()
 
 
+func _compact_effect_summary(move: Dictionary) -> String:
+    var summary: String = super._compact_effect_summary(move)
+    var runtime_value: Variant = move.get("runtime", {})
+    if not (runtime_value is Dictionary):
+        return summary
+
+    var runtime: Dictionary = runtime_value
+    var sequence_value: Variant = runtime.get("forced_sequence", null)
+    if not (sequence_value is Dictionary):
+        return summary
+
+    var sequence: Dictionary = sequence_value
+    var minimum: int = maxi(1, int(sequence.get("min", 1)))
+    var maximum: int = maxi(minimum, int(sequence.get("max", minimum)))
+    var duration_text: String = str(minimum)
+    if maximum != minimum:
+        duration_text += "–" + str(maximum)
+
+    var sequence_text: String = (
+        duration_text
+        + " eigene Aktion"
+        + ("" if maximum == 1 else "en")
+        + ": Attacke wird automatisch fortgesetzt"
+    )
+    if bool(sequence.get("confuse_after", false)):
+        sequence_text += " · danach Verwirrung"
+
+    if summary.is_empty():
+        return sequence_text
+    return summary + " · " + sequence_text
+
+
 func _execute_move(actor: Dictionary, move_id: String) -> void:
     _miss_detection_stack.append(false)
     super._execute_move(actor, move_id)
