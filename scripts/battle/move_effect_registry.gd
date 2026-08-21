@@ -6,8 +6,8 @@ const PARTIAL: String = "partial"
 const UNSUPPORTED: String = "unsupported"
 
 # One registry entry is the contract between attack data, runtime and every
-# player-facing surface.  Bad Poison and Toxic Spikes are fully implemented by
-# the final Timeflow battle layers and can therefore be used by strict V4 moves.
+# player-facing surface. Bad Poison, Freeze and Zurückschrecken are fully
+# implemented by the final Timeflow battle layers.
 const EFFECTS: Dictionary = {
     "damage": {"player_label":"Schaden","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "status": {"player_label":"Haupt-/Kampfstatus","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["status"]},
@@ -16,7 +16,7 @@ const EFFECTS: Dictionary = {
     "incoming_damage_mod": {"player_label":"Verteidigung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["multiplier_from_special"]},
     "accuracy_mod": {"player_label":"Genauigkeit","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["multiplier_from_special"]},
     "atb_cycle_mod": {"player_label":"Geschwindigkeit","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["multiplier_from_special"]},
-    "atb_knockback": {"player_label":"Zurückschrecken / ATB-Rückwurf","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":["chance","amount"]},
+    "atb_knockback": {"player_label":"Zurückschrecken","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":["chance","amount"]},
     "critical_focus": {"player_label":"Volltrefferchance","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
     "seed": {"player_label":"Egelsamen","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
     "binding": {"player_label":"Fesselung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["min_ticks","max_ticks"]},
@@ -64,60 +64,42 @@ const STATUSES: Dictionary = {
     "bad_poison": {"player_label":"Schwere Vergiftung","runtime_state":IMPLEMENTED},
     "confusion": {"player_label":"Verwirrung","runtime_state":IMPLEMENTED},
     "sleep": {"player_label":"Schlaf","runtime_state":IMPLEMENTED},
-    "freeze": {"player_label":"Gefrieren","runtime_state":UNSUPPORTED},
+    "freeze": {"player_label":"Gefroren","runtime_state":IMPLEMENTED},
     "major_status": {"player_label":"Hauptstatus","runtime_state":IMPLEMENTED}
 }
 
-const TARGETS: Array[String] = [
-    "enemy_highest_aggro", "all_enemies", "self", "all_allies",
-    "all_other_active_pokemon", "enemy_field", "global_battlefield",
-    "battlefield", "single_ally"
-]
+const TARGETS: Array[String] = ["enemy_highest_aggro", "all_enemies", "self", "all_allies", "all_other_active_pokemon", "enemy_field", "global_battlefield", "battlefield", "single_ally"]
 const CATEGORIES: Array[String] = ["physical", "special", "status"]
-const TYPES: Array[String] = [
-    "normal", "fire", "water", "electric", "grass", "ice", "fighting",
-    "poison", "ground", "flying", "psychic", "bug", "rock", "ghost",
-    "dragon", "dark", "steel", "fairy"
-]
-
+const TYPES: Array[String] = ["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"]
 
 static func effect_spec(kind: String) -> Dictionary:
     var value: Variant = EFFECTS.get(kind, {})
     return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
-
 static func status_spec(status_id: String) -> Dictionary:
     var value: Variant = STATUSES.get(status_id, {})
     return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
-
 static func is_known_effect(kind: String) -> bool:
     return EFFECTS.has(kind)
-
 
 static func is_known_status(status_id: String) -> bool:
     return STATUSES.has(status_id)
 
-
 static func is_known_target(target: String) -> bool:
     return TARGETS.has(target)
-
 
 static func is_known_type(type_id: String) -> bool:
     return TYPES.has(type_id)
 
-
 static func is_known_category(category: String) -> bool:
     return CATEGORIES.has(category)
-
 
 static func player_label_for_effect(kind: String) -> String:
     return str(effect_spec(kind).get("player_label", ""))
 
-
 static func player_label_for_status(status_id: String) -> String:
     return str(status_spec(status_id).get("player_label", status_id))
-
 
 static func surface_contract_errors() -> Array[String]:
     var errors: Array[String] = []
