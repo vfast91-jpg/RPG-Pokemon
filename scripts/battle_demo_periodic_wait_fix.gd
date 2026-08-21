@@ -13,6 +13,84 @@ extends "res://scripts/battle_demo_bulbasaur_family_tm_final.gd"
 # human sides in local PvP. Runde 0 uses the same marker globally: hovering a
 # priority/opening move may replace the info text, but it must never hide which
 # Pokemon the player is currently choosing that opening action for.
+#
+# Timeflow spread damage is also resolved here, at the shared final battle
+# layer. A damaging move that currently has several living targets keeps its
+# listed base power, but the final damage to every intended target is scaled by
+# target count: 1 -> 100 %, 2 -> 75 %, 3 -> 60 %, 4 or more -> 50 %.
+
+var _timeflow_spread_damage_multiplier: float = 1.0
+var _timeflow_spread_damage_target_ids: Dictionary = {}
+
+
+func _timeflow_spread_damage_scale(target_count: int) -> float:
+    match target_count:
+        0, 1:
+            return 1.0
+        2:
+            return 0.75
+        3:
+            return 0.60
+        _:
+            return 0.50
+
+
+func _timeflow_move_has_direct_damage(move: Dictionary) -> bool:
+    var mechanics_value: Variant = move.get("mechanics", [])
+    if not (mechanics_value is Array):
+        return false
+
+    for mechanic_value: Variant in mechanics_value:
+        if not (mechanic_value is Dictionary):
+            continue
+        var mechanic: Dictionary = mechanic_value
+        if str(mechanic.get("kind", "")) == "damage":
+            return true
+    return false
+
+
+func _execute_move(actor: Dictionary, move_id: String) -> void:
+    _timeflow_spread_damage_multiplier = 1.0
+    _timeflow_spread_damage_target_ids = {}
+
+    var move: Dictionary = _move_data(move_id)
+    if not move.is_empty() and _timeflow_move_has_direct_damage(move):
+        var targets: Array = _targets(actor, str(move.get("target", "enemy_highest_aggro")))
+        var living_target_count: int = 0
+
+        for target_value: Variant in targets:
+            if not (target_value is Dictionary):
+                continue
+            var target: Dictionary = target_value
+            if not bool(target.get("alive", false)):
+                continue
+
+            living_target_count += 1
+            var target_id: String = str(target.get("id", ""))
+            if not target_id.is_empty():
+                _timeflow_spread_damage_target_ids[target_id] = true
+
+        _timeflow_spread_damage_multiplier = _timeflow_spread_damage_scale(living_target_count)
+
+    super._execute_move(actor, move_id)
+
+    _timeflow_spread_damage_multiplier = 1.0
+    _timeflow_spread_damage_target_ids = {}
+
+
+func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
+    # Let every inherited damage rule resolve first (weather, terrain, crits,
+    # type effectiveness, move-specific power changes, etc.). Spread scaling is
+    # deliberately the final damage modifier so all spread moves obey one rule.
+    var damage: int = super._damage(actor, target, power, move_type, category)
+    if damage <= 0 or _timeflow_spread_damage_multiplier >= 0.9999:
+        return damage
+
+    var target_id: String = str(target.get("id", ""))
+    if target_id.is_empty() or not _timeflow_spread_damage_target_ids.has(target_id):
+        return damage
+
+    return maxi(1, int(round(float(damage) * _timeflow_spread_damage_multiplier)))
 
 
 func _layout_team(area: Control, team: Array, enemy: bool) -> void:
