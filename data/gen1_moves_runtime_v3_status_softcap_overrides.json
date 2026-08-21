@@ -1,0 +1,55 @@
+{
+  "schema_version": 3,
+  "moves": {
+    "whirlwind": {
+      "id": "whirlwind",
+      "name": "Wirbelwind",
+      "description": "Ein heftiger Wind stoppt die ATB-Leiste des Ziels vorübergehend.",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100.0,
+      "ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🌪️",
+      "effect_source": "temporary_effect(atb_pause,duration=target_full_atb_cycle_seconds*special/(75+special))",
+      "special_rules": "Keine Reserve und kein Zwangswechsel. Nach der Pause läuft die ATB vom vorherigen Füllstand weiter. Gleiche zentrale Mechanik wie Brüller.",
+      "mechanics": [
+        {"kind": "db_atb_pause"}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "ATB-Pausendauer verwendet die zentrale Statuskurve statt einer unkalibrierten linearen Statusdauer."
+      }
+    },
+    "roar": {
+      "id": "roar",
+      "name": "Brüller",
+      "description": "Ein einschüchternder Ruf pausiert die Aktionsleiste des Ziels.",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "📢",
+      "effect_source": "temporary_effect(atb_pause,duration=target_full_atb_cycle_seconds*special/(75+special))",
+      "special_rules": "Keine Reserve und kein Wechsel. Nach der Pause läuft die ATB vom vorherigen Füllstand weiter. Exakt dieselbe zentrale Mechanik wie Wirbelwind.",
+      "mechanics": [
+        {"kind": "db_atb_pause"}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "ATB-Pausendauer verwendet die zentrale Statuskurve statt einer unkalibrierten linearen Statusdauer."
+      }
+    }
+  }
+}
