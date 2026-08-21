@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
   "generated_from": {
-    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_DESIGNSYNC.xlsx",
-    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_DESIGNSYNC.xlsx",
+    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_FINALSYNC.xlsx",
+    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_FINALSYNC.xlsx",
     "generated_date": "2026-08-22",
-    "policy": "Spreadsheet Gate-1 values remain authoritative. Bisasam, Glumanda and Schiggy-family TM packages are canonical in the manifest; Tera Blast is intentionally excluded from Timeflow. Special Timeflow translations are implemented centrally in final battle layers and covered by regression tests."
+    "policy": "Spreadsheet Gate-1 values are the implementation input; the Schiggy-family Gate-2 FINALSYNC workbooks are the audited post-implementation knowledge state. Bisasam, Glumanda and Schiggy-family TM packages are canonical in the manifest; Tera Blast is intentionally excluded from Timeflow. Special Timeflow translations are implemented centrally in final battle layers and covered by regression tests."
   },
   "route_roots": [
     "bulbasaur",
