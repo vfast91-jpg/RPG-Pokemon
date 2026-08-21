@@ -131,11 +131,14 @@ func _show_replace_choices() -> void:
     prompt.add_theme_font_size_override("font_size", 9)
     capture_actions.add_child(prompt)
 
+    # The active route is capped at four Pokemon. Four 24px rows plus their
+    # spacing fit into 106px, so use the otherwise free vertical room instead
+    # of forcing the player to scroll just to reach team slots 3 and 4.
     var choices_scroll := ScrollContainer.new()
-    choices_scroll.custom_minimum_size = Vector2(0, 78)
+    choices_scroll.custom_minimum_size = Vector2(0, 106)
     choices_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     choices_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-    choices_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    choices_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     capture_actions.add_child(choices_scroll)
 
     var choices_box := VBoxContainer.new()
