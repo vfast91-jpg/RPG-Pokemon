@@ -102,3 +102,48 @@ func _bulbasaur_tm_strip_internal_lines(source: String, move: Dictionary) -> Str
             continue
         kept.append(line)
     return "\n".join(kept)
+
+
+func _build_info_overlay(parent: Control) -> void:
+    super._build_info_overlay(parent)
+
+    # Keep the Pokemon detail overlay above every transient Pokemon-local visual
+    # (turn marker, Delegator and floating feedback), while intentionally leaving
+    # the global TYPEN utility and weather HUD above it.
+    if info_shade != null:
+        info_shade.z_index = 70
+    if info_panel != null:
+        info_panel.z_index = 71
+
+
+func _detail_info(combatant: Dictionary) -> String:
+    var detail: String = super._detail_info(combatant)
+    var attacks_header: String = "[b]VERFÜGBARE ATTACKEN[/b]"
+    var attacks_start: int = detail.find(attacks_header)
+    if attacks_start < 0:
+        return detail
+
+    # The base detail view ends with the attack list. Specialized mechanics add
+    # their live effects afterwards with a blank-line separator. Move that whole
+    # trailing live-effect block in front of the attacks so the player sees every
+    # currently relevant effect before reaching the long move list.
+    var after_header: int = attacks_start + attacks_header.length()
+    var trailing_start: int = detail.find("\n\n", after_header)
+    if trailing_start < 0:
+        return detail
+
+    var before_attacks: String = detail.substr(0, attacks_start).strip_edges()
+    var attacks_block: String = detail.substr(
+        attacks_start,
+        trailing_start - attacks_start
+    ).strip_edges()
+    var trailing_effects: String = detail.substr(trailing_start + 2).strip_edges()
+    if trailing_effects.is_empty():
+        return detail
+
+    var sections := PackedStringArray()
+    if not before_attacks.is_empty():
+        sections.append(before_attacks)
+    sections.append(trailing_effects)
+    sections.append(attacks_block)
+    return "\n\n".join(sections)
