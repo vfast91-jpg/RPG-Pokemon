@@ -1,6 +1,6 @@
 extends SceneTree
 
-const RouteScript = preload("res://scripts/demo_route_species_xp.gd")
+const RouteScript = preload("res://scripts/demo_route_training_hp_cost.gd")
 
 var failures: int = 0
 
@@ -34,6 +34,14 @@ func _initialize() -> void:
     _check(route._route_stage_xp(1) == 91, "Etappe 1 muss 91 Basis-EP geben.")
     _check(route._route_stage_xp(10) == 631, "Etappe 10 muss 631 Basis-EP geben.")
     _check(route._route_stage_xp(90) == 26791, "Etappe 90 muss 26791 Basis-EP geben.")
+
+    # Training costs 15% of NEW max HP, rounded to the nearest full HP.
+    # A living Pokemon can never be reduced below 1 HP by training exhaustion.
+    _check(route._training_hp_cost_for_max_hp(40) == 6, "15% von 40 Max-KP müssen 6 KP Trainingskosten sein.")
+    _check(route._training_hp_cost_for_max_hp(100) == 15, "15% von 100 Max-KP müssen 15 KP Trainingskosten sein.")
+    _check(route._training_hp_after_cost(40, 40) == 34, "Trainingskosten werden bei normalen KP falsch abgezogen.")
+    _check(route._training_hp_after_cost(5, 100) == 1, "Training darf ein lebendes Pokémon nicht kampfunfähig machen.")
+    _check(route._training_hp_after_cost(0, 100) == 0, "Ein bereits kampfunfähiges Pokémon darf durch die Hilfsfunktion nicht wiederbelebt werden.")
 
     var members: Array = [
         {"species_id": "pikachu", "name": "Pikachu A", "level": 5, "xp": 2, "hp": 20, "max_hp": 20},
