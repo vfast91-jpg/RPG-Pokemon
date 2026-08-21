@@ -16,8 +16,8 @@
       "opening": false,
       "contact": true,
       "emoji": "🌀",
-      "effect_source": "[damage, cleanse(self: seeded+binding), field_cleanse(allied_side: entry_hazard), next_atb_cycle_multiplier=1/(1+status_curve(special))]",
-      "special_rules": "Statuskurve R=special/(75+special); nächster ATB-Zyklus ×1/(1+R). Alle Sekundäreffekte nur bei erfolgreichem Treffer.",
+      "effect_source": "[damage, cleanse(self: seeded+binding), field_cleanse(allied_side: entry_hazard), next_atb_cycle_multiplier=(1-status_curve(special))]",
+      "special_rules": "Statuskurve R=special/(75+special); nächster ATB-Zyklus ×(1-R). Alle Sekundäreffekte nur bei erfolgreichem Treffer.",
       "mechanics": [
         {"kind": "damage"},
         {"kind": "cleanse_self", "effects": ["seeded", "binding"]},
