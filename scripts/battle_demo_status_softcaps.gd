@@ -19,6 +19,7 @@ extends "res://scripts/battle_demo_uncapped_light_screen.gd"
 # the weather system owns weather strength/effects independently of Status.
 
 const STATUS_CURVE: float = 75.0
+const ATB_PAUSE_CYCLE_SCALE: float = 1.0
 const TEMP_STATUS_KINDS: Array[String] = [
     "outgoing_damage_mod",
     "incoming_damage_mod",
@@ -29,15 +30,47 @@ const TEMP_STATUS_KINDS: Array[String] = [
 
 func _load_data() -> void:
     super._load_data()
-    # The canonical database is loaded by the parent chain. Validate the final
-    # merged move set against the new weather activation contract as a last step.
+    # Validate the final canonical move set after all database override files
+    # have been merged.
     _audit_weather_moves()
 
 
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
     var combatant: Dictionary = super._make_combatant(side, index, setup)
     combatant["db_focus_energy_bonus_pp"] = 0.0
+    combatant["db_atb_pause_remaining_seconds"] = 0.0
     return combatant
+
+
+func _process(delta: float) -> void:
+    # ATB-pause control uses real combat time, but does not tick down while the
+    # whole battle is paused for player input/feedback or during Runde 0.
+    var frozen_cycles: Array = []
+    var tick_pause: bool = battle_active and not paused and not opening_phase_active
+    if tick_pause:
+        for combatant_value: Variant in combatants:
+            if not (combatant_value is Dictionary):
+                continue
+            var combatant: Dictionary = combatant_value
+            var remaining: float = maxf(0.0, float(combatant.get("db_atb_pause_remaining_seconds", 0.0)))
+            if remaining <= 0.0 or not bool(combatant.get("alive", false)):
+                continue
+            frozen_cycles.append({"combatant": combatant, "cycle": float(combatant.get("cycle", 1.0))})
+            # The inherited ATB loop divides gain by cycle. A huge temporary
+            # cycle therefore produces an actual pause without duplicating the
+            # complete ATB implementation in this leaf layer.
+            combatant["cycle"] = maxf(1.0, float(combatant.get("cycle", 1.0))) * 1000000.0
+            combatant["db_atb_pause_remaining_seconds"] = maxf(0.0, remaining - delta)
+
+    super._process(delta)
+
+    for frozen_value: Variant in frozen_cycles:
+        if not (frozen_value is Dictionary):
+            continue
+        var frozen: Dictionary = frozen_value
+        var combatant_value: Variant = frozen.get("combatant", {})
+        if combatant_value is Dictionary:
+            (combatant_value as Dictionary)["cycle"] = float(frozen.get("cycle", 1.0))
 
 
 func _status_ratio(status_value: float) -> float:
@@ -54,8 +87,8 @@ func _status_percent(status_value: float) -> float:
 func _status_strength_weight(actor: Dictionary, mechanic: Dictionary) -> float:
     var weight: float = absf(float(mechanic.get("multiplier_from_special", 1.0)))
 
-    # Preserve the existing same-type Status bonus and Wachstum's central sun
-    # amplification, but apply both as move weights after the diminishing curve.
+    # Preserve the existing same-type Status bonus and Wachstum's sun
+    # amplification, but apply both as move weights after the curve.
     var actor_types: Array = _type_array(actor.get("types", []))
     weight *= TypeSystem.get_same_type_status_multiplier(_active_move_type, actor_types)
 
@@ -81,11 +114,10 @@ func _status_modifier_multiplier(
 
     match kind:
         "outgoing_damage_mod":
-            # Positive = damage increase; negative = damage reduction.
             return 1.0 + scaled if signed_weight >= 0.0 else 1.0 / (1.0 + scaled)
         "incoming_damage_mod":
-            # Positive means vulnerability in this combat model. The stored
-            # defense multiplier is inverted by damage resolution.
+            # Positive means vulnerability in this combat model. Damage
+            # resolution divides by this stored defense multiplier.
             return 1.0 / (1.0 + scaled) if signed_weight >= 0.0 else 1.0 + scaled
         "accuracy_mod":
             return 1.0 + scaled if signed_weight >= 0.0 else 1.0 / (1.0 + scaled)
@@ -101,7 +133,20 @@ func _status_effect_aggro(kind: String, multiplier: float) -> float:
     if kind == "incoming_damage_mod":
         actual_multiplier = 1.0 / maxf(0.0001, multiplier)
     var delta: float = absf(actual_multiplier - 1.0)
-    return delta * (10.0 if kind in ["outgoing_damage_mod", "incoming_damage_mod"] else 8.0)
+    var aggro_scale: float = 10.0 if kind == "outgoing_damage_mod" or kind == "incoming_damage_mod" else 8.0
+    return delta * aggro_scale
+
+
+func _target_full_atb_cycle_seconds(target: Dictionary) -> float:
+    var speed: float = maxf(0.0, float(target.get("speed", 10.0)))
+    if bool(target.get("paralyzed", false)):
+        speed *= 0.5
+    var cycle: float = maxf(
+        0.01,
+        float(target.get("cycle", 1.0)) * _combined_timed_modifier(target, "atb_cycle_mod")
+    )
+    var gain_per_second: float = maxf(0.01, (12.0 + speed * 0.62) / cycle)
+    return 100.0 / gain_per_second
 
 
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
@@ -125,9 +170,6 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
     match kind:
         "critical_focus":
             var bonus_pp: float = _status_percent(float(actor.get("special", 0.0)))
-            # Keep the legacy field synchronized so existing status tokens and
-            # detail views remain correct while the central critical function is
-            # overridden below.
             actor["db_focus_energy_bonus_pp"] = bonus_pp
             actor["critical_focus_bonus"] = bonus_pp / 100.0
             _spawn_feedback_label(actor, "🎯 KRIT +%.0f%%" % bonus_pp, Color("f3dc85"))
@@ -173,11 +215,7 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
                 signed_weight *= -1.0
             var adjusted: Dictionary = mechanic.duplicate(true)
             adjusted["multiplier_from_special"] = signed_weight
-            target["db_incoming_accuracy_mult"] = _status_modifier_multiplier(
-                actor,
-                adjusted,
-                "accuracy_mod"
-            )
+            target["db_incoming_accuracy_mult"] = _status_modifier_multiplier(actor, adjusted, "accuracy_mod")
             target["db_incoming_accuracy_expires"] = int(target.get("action_serial", 0)) + 3
             return absf(float(target.get("db_incoming_accuracy_mult", 1.0)) - 1.0) * 8.0
 
@@ -211,30 +249,30 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
             var max_stacks: int = maxi(1, int(mechanic.get("max", 3)))
             actor["db_stockpile"] = mini(max_stacks, int(actor.get("db_stockpile", 0)) + 1)
             var stacks: int = int(actor.get("db_stockpile", 0))
-            var stockpile_mechanic: Dictionary = {
-                "multiplier_from_special": -2.0 * float(stacks)
-            }
-            var stockpile_multiplier: float = _status_modifier_multiplier(
-                actor,
-                stockpile_mechanic,
-                "incoming_damage_mod"
-            )
-            _add_timed_modifier(
-                actor,
-                "incoming_damage_mod",
-                stockpile_multiplier,
-                "Horter",
-                _actor_name(actor)
-            )
+            var stockpile_mechanic: Dictionary = {"multiplier_from_special": -2.0 * float(stacks)}
+            var stockpile_multiplier: float = _status_modifier_multiplier(actor, stockpile_mechanic, "incoming_damage_mod")
+            _add_timed_modifier(actor, "incoming_damage_mod", stockpile_multiplier, "Horter", _actor_name(actor))
             return float(stacks)
+
+        "db_atb_pause":
+            var pause_weight: float = _status_strength_weight(actor, {"multiplier_from_special": 1.0})
+            var pause_fraction: float = pause_weight * _status_ratio(float(actor.get("special", 0.0)))
+            var pause_seconds: float = _target_full_atb_cycle_seconds(target) * pause_fraction * ATB_PAUSE_CYCLE_SCALE
+            if pause_seconds <= 0.0:
+                return 0.0
+            target["db_atb_pause_remaining_seconds"] = maxf(
+                float(target.get("db_atb_pause_remaining_seconds", 0.0)),
+                pause_seconds
+            )
+            _spawn_feedback_label(target, "⏸ ATB %.1fs" % pause_seconds, Color("b9d7ff"))
+            return pause_seconds * 4.0
 
     return super._effect(actor, target, mechanic)
 
 
 func _combined_timed_modifier(combatant: Dictionary, kind: String) -> float:
     # Individual Status effects are already bounded by the curve, so the old
-    # 0.25/2.5/4.0 hard clamps would merely create a second plateau at high
-    # Status or when legitimate effects stack. Keep only a numerical floor.
+    # hard result clamps would only create a second artificial plateau.
     var result: float = 1.0
     var modifiers_value: Variant = combatant.get("timed_modifiers", [])
     if modifiers_value is Array:
@@ -250,10 +288,15 @@ func _combined_timed_modifier(combatant: Dictionary, kind: String) -> float:
 func _critical_chance(combatant: Dictionary) -> float:
     if bool(combatant.get("db_guaranteed_crit", false)):
         return 1.0
-    var chance: float = super._critical_chance(combatant)
-    # super already includes the synchronized legacy focus field. Keep the
-    # result naturally capped at 100% total critical chance.
-    return clampf(chance, 0.0, 1.0)
+    return clampf(super._critical_chance(combatant), 0.0, 1.0)
+
+
+func _status_tokens(combatant: Dictionary) -> Array[String]:
+    var tokens: Array[String] = super._status_tokens(combatant)
+    var pause_seconds: float = float(combatant.get("db_atb_pause_remaining_seconds", 0.0))
+    if pause_seconds > 0.01:
+        tokens.append("⏸ %.1fs" % pause_seconds)
+    return tokens
 
 
 # Weather move contract -----------------------------------------------------
@@ -337,10 +380,7 @@ func _compact_effect_summary(move: Dictionary) -> String:
 
     if move_id == "focus_energy":
         if not selected_actor.is_empty():
-            return (
-                "Volltrefferchance +%d Prozentpunkte (Status %d) · bis Wechsel/Kampfende · nicht stapelbar"
-                % [int(round(_status_percent(status_value))), int(round(status_value))]
-            )
+            return "Volltrefferchance +%d Prozentpunkte (Status %d) · bis Wechsel/Kampfende · nicht stapelbar" % [int(round(_status_percent(status_value))), int(round(status_value))]
         return "Volltrefferbonus = 100 × Status / (75 + Status) Prozentpunkte · nicht stapelbar"
 
     if move_id == "synthesis" or move_id == "roost":
@@ -348,10 +388,7 @@ func _compact_effect_summary(move: Dictionary) -> String:
         if move_id == "roost":
             suffix = " · Flug-Typ bis zur nächsten eigenen Aktion entfernt"
         if not selected_actor.is_empty():
-            return (
-                "heilt %d%% der Max-KP (Status %d) · jeder weitere Statuspunkt wirkt weiter%s"
-                % [int(round(_status_percent(status_value))), int(round(status_value)), suffix]
-            )
+            return "heilt %d%% der Max-KP (Status %d) · jeder weitere Statuspunkt wirkt weiter%s" % [int(round(_status_percent(status_value))), int(round(status_value)), suffix]
         return "Heilung = 100 × Status / (75 + Status) %% der Max-KP" + suffix
 
     if move_id == "light_screen":
@@ -363,11 +400,18 @@ func _compact_effect_summary(move: Dictionary) -> String:
                     duration = maxi(1, int((mechanic_value as Dictionary).get("duration_actions", 3)))
                     break
         if not selected_actor.is_empty():
-            return (
-                "Spezial-Attacken gegen alle Verbündeten: −%d%% Schaden (Status %d) · physisch unverändert · %d eigene Aktionen"
-                % [int(round(_status_percent(status_value))), int(round(status_value)), duration]
-            )
+            return "Spezial-Attacken gegen alle Verbündeten: −%d%% Schaden (Status %d) · physisch unverändert · %d eigene Aktionen" % [int(round(_status_percent(status_value))), int(round(status_value)), duration]
         return "Spezial-Schadensreduktion = 100 × Status / (75 + Status) %% · physisch unverändert"
+
+    if move_id == "whirlwind" or move_id == "roar":
+        if not selected_actor.is_empty():
+            var targets: Array = _targets(selected_actor, str(move.get("target", "enemy_highest_aggro")))
+            if not targets.is_empty() and targets[0] is Dictionary:
+                var target: Dictionary = targets[0]
+                var pause_weight: float = _status_strength_weight(selected_actor, {"multiplier_from_special": 1.0})
+                var pause_seconds: float = _target_full_atb_cycle_seconds(target) * pause_weight * _status_ratio(status_value)
+                return "pausiert die ATB von %s für ca. %.1f s (Status %d)" % [_actor_name(target), pause_seconds, int(round(status_value))]
+        return "ATB-Pausendauer = voller Ziel-ATB-Zyklus × Status / (75 + Status)"
 
     var mechanics_value: Variant = move.get("mechanics", [])
     if not selected_actor.is_empty() and mechanics_value is Array:
