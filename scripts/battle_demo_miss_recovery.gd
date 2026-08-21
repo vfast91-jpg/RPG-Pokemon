@@ -15,10 +15,10 @@ var _miss_detection_stack: Array[bool] = []
 func _build_battle(root: Control) -> void:
     super._build_battle(root)
 
-    # The framed weather bar introduced a PanelContainer whose minimum-size
-    # negotiation can stretch the timeline far beyond its intended compact lane.
-    # Put the ProgressBar back directly on the battle panel so its geometry is
-    # controlled only by these fixed center offsets at every window scale.
+    # The weather ProgressBar was sitting inside a taller PanelContainer, so the
+    # grey frame looked normal while the actual blue fill was rendered as only a
+    # very thin strip. Keep the real ProgressBar directly on the battle panel and
+    # give background and fill the exact same fixed height.
     if weather_bar == null or battle_panel == null:
         return
 
@@ -31,11 +31,11 @@ func _build_battle(root: Control) -> void:
 
     weather_bar.anchor_left = 0.5
     weather_bar.anchor_right = 0.5
-    weather_bar.offset_left = -48.0
+    weather_bar.offset_left = -49.0
     weather_bar.offset_top = 47.0
-    weather_bar.offset_right = 48.0
-    weather_bar.offset_bottom = 54.0
-    weather_bar.custom_minimum_size = Vector2.ZERO
+    weather_bar.offset_right = 49.0
+    weather_bar.offset_bottom = 56.0
+    weather_bar.custom_minimum_size = Vector2(98.0, 9.0)
     weather_bar.z_index = 150
 
     var background: StyleBoxFlat = StyleBoxFlat.new()
@@ -44,6 +44,11 @@ func _build_battle(root: Control) -> void:
     background.set_border_width_all(1)
     background.set_corner_radius_all(3)
     weather_bar.add_theme_stylebox_override("background", background)
+
+    var fill: StyleBoxFlat = StyleBoxFlat.new()
+    fill.bg_color = WEATHER_ATB_BLUE
+    fill.set_corner_radius_all(3)
+    weather_bar.add_theme_stylebox_override("fill", fill)
 
     weather_bar.visible = battle_weather.is_active()
 
