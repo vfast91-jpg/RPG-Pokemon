@@ -85,16 +85,18 @@ func _status_tokens(combatant: Dictionary) -> Array[String]:
     var inherited: Array[String] = super._status_tokens(combatant)
     var result: Array[String] = []
 
-    # Remove the old technical ATB+/ATB- shorthand from the visible card.
+    # Remove every old technical ATB shorthand, including stacked forms such as
+    # ATB+×2. A single exact percentage below replaces all of them.
     for token: String in inherited:
-        if token == "ATB+" or token == "ATB-":
+        if token.begins_with("ATB"):
             continue
         result.append(_player_text_cleanup(token))
 
-    # One-shot timing modifiers are presented as actual time differences.
     var next_cycle: float = float(combatant.get("next_cycle", 1.0))
-    if not is_equal_approx(next_cycle, 1.0):
-        result.append("ZEIT " + _signed_percent_delta(next_cycle))
+    var timed_cycle: float = _combined_timed_modifier(combatant, "atb_cycle_mod")
+    var timing_multiplier: float = next_cycle * timed_cycle
+    if not is_equal_approx(timing_multiplier, 1.0):
+        result.append("ZEIT " + _signed_percent_delta(timing_multiplier))
 
     return result
 
@@ -108,8 +110,8 @@ func _detail_info(combatant: Dictionary) -> String:
         "Aktionsleiste: %.0f%%" % fill
     )
 
-    # Convert the legacy raw multiplier lines into child-readable percentage
-    # changes without changing the underlying combat values.
+    # Old one-shot fields can still appear in inherited/debug paths. Translate
+    # them as percentages instead of exposing raw multipliers.
     var attack_mult: float = float(combatant.get("attack_mult", 1.0))
     if not is_equal_approx(attack_mult, 1.0):
         text = text.replace(
@@ -139,7 +141,57 @@ func _detail_info(combatant: Dictionary) -> String:
             _action_time_sentence(next_cycle)
         )
 
+    # Three-action effects also show combined values when several effects stack.
+    # Convert those aggregate multipliers to the same percentage language.
+    if _active_modifier_count(combatant, "outgoing_damage_mod") > 1:
+        var outgoing_total: float = _combined_timed_modifier(combatant, "outgoing_damage_mod")
+        text = text.replace(
+            "Gesamt verursachter Schaden: ×" + _decimal(outgoing_total, 2),
+            "Gesamt verursachter Schaden: " + _signed_percent_delta(outgoing_total)
+        )
+
+    if _active_modifier_count(combatant, "incoming_damage_mod") > 1:
+        var incoming_total: float = 1.0 / maxf(
+            0.25,
+            _combined_timed_modifier(combatant, "incoming_damage_mod")
+        )
+        text = text.replace(
+            "Gesamt eingehender Schaden: ×" + _decimal(incoming_total, 2),
+            "Gesamt eingehender Schaden: " + _signed_percent_delta(incoming_total)
+        )
+
+    if _active_modifier_count(combatant, "accuracy_mod") > 1:
+        var accuracy_total: float = _combined_timed_modifier(combatant, "accuracy_mod")
+        text = text.replace(
+            "Gesamt Genauigkeit: ×" + _decimal(accuracy_total, 2),
+            "Gesamt Genauigkeit: " + _signed_percent_delta(accuracy_total)
+        )
+
+    if _active_modifier_count(combatant, "atb_cycle_mod") > 1:
+        var timing_total: float = _combined_timed_modifier(combatant, "atb_cycle_mod")
+        text = text.replace(
+            "Gesamt ATB-Zyklus: ×" + _decimal(timing_total, 2),
+            "Gesamt " + _action_time_sentence(timing_total)
+        )
+
+    text = text.replace("Initiative halbiert", "Geschwindigkeit −50%")
+    text = text.replace("Initiative", "Geschwindigkeit")
     return _player_text_cleanup(text)
+
+
+func _modifier_detail_text(kind: String, multiplier: float) -> String:
+    match kind:
+        "outgoing_damage_mod":
+            return "verursachter Schaden " + _signed_percent_delta(multiplier)
+        "incoming_damage_mod":
+            var incoming_multiplier: float = 1.0 / maxf(0.25, multiplier)
+            return "eingehender Schaden " + _signed_percent_delta(incoming_multiplier)
+        "accuracy_mod":
+            return "Genauigkeit " + _signed_percent_delta(multiplier)
+        "atb_cycle_mod":
+            return _action_time_sentence(multiplier)
+        _:
+            return _player_text_cleanup(super._modifier_detail_text(kind, multiplier))
 
 
 func _move_tooltip(move: Dictionary) -> String:
