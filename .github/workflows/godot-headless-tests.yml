@@ -62,6 +62,9 @@ jobs:
       - name: Player attack text regression test
         run: ./godot --headless --path . --script tests/player_attack_text_test.gd
 
+      - name: Lockduft regression test
+        run: ./godot --headless --path . --script tests/lockduft_regression_test.gd
+
       - name: Route level-up move details regression test
         run: ./godot --headless --path . --script tests/route_levelup_move_details_test.gd
 
