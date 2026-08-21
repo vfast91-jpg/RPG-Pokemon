@@ -68,11 +68,11 @@ func _audit_weather_spec_keys(move_id: String, weather: Dictionary) -> bool:
     for key_value: Variant in weather.keys():
         var key: String = str(key_value)
         if not TIMEFLOW_WEATHER_MOVE_KEYS.has(key):
-            push_error(
+            var message: String = (
                 "Wetter-Audit: %s enthält das nicht unterstützte Wetterfeld '%s'. "
                 + "Wetterattacken dürfen nur eine weather_id aktivieren."
-                % [move_id, key]
-            )
+            ) % [move_id, key]
+            push_error(message)
             valid = false
     return valid
 
@@ -184,10 +184,11 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     super._execute_move(actor, move_id)
 
     if not _same_weather_rejected_id.is_empty():
-        _append_weather_log([
+        var messages: Array[String] = [
             battle_weather.weather_name(_same_weather_rejected_id)
             + " ist bereits aktiv. Die Wetterdauer wird nicht erneuert."
-        ])
+        ]
+        _append_weather_log(messages)
         _same_weather_rejected_id = ""
 
 
