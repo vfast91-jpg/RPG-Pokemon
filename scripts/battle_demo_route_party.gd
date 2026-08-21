@@ -95,7 +95,7 @@ func _route_begin_wave() -> void:
 
     _refresh_cards()
     _set_log(
-        "Der Etappenkampf beginnt: %d gegen %d. KP und Status bleiben zwischen Kämpfen erhalten. K.O.-Pokémon bleiben sichtbar."
+        "Der Etappenkampf beginnt: %d gegen %d. KP bleiben zwischen Kämpfen erhalten; Statusveränderungen enden mit dem Kampf. K.O.-Pokémon bleiben sichtbar."
         % [player_team.size(), enemy_team.size()]
     )
 
@@ -107,7 +107,8 @@ func _status_tokens(combatant: Dictionary) -> Array[String]:
 
 
 func _route_store_current_state() -> void:
-    # Only the travelling team persists between route encounters.
+    # Only persistent route progress travels between encounters. Major status
+    # conditions are battle-scoped and are cleared as soon as the battle ends.
     for local_index: int in range(player_team.size()):
         if local_index >= _route_active_indices.size():
             break
@@ -123,5 +124,5 @@ func _route_store_current_state() -> void:
         member["level"] = int(combatant.get("level", member.get("level", 1)))
         member["max_hp"] = int(combatant.get("max_hp", member.get("max_hp", 1)))
         member["hp"] = int(combatant.get("hp", 0))
-        member["major_status"] = str(combatant.get("major_status", ""))
+        member["major_status"] = ""
         _route_team_state[team_index] = member
