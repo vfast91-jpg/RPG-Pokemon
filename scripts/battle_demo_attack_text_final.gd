@@ -11,6 +11,14 @@ extends "res://scripts/battle_demo_attribute_wording.gd"
 # runtime multipliers remain untouched.
 
 
+func _target_name(rule: String) -> String:
+    match rule:
+        "all_other_active_pokemon":
+            return "alle anderen aktiven Pokémon"
+        _:
+            return super._target_name(rule)
+
+
 func _move_tooltip(move: Dictionary) -> String:
     return _final_attack_text(super._move_tooltip(move))
 
