@@ -15,8 +15,8 @@ func _initialize() -> void:
     _check(not lab._pvp_species_is_available_at_level("ivysaur", 32), "Bisaknosp darf ab der Pflichtentwicklung auf Level 32 nicht mehr angeboten werden.")
 
     var catalog: Array = lab.pvp_catalog(50)
-    _check(catalog.size() >= 4, "PvP braucht auf Level 50 mindestens vier spielbare Pokémon im Draft-Pool.")
-    if catalog.size() < 4:
+    _check(catalog.size() >= 6, "PvP braucht auf Level 50 mindestens sechs spielbare Pokémon, damit jeder Pick drei unterschiedliche Optionen behalten kann.")
+    if catalog.size() < 6:
         _finish(lab)
         return
 
@@ -89,6 +89,10 @@ func _initialize() -> void:
     lab._on_pvp_handoff_confirmed()
     _check(not lab._pvp_handoff_overlay.visible, "Nach der Übergabe muss der neutrale Bildschirm verschwinden.")
     _check(lab.log_label != null and lab.log_label.text.contains("SPIELER 2"), "Die Runde-0-Auswahl muss Spieler 2 klar als handelnde Person anzeigen.")
+
+    lab.cancel_pvp_mode()
+    _check(not lab.pvp_mode and not lab.opening_phase_active, "Ein Wechsel ins Hauptmenü muss jeden PvP-/Runde-0-Zustand vollständig beenden.")
+    _check(lab._pvp_handoff_overlay != null and not lab._pvp_handoff_overlay.visible, "Beim Verlassen von PvP darf kein Übergabebildschirm aktiv bleiben.")
 
     lab.open_config()
     _check(not lab.pvp_mode, "Das normale Kampflabor muss beim Öffnen der Konfiguration wieder im KI/Testmodus sein.")

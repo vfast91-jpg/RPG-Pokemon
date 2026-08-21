@@ -391,8 +391,8 @@ func _begin_pvp_draft() -> void:
     var catalog_value: Variant = battle_demo.call("pvp_catalog", pvp_level)
     pvp_catalog_entries = catalog_value.duplicate(true) if catalog_value is Array else []
 
-    if pvp_catalog_entries.size() < 3:
-        pvp_subtitle.text = "Für dieses Level stehen noch nicht genug vollständig spielbare Pokémon zur Verfügung."
+    if pvp_catalog_entries.size() < 6:
+        pvp_subtitle.text = "Für dieses Level stehen noch nicht mindestens sechs vollständig spielbare Pokémon für einen fairen 3-aus-1-Draft zur Verfügung."
         _set_pvp_stage("level")
         return
 
@@ -687,7 +687,15 @@ func _show_main_menu() -> void:
     _hide_pvp_detail()
     if pvp_overlay != null:
         pvp_overlay.visible = false
+    if battle_demo != null and battle_demo.has_method("cancel_pvp_mode"):
+        battle_demo.call("cancel_pvp_mode")
     super._show_main_menu()
+
+
+func _start_demo_route() -> void:
+    if battle_demo != null and battle_demo.has_method("cancel_pvp_mode"):
+        battle_demo.call("cancel_pvp_mode")
+    super._start_demo_route()
 
 
 func _unhandled_input(event: InputEvent) -> void:

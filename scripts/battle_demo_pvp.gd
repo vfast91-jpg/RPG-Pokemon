@@ -169,9 +169,12 @@ func start_pvp_battle(player_ids: Array, enemy_ids: Array, level: int) -> bool:
     return true
 
 
-func open_config() -> void:
+func cancel_pvp_mode() -> void:
     pvp_mode = false
     opening_phase_active = false
+    battle_active = false
+    paused = false
+    selected_actor = {}
     _opening_choices.clear()
     _opening_player_candidates.clear()
     _opening_enemy_candidates.clear()
@@ -179,6 +182,10 @@ func open_config() -> void:
     _pvp_opening_enemy_index = 0
     _pvp_collecting_enemy_opening = false
     _hide_pvp_handoff()
+
+
+func open_config() -> void:
+    cancel_pvp_mode()
     super.open_config()
 
 
