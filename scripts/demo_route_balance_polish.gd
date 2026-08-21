@@ -2,17 +2,24 @@ extends "res://scripts/demo_route_levelup_hardmode.gd"
 
 # Demo-route balance polish:
 # - Capture level rises with route stage instead of staying fixed at level 3.
-# - Encounter level uses the route stage as its baseline and compensates for
-#   action economy: 1 enemy +5, 2 enemies +2, 3 enemies +/-0, 4 enemies -2.
-# - Enemy count is rolled independently and varies from 1 to 4.
-# - Early stages strongly prefer smaller encounters; larger groups become more
-#   common later without letting repeated two-enemy fights dominate every run.
+# - Stages 1-5 are a deliberately gentle onboarding phase with capped enemy
+#   counts and hand-tuned encounter levels.
+# - From stage 6 onward, encounter level uses the route stage as its baseline
+#   and compensates for action economy: 1 enemy +5, 2 enemies +2,
+#   3 enemies +/-0, 4 enemies -2.
 # - Every Pokémon that entered a stage battle receives XP after a victory,
 #   even if it was knocked out during that battle.
 # - Full-team replacement choices stay inside the route panel and can scroll.
 
 const CAPTURE_LEVEL_BY_STAGE: Array[int] = [3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
 const ENEMY_LEVEL_BY_STAGE: Array[int] = [2, 3, 3, 4, 4, 5, 6, 7, 8, 9]
+const EARLY_ENCOUNTER_LEVELS := {
+    1: {1: 2},
+    2: {1: 3, 2: 1},
+    3: {1: 5, 2: 3},
+    4: {1: 6, 2: 4, 3: 2},
+    5: {1: 8, 2: 6, 3: 4}
+}
 
 var _last_enemy_count: int = 0
 var _battle_participant_indices: Array[int] = []
@@ -32,11 +39,31 @@ func _enemy_level_for_stage(current_stage: int) -> int:
     return ENEMY_LEVEL_BY_STAGE[clampi(current_stage - 1, 0, ENEMY_LEVEL_BY_STAGE.size() - 1)]
 
 
+func _max_enemy_count_for_stage(current_stage: int) -> int:
+    match current_stage:
+        1:
+            return 1
+        2, 3:
+            return 2
+        4, 5:
+            return 3
+        _:
+            return 4
+
+
 func _enemy_level_for_encounter(current_stage: int, enemy_count: int) -> int:
-    # The stage number is the neutral reference for a three-enemy encounter.
-    # Fewer enemies receive extra levels to compensate for having fewer turns;
-    # four enemies lose levels because four independent action bars are already
-    # a substantial tactical advantage.
+    # Stages 1-5 intentionally do not use the later action-economy formula.
+    # They are hand-tuned as a calm onboarding phase.
+    var early_levels_value: Variant = EARLY_ENCOUNTER_LEVELS.get(current_stage, {})
+    if early_levels_value is Dictionary:
+        var early_levels: Dictionary = early_levels_value
+        if early_levels.has(enemy_count):
+            return maxi(1, int(early_levels[enemy_count]))
+
+    # From stage 6 onward the stage number is the neutral reference for a
+    # three-enemy encounter. Fewer enemies receive extra levels to compensate
+    # for having fewer turns; four enemies lose levels because four independent
+    # action bars are already a substantial tactical advantage.
     var level_modifier: int = 0
     match clampi(enemy_count, 1, 4):
         1:
@@ -215,19 +242,31 @@ func _roll_enemy_count(current_stage: int) -> int:
     var roll: float = randf()
     var desired: int = 1
 
-    if current_stage <= 2:
-        # Gentle opening: usually one opponent, occasionally two.
-        desired = 1 if roll < 0.72 else 2
-    elif current_stage <= 4:
-        # All four encounter sizes become possible, but 3-4 are still uncommon.
-        if roll < 0.35:
+    if current_stage <= 1:
+        # Stage 1 is a protected first fight: always exactly one opponent.
+        desired = 1
+    elif current_stage == 2:
+        # Still very calm: mostly one opponent, sometimes two.
+        desired = 1 if roll < 0.75 else 2
+    elif current_stage == 3:
+        # Two opponents become more common, but three are still locked out.
+        desired = 1 if roll < 0.55 else 2
+    elif current_stage == 4:
+        # First stage where a three-opponent fight can appear, but only rarely.
+        if roll < 0.40:
             desired = 1
-        elif roll < 0.80:
+        elif roll < 0.85:
             desired = 2
-        elif roll < 0.97:
-            desired = 3
         else:
-            desired = 4
+            desired = 3
+    elif current_stage == 5:
+        # Final onboarding stage: up to three opponents, never four.
+        if roll < 0.25:
+            desired = 1
+        elif roll < 0.65:
+            desired = 2
+        else:
+            desired = 3
     elif current_stage <= 7:
         if roll < 0.20:
             desired = 1
@@ -247,18 +286,19 @@ func _roll_enemy_count(current_stage: int) -> int:
         else:
             desired = 4
 
-    # Prevent long streaks of the same encounter size while keeping early
-    # difficulty gentle. A repeat only moves one step up/down instead of
-    # rerolling into a surprise four-Pokémon fight.
-    if desired == _last_enemy_count:
-        if current_stage <= 2:
-            desired = 2 if desired == 1 else 1
-        elif desired <= 1:
+    var max_count: int = _max_enemy_count_for_stage(current_stage)
+
+    # From stage 6 onward, avoid long streaks of identical encounter sizes.
+    # During the onboarding stages we deliberately allow repeats so the
+    # anti-repeat rule cannot secretly force a harder group size.
+    if current_stage >= 6 and desired == _last_enemy_count:
+        if desired <= 1:
             desired = 2
-        elif desired >= 4:
-            desired = 3
+        elif desired >= max_count:
+            desired = max_count - 1
         else:
             desired += 1 if randf() < 0.5 else -1
 
+    desired = clampi(desired, 1, max_count)
     _last_enemy_count = desired
     return desired
