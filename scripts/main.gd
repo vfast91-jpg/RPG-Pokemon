@@ -128,19 +128,19 @@ func _build_main_menu() -> void:
     subtitle.add_theme_color_override("font_color", Color("c4d9d0"))
     content.add_child(subtitle)
 
-    var test_button := Button.new()
-    test_button.text = "TESTKAMPF"
-    test_button.custom_minimum_size = Vector2(240, 44)
-    test_button.tooltip_text = "Öffnet die bisherige frei konfigurierbare Kampflabor-Maske."
-    test_button.pressed.connect(_start_test_battle)
-    content.add_child(test_button)
-
     var route_button := Button.new()
     route_button.text = "DEMO-ROUTE"
     route_button.custom_minimum_size = Vector2(240, 44)
     route_button.tooltip_text = "90 Etappen mit Pfadwahl, Fangen, Heilung, TMs, EP und persistenten KP."
     route_button.pressed.connect(_start_demo_route)
     content.add_child(route_button)
+
+    var test_button := Button.new()
+    test_button.text = "TESTKAMPF"
+    test_button.custom_minimum_size = Vector2(240, 44)
+    test_button.tooltip_text = "Öffnet die bisherige frei konfigurierbare Kampflabor-Maske."
+    test_button.pressed.connect(_start_test_battle)
+    content.add_child(test_button)
 
     var leaderboard_button := Button.new()
     leaderboard_button.text = "BESTENLISTE"
