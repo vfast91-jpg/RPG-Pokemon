@@ -220,6 +220,10 @@ func _type_help_name(type_id: String) -> String:
     return str(TYPE_HELP_NAMES.get(type_id, type_id.capitalize()))
 
 
+func _type_name(type_id: String) -> String:
+    return _type_help_name(type_id)
+
+
 func _add_type_help_error(grid: GridContainer, message: String) -> void:
     var label := Label.new()
     label.text = message
