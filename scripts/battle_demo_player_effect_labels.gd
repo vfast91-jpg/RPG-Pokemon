@@ -88,7 +88,7 @@ func _bibor_infobox_summary(move: Dictionary) -> String:
         "string_shot":
             var string_mechanic: Dictionary = _infobox_mechanic(move, "atb_cycle_mod")
             var string_effect: String = (
-                _attribute_modifier_summary(string_mechanic, "atb_cycle_mod")
+                _infobox_attribute_modifier_summary(move, string_mechanic, "atb_cycle_mod")
                 if not string_mechanic.is_empty()
                 else "Geschwindigkeit ↓ nach Statuswert"
             )
@@ -129,7 +129,7 @@ func _bibor_infobox_summary(move: Dictionary) -> String:
         "harden":
             var harden_mechanic: Dictionary = _infobox_mechanic(move, "incoming_damage_mod")
             var harden_effect: String = (
-                _attribute_modifier_summary(harden_mechanic, "incoming_damage_mod")
+                _infobox_attribute_modifier_summary(move, harden_mechanic, "incoming_damage_mod")
                 if not harden_mechanic.is_empty()
                 else "Verteidigung ↑ nach Statuswert"
             )
@@ -183,7 +183,7 @@ func _bibor_infobox_summary(move: Dictionary) -> String:
         "agility":
             var agility_mechanic: Dictionary = _infobox_mechanic(move, "atb_cycle_mod")
             var agility_effect: String = (
-                _attribute_modifier_summary(agility_mechanic, "atb_cycle_mod")
+                _infobox_attribute_modifier_summary(move, agility_mechanic, "atb_cycle_mod")
                 if not agility_mechanic.is_empty()
                 else "Geschwindigkeit ↑ nach Statuswert"
             )
@@ -199,7 +199,7 @@ func _bibor_infobox_summary(move: Dictionary) -> String:
             var sting_mechanic: Dictionary = _infobox_mechanic(move, "db_on_ko_modifier")
             var ko_kind: String = str(sting_mechanic.get("modifier_kind", "outgoing_damage_mod"))
             var sting_effect: String = (
-                _attribute_modifier_summary(sting_mechanic, ko_kind, false, false)
+                _infobox_attribute_modifier_summary(move, sting_mechanic, ko_kind, false, false)
                 if not sting_mechanic.is_empty()
                 else "Angriff ↑ stark nach Statuswert"
             )
@@ -219,6 +219,33 @@ func _infobox_mechanic(move: Dictionary, kind: String) -> Dictionary:
         if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == kind:
             return (mechanic_value as Dictionary).duplicate(true)
     return {}
+
+
+func _infobox_attribute_modifier_summary(
+    move: Dictionary,
+    mechanic: Dictionary,
+    kind: String,
+    apply_type_bonus: bool = true,
+    apply_sun_bonus: bool = false
+) -> String:
+    if selected_actor.is_empty():
+        return _attribute_direction_summary(mechanic, kind)
+
+    var adjusted: Dictionary = mechanic.duplicate(true)
+    if apply_type_bonus:
+        var move_type: String = str(move.get("type", "normal"))
+        var actor_types: Array = _type_array(selected_actor.get("types", []))
+        var type_bonus: float = TypeSystem.get_same_type_status_multiplier(move_type, actor_types)
+        adjusted["multiplier_from_special"] = (
+            float(adjusted.get("multiplier_from_special", 0.0)) * type_bonus
+        )
+
+    return _attribute_modifier_summary(
+        adjusted,
+        kind,
+        false,
+        apply_sun_bonus
+    )
 
 
 func _infobox_single_target(move: Dictionary) -> Dictionary:
