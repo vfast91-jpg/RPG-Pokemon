@@ -15,10 +15,11 @@
     "res://data/gen1_moves_runtime_v3_6.json",
     "res://data/gen1_moves_runtime_v3_7.json",
     "res://data/gen1_moves_runtime_v3_8.json",
-    "res://data/gen1_moves_runtime_v3_balance_overrides.json"
+    "res://data/gen1_moves_runtime_v3_balance_overrides.json",
+    "res://data/gen1_moves_runtime_v3_status_softcap_overrides.json"
   ],
   "species_count": 27,
   "move_count": 128,
   "route_root_count": 10,
-  "source_date": "2026-08-20"
+  "source_date": "2026-08-21"
 }
