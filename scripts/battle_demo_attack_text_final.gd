@@ -223,6 +223,21 @@ func _final_attack_text(source: String) -> String:
         "direct"
     )
 
+    # AP/recovery timing is easier to understand as a percentage delta than as
+    # an internal multiplier. Example: ×2.10 becomes +110%, ×0.90 becomes −10%.
+    text = _replace_legacy_multiplier(
+        text,
+        "Ladezeit der Aktionsleiste ×",
+        "Ladezeit der Aktionsleiste ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Ladezeit der Aktionsleiste x",
+        "Ladezeit der Aktionsleiste ",
+        "direct"
+    )
+
     return text
 
 
