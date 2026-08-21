@@ -1,9 +1,16 @@
 extends Control
 
 # Compact five-axis radar chart for the RPG's core attributes.
-# The largest current attribute defines the chart scale and therefore always
+# The largest comparable attribute defines the chart scale and therefore always
 # touches the outer ring. Only attribute icons are drawn around the chart;
 # numeric values stay in the surrounding UI.
+#
+# IMPORTANT: Max HP uses a different runtime formula from the other four stats:
+#   max_hp = scaled_base + level + 10
+#   other  = scaled_base + 5
+# For the radar only, HP is therefore converted back onto the same comparison
+# scale with max_hp - level - 5. This is exact for every level with the current
+# stat formulas (including level 50+); the real displayed/battle HP is untouched.
 
 const STAT_KEYS: Array[String] = ["max_hp", "attack", "defense", "special", "speed"]
 const STAT_ICONS: Array[String] = ["❤️", "⚔️", "🛡️", "🔮", "⚡"]
@@ -19,10 +26,13 @@ func _ready() -> void:
     queue_redraw()
 
 
-func set_stats(stats: Dictionary) -> void:
+func set_stats(stats: Dictionary, level: int = 0) -> void:
     var next_values: Array[float] = []
     for key: String in STAT_KEYS:
-        next_values.append(maxf(0.0, float(stats.get(key, 0.0))))
+        var value: float = maxf(0.0, float(stats.get(key, 0.0)))
+        if key == "max_hp" and level > 0:
+            value = _radar_hp(value, level)
+        next_values.append(value)
     _set_values(next_values)
 
 
@@ -38,6 +48,14 @@ func set_values(values: Array) -> void:
 
 func scale_max() -> float:
     return _scale_max
+
+
+func _radar_hp(max_hp: float, level: int) -> float:
+    # Runtime HP: scaled_base + level + 10
+    # Runtime other stats: scaled_base + 5
+    # Removing level + 5 from HP leaves scaled_base + 5, i.e. exactly the
+    # comparison scale used by Attack, Defense, Special and Speed.
+    return maxf(0.0, max_hp - float(maxi(1, level)) - 5.0)
 
 
 func _set_values(values: Array[float]) -> void:
