@@ -1,12 +1,13 @@
 extends "res://scripts/main.gd"
 
-const LEADERBOARD_ICON_SIZE := 30
+const LEADERBOARD_ICON_SIZE := 20
+const LEADERBOARD_NAME_MAX_LENGTH := 16
 
 
 func _build_leaderboard_overlay() -> void:
 	leaderboard_panel = PanelContainer.new()
 	leaderboard_panel.name = "LeaderboardPanel"
-	leaderboard_panel.custom_minimum_size = Vector2(1000, 410)
+	leaderboard_panel.custom_minimum_size = Vector2(610, 410)
 	leaderboard_panel.set_anchors_preset(Control.PRESET_CENTER)
 	leaderboard_panel.visible = false
 	leaderboard_panel.z_index = 220
@@ -37,11 +38,11 @@ func _build_leaderboard_overlay() -> void:
 	box.add_child(subtitle)
 
 	leaderboard_text = RichTextLabel.new()
-	leaderboard_text.custom_minimum_size = Vector2(960, 220)
+	leaderboard_text.custom_minimum_size = Vector2(570, 220)
 	leaderboard_text.fit_content = false
 	leaderboard_text.scroll_active = true
 	leaderboard_text.autowrap_mode = TextServer.AUTOWRAP_OFF
-	leaderboard_text.add_theme_font_size_override("normal_font_size", 18)
+	leaderboard_text.add_theme_font_size_override("normal_font_size", 14)
 	box.add_child(leaderboard_text)
 
 	var reset_btn := Button.new()
@@ -72,8 +73,8 @@ func _refresh_leaderboard() -> void:
 	for i in range(entries.size()):
 		var entry: Dictionary = entries[i]
 		var stage := int(entry.get("stage", 0))
-		var player_name := str(entry.get("player_name", "Trainer"))
-		leaderboard_text.append_text("%d. %s  •  Etappe %d/90  •  " % [i + 1, player_name, stage])
+		var player_name := _short_leaderboard_name(str(entry.get("player_name", "Trainer")))
+		leaderboard_text.append_text("%d. %s • E%d • " % [i + 1, player_name, stage])
 		_append_leaderboard_team(entry)
 		if i < entries.size() - 1:
 			leaderboard_text.append_text("\n")
@@ -101,7 +102,16 @@ func _append_leaderboard_team(entry: Dictionary) -> void:
 			leaderboard_text.append_text(pokemon_name)
 		leaderboard_text.append_text(" Lv.%d" % level)
 		if i < valid_members.size() - 1:
-			leaderboard_text.append_text("   ")
+			leaderboard_text.append_text("  ")
+
+
+func _short_leaderboard_name(player_name: String) -> String:
+	var clean_name := player_name.strip_edges()
+	if clean_name.is_empty():
+		return "Trainer"
+	if clean_name.length() <= LEADERBOARD_NAME_MAX_LENGTH:
+		return clean_name
+	return clean_name.left(LEADERBOARD_NAME_MAX_LENGTH - 1) + "…"
 
 
 func _leaderboard_monster_texture(pokemon_name: String) -> Texture2D:
