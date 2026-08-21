@@ -75,3 +75,43 @@ func _set_log(text: String) -> void:
         _miss_detection_stack[_miss_detection_stack.size() - 1] = true
 
     super._set_log(text)
+
+
+func _status_tokens(combatant: Dictionary) -> Array[String]:
+    var tokens: Array[String] = super._status_tokens(combatant)
+    if str(combatant.get("major_status", "")) != "sleep":
+        return tokens
+
+    # Schlaf war bereits mechanisch aktiv, wurde aber in den persistenten
+    # Statusanzeigen nicht dargestellt. Zeige zusätzlich die noch verbleibenden
+    # eigenen Aktionsmöglichkeiten, damit Erholung jederzeit nachvollziehbar ist.
+    for token: String in tokens:
+        if token.contains("SCHLAF"):
+            return tokens
+
+    var remaining: int = maxi(0, int(combatant.get("db_sleep_actions", 0)))
+    var sleep_token: String = "💤 SCHLAF"
+    if remaining > 0:
+        sleep_token += " " + str(remaining)
+    tokens.append(sleep_token)
+    return tokens
+
+
+func _detail_info(combatant: Dictionary) -> String:
+    var detail: String = super._detail_info(combatant)
+    if str(combatant.get("major_status", "")) != "sleep":
+        return detail
+    if detail.contains("💤 Schlaf:"):
+        return detail
+
+    var remaining: int = maxi(0, int(combatant.get("db_sleep_actions", 0)))
+    var duration_text: String = (
+        str(remaining) + " eigene Aktionsmöglichkeit"
+        + ("" if remaining == 1 else "en")
+    )
+    return (
+        detail
+        + "\n\n[b]HAUPTSTATUS[/b]\n"
+        + "• 💤 Schlaf: noch " + duration_text
+        + "; normale Aktionen werden verschlafen."
+    )
