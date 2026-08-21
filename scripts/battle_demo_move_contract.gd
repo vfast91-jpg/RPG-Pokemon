@@ -9,6 +9,20 @@ const MoveContract = preload("res://scripts/battle/move_contract.gd")
 const MovePresenter = preload("res://scripts/battle/move_presenter.gd")
 
 
+# Pokémon sprites have one canonical source. Older demo versions used the
+# top-level assets folder, and orphaned local files there could otherwise win
+# over the current images in assets/monsters/.
+func _species_texture(display_name: String) -> Texture2D:
+    for extension_value: Variant in ["png", "webp", "jpg", "jpeg", "svg"]:
+        var extension: String = str(extension_value)
+        var path: String = "res://assets/monsters/" + display_name + "." + extension
+        if ResourceLoader.exists(path):
+            var texture: Texture2D = load(path) as Texture2D
+            if texture != null:
+                return texture
+    return null
+
+
 func _load_data() -> void:
     super._load_data()
     _apply_move_contract()
