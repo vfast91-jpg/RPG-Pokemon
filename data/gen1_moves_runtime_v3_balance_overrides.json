@@ -190,20 +190,20 @@
     "hurricane": {
       "id": "hurricane",
       "name": "Orkan",
-      "description": "Ein gewaltiger Sturm trifft alle Gegner und kann sie verwirren.",
+      "description": "Ein gewaltiger Sturm trifft ein Ziel und kann es verwirren.",
       "type": "flying",
       "category": "special",
       "power": 110,
       "accuracy": 70.0,
       "ap": 7,
-      "target": "all_enemies",
-      "area": true,
+      "target": "enemy_highest_aggro",
+      "area": false,
       "priority": 0,
       "opening": false,
       "contact": false,
       "emoji": "🌀",
       "effect_source": "[damage, apply_status(confusion,chance=0.30), weather_accuracy_rules, hits_airborne]",
-      "special_rules": "Trifft ausschließlich alle gegnerischen Ziele. Genauigkeit und Verwirrung werden pro Ziel separat geprüft.",
+      "special_rules": "Einzelziel. 30 % Verwirrung; im Regen trifft Orkan immer, in Sonne beträgt die Genauigkeit 50 %. Luftzustands-Sondertreffer bleiben vorgemerkt.",
       "mechanics": [
         {"kind": "damage"},
         {"kind": "status", "status": "confusion", "chance": 0.3}
@@ -218,7 +218,7 @@
         "notes": [
           "Wettergenauigkeit ist aktiv; Luftzustands-Sondertreffer sind nur relevant, sobald Fliegen/Sprung-Phasen existieren."
         ],
-        "balance_override_reason": "RPG-Balance: Orkan trifft alle Gegner, aber keine eigenen Verbündeten."
+        "balance_override_reason": "Originalnahe Zielkorrektur: Orkan trifft wieder genau ein gegnerisches Ziel."
       }
     }
   }
