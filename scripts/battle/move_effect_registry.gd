@@ -6,8 +6,8 @@ const PARTIAL: String = "partial"
 const UNSUPPORTED: String = "unsupported"
 
 # One registry entry is the contract between attack data, runtime and every
-# player-facing surface.  Bad Poison is fully implemented by the final Timeflow
-# battle layer and can therefore be used by strict V4 moves.
+# player-facing surface.  Bad Poison and Toxic Spikes are fully implemented by
+# the final Timeflow battle layers and can therefore be used by strict V4 moves.
 const EFFECTS: Dictionary = {
     "damage": {"player_label":"Schaden","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "status": {"player_label":"Haupt-/Kampfstatus","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["status"]},
@@ -35,7 +35,7 @@ const EFFECTS: Dictionary = {
     "db_team_modifier": {"player_label":"Team-Attributänderung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["modifier_kind","multiplier_from_special"]},
     "db_redirect": {"player_label":"Einzelziel-Umlenkung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
     "db_guaranteed_crit": {"player_label":"Garantierter Volltreffer","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
-    "db_toxic_spikes": {"player_label":"Giftspitzen","runtime_state":PARTIAL,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["max_layers"]},
+    "db_toxic_spikes": {"player_label":"Giftspitzen","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["max_layers"]},
     "db_equalize_hp": {"player_label":"KP angleichen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_on_ko_modifier": {"player_label":"K.O.-Bonus","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["modifier_kind","multiplier_from_special"]},
     "db_remove_type_until_next_action": {"player_label":"Typ vorübergehend entfernen","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["type"]},
