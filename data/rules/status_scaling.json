@@ -1,24 +1,27 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "rule_id": "status_softcap_v1",
   "curve": 75.0,
   "ratio_formula": "R = Status / (75 + Status)",
   "rules": {
     "increase_or_slowdown": "multiplier = 1 + weight * R",
-    "reduction_or_speedup": "multiplier = 1 / (1 + weight * R)",
-    "bounded_percent_effect": "percent = 100 * R"
+    "reduction_or_speedup": "multiplier = (1 - R) ^ weight",
+    "bounded_percent_effect": "percent = 100 * R",
+    "incoming_vulnerability_storage": "stored_defense_multiplier = 1 / (1 + weight * R)",
+    "incoming_protection_storage": "stored_defense_multiplier = 1 / ((1 - R) ^ weight)"
   },
   "examples": [
-    {"status": 25, "R": 0.25, "bounded_percent": 25.0},
-    {"status": 50, "R": 0.4, "bounded_percent": 40.0},
-    {"status": 75, "R": 0.5, "bounded_percent": 50.0},
-    {"status": 100, "R": 0.5714285714, "bounded_percent": 57.14285714},
-    {"status": 200, "R": 0.7272727273, "bounded_percent": 72.72727273},
-    {"status": 300, "R": 0.8, "bounded_percent": 80.0}
+    {"status": 25, "R": 0.25, "bounded_percent": 25.0, "one_x_reduction": 25.0},
+    {"status": 50, "R": 0.4, "bounded_percent": 40.0, "one_x_reduction": 40.0},
+    {"status": 75, "R": 0.5, "bounded_percent": 50.0, "one_x_reduction": 50.0},
+    {"status": 100, "R": 0.5714285714, "bounded_percent": 57.14285714, "one_x_reduction": 57.14285714},
+    {"status": 200, "R": 0.7272727273, "bounded_percent": 72.72727273, "one_x_reduction": 72.72727273},
+    {"status": 300, "R": 0.8, "bounded_percent": 80.0, "one_x_reduction": 80.0}
   ],
   "notes": [
     "Every additional finite Status point remains useful.",
-    "Move weights such as 2x or 3x are applied after R is calculated.",
+    "A 1x reduction uses exactly R, so the central curve has the same visible meaning for healing, protection, debuffs and speedups.",
+    "Move weights such as 2x or 3x compound the remaining fraction and never create negative values.",
     "Weather does not use this rule; weather strength and effects belong to the central weather definition."
   ]
 }
