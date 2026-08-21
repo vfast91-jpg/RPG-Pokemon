@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_miss_recovery.gd"
+extends "res://scripts/battle_demo_aggro_scaling_final.gd"
 
 # Final attack contract layer.
 # New attack packages are compiled/validated here before they become selectable.
