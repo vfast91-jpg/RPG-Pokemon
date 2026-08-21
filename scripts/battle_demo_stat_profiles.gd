@@ -10,6 +10,15 @@ extends "res://scripts/battle_demo_adaptive_family_ui.gd"
 
 const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json"
 const STAT_KEYS: Array[String] = ["hp", "attack", "defense", "special", "speed"]
+const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/meadow_grassland_day.webp"
+
+
+func _build_battle(root: Control) -> void:
+    # The presentation layer already owns the reusable background system.
+    # Set the generated meadow before that layer builds the BattleArea so the
+    # image is installed immediately behind cards, sprites and connectors.
+    battle_background_path = ACTIVE_BATTLE_BACKGROUND_PATH
+    super._build_battle(root)
 
 
 func _load_data() -> void:
