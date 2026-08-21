@@ -47,6 +47,9 @@ jobs:
       - name: Combat lab config regression test
         run: ./godot --headless --path . --script tests/combat_lab_config_test.gd
 
+      - name: Local PvP flow regression test
+        run: ./godot --headless --path . --script tests/pvp_flow_test.gd
+
       - name: Bisasam TM runtime test
         run: ./godot --headless --path . --script tests/bulbasaur_tm_runtime_test.gd
 
