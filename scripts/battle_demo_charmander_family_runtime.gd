@@ -12,6 +12,13 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
 
     var was_charged_shot: bool = str(actor.get("db_charge_move", "")) == move_id
     var charge_state: String = str(runtime.get("timeflow_charge_state", ""))
+
+    if _cf_should_force_semi_invulnerable_miss(actor, temp, move_id, runtime, was_charged_shot):
+        # Halb-Unverwundbarkeit ist ein echtes Verfehlen: Damit greifen die
+        # zentrale Miss-Recovery und Folgeattacken wie Frustflamme korrekt.
+        temp["accuracy"] = 0.0
+        runtime.erase("always_hit")
+        temp["runtime"] = runtime
     var pledge_type: String = _cf_pledge_type(temp)
     var pledge_combo: String = ""
     var pledge_pending: Dictionary = {}
@@ -262,6 +269,32 @@ func _cf_finalize_focus_interrupt(target: Dictionary, hp_before: int) -> void:
     _spawn_feedback_label(target, "💥 FOKUS VERLOREN", Color("d9a5a5"))
     _set_log(_actor_name(target) + " verliert den Fokus für Power-Punch.")
     _refresh_cards()
+
+
+func _cf_should_force_semi_invulnerable_miss(
+    actor: Dictionary,
+    move: Dictionary,
+    move_id: String,
+    runtime: Dictionary,
+    was_charged_shot: bool
+) -> bool:
+    # The preparation action of a two-action move is allowed even if its locked
+    # target is currently hidden. Reachability matters when the attack fires.
+    if bool(runtime.get("charge_then_fire", false)) and not was_charged_shot:
+        return false
+
+    var targets: Array = _targets(actor, str(move.get("target", "enemy_highest_aggro")))
+    var has_living_target: bool = false
+    for target_value: Variant in targets:
+        if not (target_value is Dictionary):
+            continue
+        var target: Dictionary = target_value
+        if not bool(target.get("alive", false)):
+            continue
+        has_living_target = true
+        if _cf_target_reachable_by_move(target, move_id):
+            return false
+    return has_living_target
 
 
 func _cf_target_reachable_by_move(target: Dictionary, move_id: String) -> bool:

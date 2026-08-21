@@ -92,6 +92,21 @@ func _assert_semi_invulnerable_states(lab) -> void:
     lab._tf_set_state(target, "underground", true)
     assert(lab._cf_target_reachable_by_move(target, "earthquake"), "Erdbeben muss unterirdische Ziele treffen.")
     assert(not lab._cf_target_reachable_by_move(target, "flamethrower"), "Normale Attacken dürfen unterirdisch nicht treffen.")
+    var attacker: Dictionary = lab._make_combatant("player", 0, {"species_id":"charmander","level":20})
+    lab.player_team = [attacker]
+    lab.enemy_team = [target]
+    lab.combatants = [attacker, target]
+    var flamethrower: Dictionary = lab._move_data("flamethrower")
+    assert(
+        lab._cf_should_force_semi_invulnerable_miss(attacker, flamethrower, "flamethrower", {}, false),
+        "Eine normale Attacke gegen ein unterirdisches Ziel muss als echtes Verfehlen behandelt werden."
+    )
+    var dig: Dictionary = lab._move_data("dig")
+    var dig_runtime: Dictionary = dig.get("runtime", {})
+    assert(
+        not lab._cf_should_force_semi_invulnerable_miss(attacker, dig, "dig", dig_runtime, false),
+        "Die Vorbereitungsaktion von Schaufler darf trotz verstecktem Ziel beginnen."
+    )
 
     lab._tf_set_state(target, "underground", false)
     lab._tf_set_state(target, "airborne_fly", true)
