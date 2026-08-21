@@ -77,6 +77,18 @@ func _final_attack_text(source: String) -> String:
     )
     text = _replace_legacy_multiplier(
         text,
+        "Gesamt Verteidigung: ×",
+        "Gesamt Verteidigung: ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Gesamt Verteidigung: x",
+        "Gesamt Verteidigung: ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
         "eingehender Schaden ×",
         "Verteidigung ",
         "inverse"
@@ -99,6 +111,18 @@ func _final_attack_text(source: String) -> String:
         "Verteidigung: ",
         "inverse"
     )
+    text = _replace_legacy_multiplier(
+        text,
+        "Verteidigung ×",
+        "Verteidigung ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Verteidigung x",
+        "Verteidigung ",
+        "direct"
+    )
 
     text = _replace_legacy_multiplier(
         text,
@@ -109,6 +133,18 @@ func _final_attack_text(source: String) -> String:
     text = _replace_legacy_multiplier(
         text,
         "Gesamt verursachter Schaden: x",
+        "Gesamt Angriff: ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Gesamt Angriff: ×",
+        "Gesamt Angriff: ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Gesamt Angriff: x",
         "Gesamt Angriff: ",
         "direct"
     )
@@ -139,7 +175,19 @@ func _final_attack_text(source: String) -> String:
     )
     text = _replace_legacy_multiplier(
         text,
+        "Gesamt Genauigkeit: x",
+        "Gesamt Genauigkeit: ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
         "Genauigkeit ×",
+        "Genauigkeit ",
+        "direct"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Genauigkeit x",
         "Genauigkeit ",
         "direct"
     )
@@ -158,9 +206,21 @@ func _final_attack_text(source: String) -> String:
     )
     text = _replace_legacy_multiplier(
         text,
+        "Gesamt Aktionszyklus: x",
+        "Gesamt Geschwindigkeit: ",
+        "inverse"
+    )
+    text = _replace_legacy_multiplier(
+        text,
         "Gesamt ATB-Zyklus: ×",
         "Gesamt Geschwindigkeit: ",
         "inverse"
+    )
+    text = _replace_legacy_multiplier(
+        text,
+        "Gesamt Geschwindigkeit: ×",
+        "Gesamt Geschwindigkeit: ",
+        "direct"
     )
 
     return text
