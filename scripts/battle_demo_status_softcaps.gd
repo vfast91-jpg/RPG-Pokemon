@@ -30,8 +30,6 @@ const TEMP_STATUS_KINDS: Array[String] = [
 
 func _load_data() -> void:
     super._load_data()
-    # Validate the final canonical move set after all database override files
-    # have been merged.
     _audit_weather_moves()
 
 
@@ -43,7 +41,7 @@ func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
 
 
 func _process(delta: float) -> void:
-    # ATB-pause control uses real combat time, but does not tick down while the
+    # ATB-pause control uses combat time and therefore does not tick while the
     # whole battle is paused for player input/feedback or during Runde 0.
     var frozen_cycles: Array = []
     var tick_pause: bool = battle_active and not paused and not opening_phase_active
@@ -57,8 +55,7 @@ func _process(delta: float) -> void:
                 continue
             frozen_cycles.append({"combatant": combatant, "cycle": float(combatant.get("cycle", 1.0))})
             # The inherited ATB loop divides gain by cycle. A huge temporary
-            # cycle therefore produces an actual pause without duplicating the
-            # complete ATB implementation in this leaf layer.
+            # cycle produces an actual pause without duplicating that loop.
             combatant["cycle"] = maxf(1.0, float(combatant.get("cycle", 1.0))) * 1000000.0
             combatant["db_atb_pause_remaining_seconds"] = maxf(0.0, remaining - delta)
 
@@ -70,7 +67,8 @@ func _process(delta: float) -> void:
         var frozen: Dictionary = frozen_value
         var combatant_value: Variant = frozen.get("combatant", {})
         if combatant_value is Dictionary:
-            (combatant_value as Dictionary)["cycle"] = float(frozen.get("cycle", 1.0))
+            var restored: Dictionary = combatant_value
+            restored["cycle"] = float(frozen.get("cycle", 1.0))
 
 
 func _status_ratio(status_value: float) -> float:
@@ -84,32 +82,44 @@ func _status_percent(status_value: float) -> float:
     return 100.0 * _status_ratio(status_value)
 
 
-func _status_strength_weight(actor: Dictionary, mechanic: Dictionary) -> float:
+func _status_strength_weight(
+    actor: Dictionary,
+    mechanic: Dictionary,
+    apply_type_bonus: bool = true,
+    apply_sun_bonus: bool = true
+) -> float:
     var weight: float = absf(float(mechanic.get("multiplier_from_special", 1.0)))
 
-    # Preserve the existing same-type Status bonus and Wachstum's sun
-    # amplification, but apply both as move weights after the curve.
-    var actor_types: Array = _type_array(actor.get("types", []))
-    weight *= TypeSystem.get_same_type_status_multiplier(_active_move_type, actor_types)
+    # Generic temporary effects already used the same-type Status multiplier in
+    # the previous runtime, so preserve it there. Database-specific mechanics
+    # did not use it and explicitly opt out below.
+    if apply_type_bonus:
+        var actor_types: Array = _type_array(actor.get("types", []))
+        weight *= TypeSystem.get_same_type_status_multiplier(_active_move_type, actor_types)
 
-    var runtime_value: Variant = _database_active_move.get("runtime", {})
-    if runtime_value is Dictionary:
-        var runtime: Dictionary = runtime_value
-        if (
-            float(runtime.get("sun_special_multiplier", 1.0)) > 1.0
-            and str(battle_weather.snapshot().get("weather_id", "")) == "sun"
-        ):
-            weight *= float(runtime.get("sun_special_multiplier", 1.0))
+    # Wachstum already doubled its Status weighting in sun. Preserve that
+    # existing exception without coupling weather strength itself to Status.
+    if apply_sun_bonus:
+        var runtime_value: Variant = _database_active_move.get("runtime", {})
+        if runtime_value is Dictionary:
+            var runtime: Dictionary = runtime_value
+            if (
+                float(runtime.get("sun_special_multiplier", 1.0)) > 1.0
+                and str(battle_weather.snapshot().get("weather_id", "")) == "sun"
+            ):
+                weight *= float(runtime.get("sun_special_multiplier", 1.0))
     return maxf(0.0, weight)
 
 
 func _status_modifier_multiplier(
     actor: Dictionary,
     mechanic: Dictionary,
-    kind: String
+    kind: String,
+    apply_type_bonus: bool = true,
+    apply_sun_bonus: bool = true
 ) -> float:
     var signed_weight: float = float(mechanic.get("multiplier_from_special", 1.0))
-    var weight: float = _status_strength_weight(actor, mechanic)
+    var weight: float = _status_strength_weight(actor, mechanic, apply_type_bonus, apply_sun_bonus)
     var scaled: float = weight * _status_ratio(float(actor.get("special", 0.0)))
 
     match kind:
@@ -133,7 +143,7 @@ func _status_effect_aggro(kind: String, multiplier: float) -> float:
     if kind == "incoming_damage_mod":
         actual_multiplier = 1.0 / maxf(0.0001, multiplier)
     var delta: float = absf(actual_multiplier - 1.0)
-    var aggro_scale: float = 10.0 if kind == "outgoing_damage_mod" or kind == "incoming_damage_mod" else 8.0
+    var aggro_scale: float = 10.0 if (kind == "outgoing_damage_mod" or kind == "incoming_damage_mod") else 8.0
     return delta * aggro_scale
 
 
@@ -203,7 +213,9 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
             var next_cycle_multiplier: float = _status_modifier_multiplier(
                 actor,
                 {"multiplier_from_special": float(mechanic.get("multiplier_from_special", -1.0))},
-                "atb_cycle_mod"
+                "atb_cycle_mod",
+                false,
+                false
             )
             actor["cycle"] = float(actor.get("cycle", 1.0)) * next_cycle_multiplier
             return absf(next_cycle_multiplier - 1.0) * 8.0
@@ -215,13 +227,13 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
                 signed_weight *= -1.0
             var adjusted: Dictionary = mechanic.duplicate(true)
             adjusted["multiplier_from_special"] = signed_weight
-            target["db_incoming_accuracy_mult"] = _status_modifier_multiplier(actor, adjusted, "accuracy_mod")
+            target["db_incoming_accuracy_mult"] = _status_modifier_multiplier(actor, adjusted, "accuracy_mod", false, false)
             target["db_incoming_accuracy_expires"] = int(target.get("action_serial", 0)) + 3
             return absf(float(target.get("db_incoming_accuracy_mult", 1.0)) - 1.0) * 8.0
 
         "db_team_modifier":
             var modifier_kind: String = str(mechanic.get("modifier_kind", "atb_cycle_mod"))
-            var team_multiplier: float = _status_modifier_multiplier(actor, mechanic, modifier_kind)
+            var team_multiplier: float = _status_modifier_multiplier(actor, mechanic, modifier_kind, false, false)
             _add_timed_modifier(
                 target,
                 modifier_kind,
@@ -235,7 +247,7 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
             if bool(target.get("alive", false)):
                 return 0.0
             var ko_kind: String = str(mechanic.get("modifier_kind", "outgoing_damage_mod"))
-            var ko_multiplier: float = _status_modifier_multiplier(actor, mechanic, ko_kind)
+            var ko_multiplier: float = _status_modifier_multiplier(actor, mechanic, ko_kind, false, false)
             _add_timed_modifier(
                 actor,
                 ko_kind,
@@ -250,13 +262,12 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
             actor["db_stockpile"] = mini(max_stacks, int(actor.get("db_stockpile", 0)) + 1)
             var stacks: int = int(actor.get("db_stockpile", 0))
             var stockpile_mechanic: Dictionary = {"multiplier_from_special": -2.0 * float(stacks)}
-            var stockpile_multiplier: float = _status_modifier_multiplier(actor, stockpile_mechanic, "incoming_damage_mod")
+            var stockpile_multiplier: float = _status_modifier_multiplier(actor, stockpile_mechanic, "incoming_damage_mod", false, false)
             _add_timed_modifier(actor, "incoming_damage_mod", stockpile_multiplier, "Horter", _actor_name(actor))
             return float(stacks)
 
         "db_atb_pause":
-            var pause_weight: float = _status_strength_weight(actor, {"multiplier_from_special": 1.0})
-            var pause_fraction: float = pause_weight * _status_ratio(float(actor.get("special", 0.0)))
+            var pause_fraction: float = _status_ratio(float(actor.get("special", 0.0)))
             var pause_seconds: float = _target_full_atb_cycle_seconds(target) * pause_fraction * ATB_PAUSE_CYCLE_SCALE
             if pause_seconds <= 0.0:
                 return 0.0
@@ -300,10 +311,6 @@ func _status_tokens(combatant: Dictionary) -> Array[String]:
 
 
 # Weather move contract -----------------------------------------------------
-# The move supplies only weather_id. Strength, duration and actual combat
-# effects live in BattleWeatherState/weather_rules.json so abilities/items/
-# areas can later activate the exact same weather without pretending to use a
-# move.
 
 func _audit_weather_spec_keys(move_id: String, weather: Dictionary) -> bool:
     var valid: bool = true
@@ -357,10 +364,15 @@ func _activate_weather_from_move(actor: Dictionary, weather: Dictionary) -> Dict
 
 
 func _move_tooltip(move: Dictionary) -> String:
-    var tooltip: String = super._move_tooltip(move)
     var weather_value: Variant = move.get("weather", null)
     if not (weather_value is Dictionary):
-        return tooltip
+        return super._move_tooltip(move)
+
+    # Remove the weather block before calling the legacy parent tooltip so its
+    # obsolete Status-strength wording cannot leak into the player-facing text.
+    var neutral_move: Dictionary = move.duplicate(true)
+    neutral_move.erase("weather")
+    var tooltip: String = super._move_tooltip(neutral_move)
     var weather_id: String = str((weather_value as Dictionary).get("weather_id", ""))
     var extra: String = (
         "Aktiviert " + battle_weather.weather_name(weather_id)
@@ -389,7 +401,7 @@ func _compact_effect_summary(move: Dictionary) -> String:
             suffix = " · Flug-Typ bis zur nächsten eigenen Aktion entfernt"
         if not selected_actor.is_empty():
             return "heilt %d%% der Max-KP (Status %d) · jeder weitere Statuspunkt wirkt weiter%s" % [int(round(_status_percent(status_value))), int(round(status_value)), suffix]
-        return "Heilung = 100 × Status / (75 + Status) %% der Max-KP" + suffix
+        return "Heilung = 100 × Status / (75 + Status) % der Max-KP" + suffix
 
     if move_id == "light_screen":
         var duration: int = 3
@@ -401,15 +413,14 @@ func _compact_effect_summary(move: Dictionary) -> String:
                     break
         if not selected_actor.is_empty():
             return "Spezial-Attacken gegen alle Verbündeten: −%d%% Schaden (Status %d) · physisch unverändert · %d eigene Aktionen" % [int(round(_status_percent(status_value))), int(round(status_value)), duration]
-        return "Spezial-Schadensreduktion = 100 × Status / (75 + Status) %% · physisch unverändert"
+        return "Spezial-Schadensreduktion = 100 × Status / (75 + Status) % · physisch unverändert"
 
     if move_id == "whirlwind" or move_id == "roar":
         if not selected_actor.is_empty():
             var targets: Array = _targets(selected_actor, str(move.get("target", "enemy_highest_aggro")))
             if not targets.is_empty() and targets[0] is Dictionary:
                 var target: Dictionary = targets[0]
-                var pause_weight: float = _status_strength_weight(selected_actor, {"multiplier_from_special": 1.0})
-                var pause_seconds: float = _target_full_atb_cycle_seconds(target) * pause_weight * _status_ratio(status_value)
+                var pause_seconds: float = _target_full_atb_cycle_seconds(target) * _status_ratio(status_value)
                 return "pausiert die ATB von %s für ca. %.1f s (Status %d)" % [_actor_name(target), pause_seconds, int(round(status_value))]
         return "ATB-Pausendauer = voller Ziel-ATB-Zyklus × Status / (75 + Status)"
 
