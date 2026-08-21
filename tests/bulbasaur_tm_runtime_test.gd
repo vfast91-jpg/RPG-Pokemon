@@ -67,7 +67,7 @@ func _initialize() -> void:
     assert(str((roar.get("mechanics", []) as Array)[0].get("kind", "")) == "db_atb_pause", "Brüller muss die zentrale ATB-Pause verwenden.")
 
     var manifest: Dictionary = _read_json("res://data/gen1_database_manifest_v3.json")
-    assert(int(manifest.get("move_count", 0)) == 159, "Kanonisches Manifest muss 159 eindeutige Attacken enthalten.")
+    assert(int(manifest.get("move_count", 0)) == 210, "Kanonisches Manifest muss 210 eindeutige Attacken enthalten.")
     assert((manifest.get("move_files", []) as Array).has("res://data/gen1_moves_runtime_v3_bulbasaur_tms.json"), "Das bisherige Bisasam-TM-Paket muss kanonisch im Manifest liegen.")
     assert((manifest.get("move_files", []) as Array).has("res://data/gen1_moves_runtime_v3_10_bulbasaur_family_tms.json"), "Das neue Familien-TM-Paket fehlt im Manifest.")
 
