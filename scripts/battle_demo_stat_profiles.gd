@@ -14,18 +14,48 @@ const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/m
 
 
 func _build_battle(root: Control) -> void:
-    # The presentation layer already owns the reusable background system.
-    # Set the generated meadow before that layer builds the BattleArea so the
-    # image is installed immediately behind cards, sprites and connectors.
+    # Tell the reusable presentation layer which arena image is active.
     battle_background_path = ACTIVE_BATTLE_BACKGROUND_PATH
     super._build_battle(root)
 
-    # The full-screen turquoise ColorRect is a sibling of BattleArea. The
-    # reusable background layer historically used z_index = -10, which put the
-    # texture behind that ColorRect and therefore made it invisible. Keep the
-    # background above the sky fallback, but below shadows/connectors/cards.
+    # IMPORTANT: battle_demo_hd.gd creates a full-screen turquoise ColorRect
+    # before BattleArea. A background placed as a child of BattleArea can end up
+    # behind that sibling because of CanvasItem z-ordering. Install the arena as
+    # its own battle_panel sibling immediately BEFORE BattleArea instead. This
+    # makes the draw order unambiguous: fallback -> arena -> Pokemon/UI.
+    var area: Control = battle_panel.get_node_or_null("BattleArea") as Control
+    if area == null:
+        push_error("BattleArea fehlt; Kampfhintergrund konnte nicht eingebaut werden.")
+        return
+
+    # Disable the old child background so there is only one authoritative image.
     if _battle_background_rect != null:
-        _battle_background_rect.z_index = 1
+        _battle_background_rect.visible = false
+
+    # Hide the turquoise full-screen fallback created by battle_demo_hd.gd.
+    if battle_panel.get_child_count() > 0:
+        var first_child: Node = battle_panel.get_child(0)
+        if first_child is ColorRect:
+            (first_child as ColorRect).visible = false
+
+    var arena_texture: Texture2D = load(ACTIVE_BATTLE_BACKGROUND_PATH) as Texture2D
+    if arena_texture == null:
+        push_error("Kampfhintergrund konnte nicht geladen werden: " + ACTIVE_BATTLE_BACKGROUND_PATH)
+        return
+
+    var arena: TextureRect = TextureRect.new()
+    arena.name = "ActiveBattleBackground"
+    arena.position = area.position
+    arena.size = area.size
+    arena.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    arena.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    arena.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    arena.texture = arena_texture
+    battle_panel.add_child(arena)
+
+    # Put it directly before BattleArea in sibling order. No negative z-index,
+    # no cross-parent ordering assumptions.
+    battle_panel.move_child(arena, area.get_index())
 
 
 func _load_data() -> void:
