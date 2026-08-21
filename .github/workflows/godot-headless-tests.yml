@@ -38,6 +38,9 @@ jobs:
       - name: Special mechanics audit
         run: ./godot --headless --path . --script tests/special_mechanics_audit_test.gd
 
+      - name: Move contract and presentation audit
+        run: ./godot --headless --path . --script tests/move_contract_test.gd
+
       - name: Evolution resolver test
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
 

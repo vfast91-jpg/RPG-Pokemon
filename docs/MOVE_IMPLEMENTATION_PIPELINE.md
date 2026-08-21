@@ -1,0 +1,58 @@
+# Attacken-Implementierungspipeline
+
+Neue Attacken sollen nicht mehr an mehreren UI- und Runtime-Stellen unabhängig voneinander „bekannt gemacht“ werden.
+
+## Ablauf
+
+1. Attacke einmal zentral definieren.
+2. `MoveContract` kompiliert V4-Feldnamen (`rpg_ap`, `opening_phase`, `priority_reference`, `effects`) in die bestehende Runtime-Form.
+3. `MoveContract` prüft Pflichtfelder, Zielregel, Typ, Kategorie, RPG-AP, Chancen, Dauer, Status-IDs, Mechanik-IDs, Aggrovertrag und Spielertext.
+4. `MoveEffectRegistry` ist die zentrale Liste aller erlaubten Mechaniken. Eine neue Mechanik muss dort ihren Runtime-Status und ihre UI-Oberflächen explizit deklarieren.
+5. Eine unbekannte Mechanik ist ein Fehler. Sie wird nicht still ignoriert.
+6. Strict/V4-Attacken mit Fehlern werden zur Laufzeit auf `runtime_supported=false` gesetzt und dadurch nicht als normale Attacke angeboten.
+7. `MovePresenter` erzeugt kanonische Spielerbegriffe. Technische Multiplikatoren und IDs dürfen nicht in Tooltip oder Detailanzeige gelangen.
+8. Die GitHub-Action `move_contract_test.gd` prüft bei jedem Push nach `main` das komplette aktuelle Attackenpaket sowie den Vertrag selbst.
+
+## Wann eine Attacke strikt geprüft wird
+
+Die aktive Integration schaltet den strikten Vertrag automatisch ein, sobald mindestens eines davon vorhanden ist:
+
+- `runtime.strict_contract = true`
+- `required_behavior_tests`
+- `rpg_ap`
+- `effects`
+
+Alte Schema-v3-Runtime-Daten bleiben kompatibel, werden aber weiterhin auf unbekannte Mechaniken und kaputte Grundstruktur geprüft.
+
+## Neue Mechanik hinzufügen
+
+Eine neue Mechanik ist erst fertig, wenn alle vier Punkte existieren:
+
+- Runtime-Ausführung
+- Tooltip-/Attackeninfo-Darstellung
+- Statuskarten-/Detailentscheidung (`status_card=true/false`)
+- automatisierte Verhaltenstests für echte Sondermechaniken
+
+Danach wird die Mechanik in `MoveEffectRegistry.EFFECTS` eingetragen. Ohne Registry-Eintrag blockiert der Vertrag die Attacke.
+
+## Spielertext
+
+Attributänderungen werden sichtbar ausschließlich als
+
+- Angriff
+- Verteidigung
+- Statuswert
+- Geschwindigkeit
+- Genauigkeit
+- KP
+- RPG-AP
+
+ausgegeben. Interne IDs wie `incoming_damage_mod` oder Rohtexte wie `ATB-Zyklus ×0,8` sind im Spielertext verboten.
+
+## Verhaltenstests
+
+Eine reine Standardschadensattacke darf `required_behavior_tests: []` besitzen. Jede Sondermechanik benötigt eine nichtleere Testliste. Je nach Mechanik gehören dazu Trigger, Ziele, Stärke, Chance, Dauer, Herunterzählen, Verbrauch, Immunitäten, Miss-Fälle, Mehrziel-Interaktionen, Aggro, Statuskonflikte und Wetter-/ATB-Interaktionen.
+
+## Wichtig für Implementierungs-Chats
+
+Bei jedem neuen Attackenpaket zuerst den Vertrag und das Effektregister prüfen. Wenn eine Mechanik noch nicht im Register existiert, nicht lokal in einer einzelnen Attacke improvisieren. Stattdessen die Mechanik einmal zentral ergänzen, ihre UI-Darstellung festlegen und ihre Verhaltenstests hinzufügen. Erst danach die Attacken des Pakets freigeben.
