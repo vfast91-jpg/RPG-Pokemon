@@ -1,7 +1,7 @@
 extends SceneTree
 
 const AttackTextScript = preload("res://scripts/battle_demo_attack_text_final.gd")
-const CurrentBattleScript = preload("res://scripts/battle_demo_miss_recovery.gd")
+const CurrentBattleScript = preload("res://scripts/battle_demo_player_effect_labels.gd")
 
 var failures: int = 0
 
@@ -118,6 +118,58 @@ func _initialize() -> void:
         and not endeavor_summary.to_lower().contains("db_equalize_hp"),
         "Notsituation zeigt noch den internen Mechaniknamen an."
     )
+
+    var feint_summary: String = current_lab._compact_effect_summary({
+        "id": "feint",
+        "mechanics": [{"kind": "damage"}, {"kind": "db_break_protect"}]
+    })
+    _check(
+        feint_summary.contains("Schutzschild") and feint_summary.contains("trifft trotzdem"),
+        "Offenlegung erklärt Schutzschildbruch und anschließenden Treffer nicht vollständig."
+    )
+
+    var safeguard_summary: String = current_lab._compact_effect_summary({
+        "id": "safeguard",
+        "mechanics": [{"kind": "db_team_immunity", "duration_actions": 3}]
+    })
+    _check(
+        safeguard_summary.contains("3 eigene Aktionen")
+        and safeguard_summary.contains("neuen Hauptstatuszuständen")
+        and safeguard_summary.contains("vorhandene Status bleiben")
+        and safeguard_summary.contains("Reserve nicht betroffen"),
+        "Bodyguard erklärt Dauer, Schutzumfang und Grenzen nicht vollständig."
+    )
+
+    var rage_powder_summary: String = current_lab._compact_effect_summary({
+        "id": "rage_powder",
+        "mechanics": [{"kind": "db_redirect", "duration_actions": 3}]
+    })
+    _check(
+        rage_powder_summary.contains("Einzelzielattacken")
+        and rage_powder_summary.contains("Aggro-Zielregel")
+        and rage_powder_summary.contains("Flächenattacken nicht")
+        and rage_powder_summary.contains("endet bei K.O."),
+        "Wutpulver erklärt Umlenkung, Aggro-Ausnahme, Flächen-Ausnahme und Ende nicht vollständig."
+    )
+
+    var bug_bite_summary: String = current_lab._compact_effect_summary({
+        "id": "bug_bite",
+        "power": 60,
+        "mechanics": [{"kind": "damage"}, {"kind": "db_berry_interaction"}]
+    })
+    _check(
+        bug_bite_summary.contains("Beereninteraktion ist noch nicht aktiv")
+        and bug_bite_summary.contains("Itemsystem fehlt")
+        and bug_bite_summary.contains("Stärke-60-Schadensattacke"),
+        "Käferbiss verschweigt den aktuell noch nicht aktiven Beeren-Effekt."
+    )
+
+    for summary: String in [feint_summary, safeguard_summary, rage_powder_summary, bug_bite_summary]:
+        _check(
+            not summary.to_lower().contains("db_")
+            and not summary.to_lower().contains("db "),
+            "Eine der geprüften Attacken zeigt weiterhin interne db-Bezeichner an."
+        )
 
     current_lab.free()
 
