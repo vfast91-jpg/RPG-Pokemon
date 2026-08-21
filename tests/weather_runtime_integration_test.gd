@@ -69,6 +69,46 @@ func _initialize() -> void:
         "Das ersetzende Wetter muss mit einer vollen 50-Sekunden-Leiste starten."
     )
 
+    # Regression: the weather lock is battlefield-global, not tied to the
+    # Pokémon that originally activated the weather. A second Pokémon that also
+    # knows Sonnentag must see it disabled, and a direct selection attempt must
+    # keep the action choice open instead of consuming the turn.
+    var second_source: Dictionary = demo._make_combatant(
+        "player", 1, {"species_id": "bulbasaur", "level": 10}
+    )
+    second_source["moves"] = ["sunny_day", "rain_dance"]
+    demo.player_team = [source, second_source]
+    demo.combatants = [source, second_source, enemy]
+    demo._prompt_player(second_source)
+
+    var sunny_day_button: Button = null
+    for child: Node in demo.action_grid.get_children():
+        if child is Button and (child as Button).text.contains("Sonnentag"):
+            sunny_day_button = child as Button
+            break
+
+    assert(sunny_day_button != null, "Sonnentag muss in der Aktionsauswahl vorhanden sein.")
+    assert(
+        sunny_day_button.disabled,
+        "Sonnentag muss bei jedem Pokémon gesperrt sein, solange Sonne bereits aktiv ist."
+    )
+
+    var remaining_before_blocked_choice: float = demo.battle_weather.remaining_seconds()
+    var selected_before_blocked_choice: String = str(demo.selected_actor.get("id", ""))
+    demo._choose_move("sunny_day")
+    assert(
+        str(demo.selected_actor.get("id", "")) == selected_before_blocked_choice,
+        "Eine gesperrte Wetterattacke darf die Aktionsauswahl nicht schließen."
+    )
+    assert(demo.paused, "Nach einer gesperrten Wetterattacke muss die Auswahl pausiert bleiben.")
+    assert(
+        is_equal_approx(
+            demo.battle_weather.remaining_seconds(),
+            remaining_before_blocked_choice
+        ),
+        "Eine gesperrte Wetterattacke darf weder Wetterzeit noch Wetterzustand verändern."
+    )
+
     demo.paused = true
     demo._process(25.0)
     assert(
