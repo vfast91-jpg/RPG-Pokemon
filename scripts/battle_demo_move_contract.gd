@@ -182,7 +182,7 @@ func _replace_action_load_percent_delta(source: String) -> String:
             continue
 
         var amount: int = int(text.substr(number_start, number_end - number_start))
-        var wording: String = str(amount) + " % länger" if sign == "+" else str(amount) + " % kürzer"
+        var wording: String = str(amount) + " % länger ↑" if sign == "+" else str(amount) + " % kürzer ↓"
         if amount == 0:
             wording = "unverändert"
 
@@ -199,9 +199,9 @@ func _replace_action_load_percent_delta(source: String) -> String:
 
 func _action_load_delta_words(multiplier: float) -> String:
     if multiplier > 1.0001:
-        return "%d %% länger" % int(round((multiplier - 1.0) * 100.0))
+        return "%d %% länger ↑" % int(round((multiplier - 1.0) * 100.0))
     if multiplier < 0.9999:
-        return "%d %% kürzer" % int(round((1.0 - multiplier) * 100.0))
+        return "%d %% kürzer ↓" % int(round((1.0 - multiplier) * 100.0))
     return "unverändert"
 
 
