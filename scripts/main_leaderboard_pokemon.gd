@@ -1,7 +1,7 @@
 extends "res://scripts/main.gd"
 
 const LEADERBOARD_ICON_SIZE := 20
-const LEADERBOARD_NAME_MAX_LENGTH := 16
+const LEADERBOARD_NAME_MAX_LENGTH := 14
 
 
 func _build_leaderboard_overlay() -> void:
@@ -67,17 +67,17 @@ func _refresh_leaderboard() -> void:
 	leaderboard_text.clear()
 	var entries: Array = LEADERBOARD_STORE.top_entries(10)
 	if entries.is_empty():
-		leaderboard_text.append_text("Noch keine Läufe gespeichert.\nSchließe eine Demo-Route ab.")
+		leaderboard_text.add_text("Noch keine Läufe gespeichert.\nSchließe eine Demo-Route ab.")
 		return
 
 	for i in range(entries.size()):
 		var entry: Dictionary = entries[i]
 		var stage := int(entry.get("stage", 0))
 		var player_name := _short_leaderboard_name(str(entry.get("player_name", "Trainer")))
-		leaderboard_text.append_text("%d. %s • E%d • " % [i + 1, player_name, stage])
+		leaderboard_text.add_text("%d. %s • Et.%d • " % [i + 1, player_name, stage])
 		_append_leaderboard_team(entry)
 		if i < entries.size() - 1:
-			leaderboard_text.append_text("\n")
+			leaderboard_text.add_text("\n")
 
 
 func _append_leaderboard_team(entry: Dictionary) -> void:
@@ -88,7 +88,7 @@ func _append_leaderboard_team(entry: Dictionary) -> void:
 			valid_members.append(Dictionary(raw_member))
 
 	if valid_members.is_empty():
-		leaderboard_text.append_text("Kein Team gespeichert")
+		leaderboard_text.add_text("Kein Team gespeichert")
 		return
 
 	for i in range(valid_members.size()):
@@ -99,10 +99,10 @@ func _append_leaderboard_team(entry: Dictionary) -> void:
 		if texture != null:
 			leaderboard_text.add_image(texture, LEADERBOARD_ICON_SIZE, LEADERBOARD_ICON_SIZE)
 		else:
-			leaderboard_text.append_text(pokemon_name)
-		leaderboard_text.append_text(" Lv.%d" % level)
+			leaderboard_text.add_text(pokemon_name)
+		leaderboard_text.add_text(" Lv.%d" % level)
 		if i < valid_members.size() - 1:
-			leaderboard_text.append_text("  ")
+			leaderboard_text.add_text("  ")
 
 
 func _short_leaderboard_name(player_name: String) -> String:
