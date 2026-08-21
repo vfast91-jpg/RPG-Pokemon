@@ -5,120 +5,109 @@ const LEADERBOARD_NAME_MAX_LENGTH := 14
 
 
 func _build_leaderboard_overlay() -> void:
-	leaderboard_panel = PanelContainer.new()
-	leaderboard_panel.name = "LeaderboardPanel"
-	leaderboard_panel.custom_minimum_size = Vector2(610, 410)
-	leaderboard_panel.set_anchors_preset(Control.PRESET_CENTER)
-	leaderboard_panel.visible = false
-	leaderboard_panel.z_index = 220
-	add_child(leaderboard_panel)
+    super._build_leaderboard_overlay()
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_bottom", 18)
-	leaderboard_panel.add_child(margin)
+    if leaderboard_text == null:
+        return
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
-	margin.add_child(box)
+    var content := leaderboard_text.get_parent() as VBoxContainer
+    if content == null:
+        return
 
-	var title := Label.new()
-	title.text = "BESTENLISTE"
-	title.add_theme_font_size_override("font_size", 26)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
+    var reset_button := Button.new()
+    reset_button.name = "ResetLeaderboardButton"
+    reset_button.text = "Lokale Liste löschen"
+    reset_button.custom_minimum_size = Vector2(180, 30)
+    reset_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    reset_button.pressed.connect(_on_reset_leaderboard)
+    content.add_child(reset_button)
 
-	var subtitle := Label.new()
-	subtitle.text = "Trainer • Etappe • Team mit Level"
-	subtitle.add_theme_font_size_override("font_size", 14)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.modulate = Color(0.85, 0.90, 1.0)
-	box.add_child(subtitle)
-
-	leaderboard_text = RichTextLabel.new()
-	leaderboard_text.custom_minimum_size = Vector2(570, 220)
-	leaderboard_text.fit_content = false
-	leaderboard_text.scroll_active = true
-	leaderboard_text.autowrap_mode = TextServer.AUTOWRAP_OFF
-	leaderboard_text.add_theme_font_size_override("normal_font_size", 14)
-	box.add_child(leaderboard_text)
-
-	var reset_btn := Button.new()
-	reset_btn.text = "Lokale Liste löschen"
-	reset_btn.custom_minimum_size = Vector2(0, 42)
-	reset_btn.pressed.connect(_on_reset_leaderboard)
-	box.add_child(reset_btn)
-
-	var close_btn := Button.new()
-	close_btn.text = "Zurück"
-	close_btn.custom_minimum_size = Vector2(0, 46)
-	close_btn.pressed.connect(_hide_leaderboard)
-	box.add_child(close_btn)
-
-	_refresh_leaderboard()
+    # Keep the existing ZURÜCK button as the last control in the panel.
+    var child_count := content.get_child_count()
+    if child_count >= 2:
+        content.move_child(reset_button, child_count - 2)
 
 
 func _refresh_leaderboard() -> void:
-	if leaderboard_text == null:
-		return
+    if leaderboard_text == null:
+        return
 
-	leaderboard_text.clear()
-	var entries: Array = LEADERBOARD_STORE.top_entries(10)
-	if entries.is_empty():
-		leaderboard_text.add_text("Noch keine Läufe gespeichert.\nSchließe eine Demo-Route ab.")
-		return
+    leaderboard_text.clear()
+    var entries: Array = LeaderboardStore.load_entries()
+    if entries.is_empty():
+        leaderboard_text.add_text("Noch keine Läufe gespeichert.\nSchließe eine Demo-Route ab.")
+        return
 
-	for i in range(entries.size()):
-		var entry: Dictionary = entries[i]
-		var stage := int(entry.get("stage", 0))
-		var player_name := _short_leaderboard_name(str(entry.get("player_name", "Trainer")))
-		leaderboard_text.add_text("%d. %s • Et.%d • " % [i + 1, player_name, stage])
-		_append_leaderboard_team(entry)
-		if i < entries.size() - 1:
-			leaderboard_text.add_text("\n")
+    for i in range(mini(entries.size(), 10)):
+        var entry_value: Variant = entries[i]
+        if not (entry_value is Dictionary):
+            continue
+
+        var entry: Dictionary = entry_value
+        var stage := int(entry.get("stage", 0))
+        var player_name := _short_leaderboard_name(str(entry.get("name", "Trainer")))
+        leaderboard_text.add_text("%d. %s • Et.%d • " % [i + 1, player_name, stage])
+        _append_leaderboard_team(entry)
+        if i < mini(entries.size(), 10) - 1:
+            leaderboard_text.add_text("\n")
+
+    leaderboard_text.scroll_to_line(0)
 
 
 func _append_leaderboard_team(entry: Dictionary) -> void:
-	var team: Array = entry.get("team", [])
-	var valid_members: Array[Dictionary] = []
-	for raw_member in team:
-		if typeof(raw_member) == TYPE_DICTIONARY:
-			valid_members.append(Dictionary(raw_member))
+    var team_value: Variant = entry.get("team", [])
+    if not (team_value is Array):
+        leaderboard_text.add_text("Kein Team gespeichert")
+        return
 
-	if valid_members.is_empty():
-		leaderboard_text.add_text("Kein Team gespeichert")
-		return
+    var team: Array = team_value
+    var valid_members: Array[Dictionary] = []
+    for raw_member: Variant in team:
+        if raw_member is Dictionary:
+            valid_members.append(raw_member)
 
-	for i in range(valid_members.size()):
-		var member := valid_members[i]
-		var pokemon_name := str(member.get("name", "?"))
-		var level := int(member.get("level", 1))
-		var texture := _leaderboard_monster_texture(pokemon_name)
-		if texture != null:
-			leaderboard_text.add_image(texture, LEADERBOARD_ICON_SIZE, LEADERBOARD_ICON_SIZE)
-		else:
-			leaderboard_text.add_text(pokemon_name)
-		leaderboard_text.add_text(" Lv.%d" % level)
-		if i < valid_members.size() - 1:
-			leaderboard_text.add_text("  ")
+    if valid_members.is_empty():
+        leaderboard_text.add_text("Kein Team gespeichert")
+        return
+
+    for i in range(valid_members.size()):
+        var member: Dictionary = valid_members[i]
+        var pokemon_name := str(member.get("name", "?"))
+        var level := int(member.get("level", 1))
+        var texture := _leaderboard_monster_texture(pokemon_name)
+        if texture != null:
+            leaderboard_text.add_image(texture, LEADERBOARD_ICON_SIZE, LEADERBOARD_ICON_SIZE)
+        else:
+            leaderboard_text.add_text(pokemon_name)
+        leaderboard_text.add_text(" Lv.%d" % level)
+        if i < valid_members.size() - 1:
+            leaderboard_text.add_text("  ")
 
 
 func _short_leaderboard_name(player_name: String) -> String:
-	var clean_name := player_name.strip_edges()
-	if clean_name.is_empty():
-		return "Trainer"
-	if clean_name.length() <= LEADERBOARD_NAME_MAX_LENGTH:
-		return clean_name
-	return clean_name.left(LEADERBOARD_NAME_MAX_LENGTH - 1) + "…"
+    var clean_name := player_name.strip_edges()
+    if clean_name.is_empty():
+        return "Trainer"
+    if clean_name.length() <= LEADERBOARD_NAME_MAX_LENGTH:
+        return clean_name
+    return clean_name.left(LEADERBOARD_NAME_MAX_LENGTH - 1) + "…"
 
 
 func _leaderboard_monster_texture(pokemon_name: String) -> Texture2D:
-	var clean_name := pokemon_name.strip_edges()
-	if clean_name.is_empty():
-		return null
-	var path := "res://assets/monsters/%s.png" % clean_name
-	if not ResourceLoader.exists(path):
-		return null
-	return ResourceLoader.load(path) as Texture2D
+    var clean_name := pokemon_name.strip_edges()
+    if clean_name.is_empty():
+        return null
+
+    var path := "res://assets/monsters/%s.png" % clean_name
+    if not ResourceLoader.exists(path):
+        return null
+    return ResourceLoader.load(path) as Texture2D
+
+
+func _on_reset_leaderboard() -> void:
+    var save_path := ProjectSettings.globalize_path(LeaderboardStore.SAVE_PATH)
+    if FileAccess.file_exists(LeaderboardStore.SAVE_PATH):
+        var remove_error := DirAccess.remove_absolute(save_path)
+        if remove_error != OK:
+            push_warning("Bestenliste konnte nicht gelöscht werden: %s" % error_string(remove_error))
+    _refresh_leaderboard()
