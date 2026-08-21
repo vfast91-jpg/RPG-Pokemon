@@ -1,14 +1,30 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "weathers": {
     "rain": {
       "display_name": "Regen",
       "emoji": "🌧️",
       "start_message": "🌧️ Es beginnt zu regnen!",
       "end_message": "🌧️ Der Regen hört auf.",
+      "effect_strength_percent": 50.0,
+      "duration_actions": 3,
+      "duration_mode": "source_actions",
       "damage_type_strength_coefficients": {
         "water": 1.0,
         "fire": -1.0
+      }
+    },
+    "sun": {
+      "display_name": "Sonne",
+      "emoji": "☀️",
+      "start_message": "☀️ Das Sonnenlicht wird stark!",
+      "end_message": "☀️ Das starke Sonnenlicht lässt nach.",
+      "effect_strength_percent": 50.0,
+      "duration_actions": 3,
+      "duration_mode": "source_actions",
+      "damage_type_strength_coefficients": {
+        "fire": 1.0,
+        "water": -1.0
       }
     }
   }
