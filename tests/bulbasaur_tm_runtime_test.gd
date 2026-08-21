@@ -1,6 +1,6 @@
 extends SceneTree
 
-const CombatLabTmScript = preload("res://scripts/battle_demo_lab_tm_toggle.gd")
+const CombatLabTmScript = preload("res://scripts/battle_demo_bulbasaur_tm_text.gd")
 
 const EXPECTED_BULBASAUR_TMS: Array[String] = [
     "take_down", "charm", "protect", "trailblaze", "facade", "magical_leaf",
@@ -25,6 +25,30 @@ const NEW_MOVE_NAMES: Dictionary = {
     "helping_hand": "Rechte Hand",
     "grassy_terrain": "Grasfeld",
     "grass_pledge": "Pflanzensäulen"
+}
+
+const REQUIRED_SUMMARY_FRAGMENTS: Dictionary = {
+    "take_down": ["Rückstoß", "25 %"],
+    "charm": ["Angriff ↓", "3 eigene Aktionen"],
+    "protect": ["nächste feindliche Attacke", "33 %"],
+    "trailblaze": ["Geschwindigkeit ↑", "3 eigene Aktionen"],
+    "facade": ["Stärke 140", "Verbrennungs-Angriffsmalus"],
+    "magical_leaf": ["ohne normale Genauigkeitsprüfung", "Schutzschild"],
+    "endure": ["nicht unter 1", "indirekter/eigener Schaden"],
+    "sunny_day": ["Feuer-Schaden +50 %", "Wasser-Schaden −50 %", "Solarstrahl sofort"],
+    "bullet_seed": ["2–5 Treffer", "Volltrefferwurf je Treffer", "35/35/15/15 %"],
+    "sleep_talk": ["nur im Schlaf", "1 Schlafaktion", "keine zusätzlichen RPG-AP"],
+    "seed_bomb": ["direkter Schaden"],
+    "grass_knot": ["Stärke 20–120", "Basisgewicht"],
+    "rest": ["volle KP", "2 eigene Aktionsmöglichkeiten"],
+    "substitute": ["25 % Max-KP", "Status-/Debuffeffekte", "kein Überschussschaden"],
+    "giga_drain": ["50 %", "tatsächlich verursachten KP-Schadens"],
+    "energy_ball": ["10 %", "Verteidigung ↓", "3 eigene Aktionen"],
+    "helping_hand": ["gewählter Verbündeter", "Angriff ↑", "3 eigene Aktionen"],
+    "grassy_terrain": ["Pflanzen-Schaden +30 %", "1/16 Max-KP"],
+    "grass_pledge": ["Stärke 150", "1/8 Max-KP", "Geschwindigkeit −50 %"],
+    "sludge_bomb": ["30 % Chance auf Vergiftung"],
+    "solar_beam": ["aufladen", "Zielplatz bleibt fest", "unter Sonne ohne Aufladen"]
 }
 
 
@@ -58,6 +82,28 @@ func _initialize() -> void:
         var runtime_value: Variant = move.get("runtime", {})
         assert(runtime_value is Dictionary and bool((runtime_value as Dictionary).get("runtime_supported", false)), "Runtime nicht aktiv: " + move_id)
 
+    # Every Bisasam TM must now explain all relevant effects in the compact
+    # battle preview, without leaking implementation/database vocabulary.
+    for move_id: String in EXPECTED_BULBASAUR_TMS:
+        var move: Dictionary = lab._move_data(move_id)
+        assert(not move.is_empty(), "Textprüfung: Attacke fehlt: " + move_id)
+        var summary: String = lab._compact_effect_summary(move)
+        assert(not summary.is_empty(), "Textprüfung: Effektbeschreibung fehlt: " + move_id)
+        assert(not summary.contains("db_"), "Textprüfung: db_-Begriff sichtbar: " + move_id)
+        assert(not summary.contains("bulba_"), "Textprüfung: bulba_-Begriff sichtbar: " + move_id)
+        assert(not summary.contains("enemy_highest_aggro"), "Textprüfung: technisches Ziel sichtbar: " + move_id)
+
+        var tooltip: String = lab._move_tooltip(move)
+        assert(not tooltip.contains("Datenbank-Effekt:"), "Textprüfung: internes effect_source sichtbar: " + move_id)
+        assert(not tooltip.contains("db_"), "Textprüfung: db_-Begriff im Tooltip sichtbar: " + move_id)
+        assert(not tooltip.contains("bulba_"), "Textprüfung: bulba_-Begriff im Tooltip sichtbar: " + move_id)
+
+        var required_value: Variant = REQUIRED_SUMMARY_FRAGMENTS.get(move_id, [])
+        if required_value is Array:
+            for fragment_value: Variant in required_value:
+                var fragment: String = str(fragment_value)
+                assert(summary.contains(fragment), "Textprüfung: '%s' fehlt bei %s: %s" % [fragment, move_id, summary])
+
     # The runtime purge is global: no loaded species may still advertise Tera Blast.
     var species_value: Variant = lab.data.get("species", {})
     if species_value is Dictionary:
@@ -77,6 +123,6 @@ func _initialize() -> void:
     assert(str((substitute.get("mechanics", []) as Array)[0].get("kind", "")) == "bulba_substitute", "Delegator-Runtime fehlt.")
     assert(str(substitute.get("emoji", "")) == "🧸", "Delegator muss das Teddybär-Emoji verwenden.")
 
-    print("Bulbasaur TM runtime test: PASS")
+    print("Bulbasaur TM runtime/text test: PASS")
     lab.queue_free()
     quit(0)
