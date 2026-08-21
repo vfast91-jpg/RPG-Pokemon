@@ -31,84 +31,59 @@ jobs:
 
       - name: Parse project headless
         run: ./godot --headless --path . --editor --quit
-
       - name: Type system smoke test
         run: ./godot --headless --path . --script tests/type_system_smoke_test.gd
-
       - name: Special mechanics audit
         run: ./godot --headless --path . --script tests/special_mechanics_audit_test.gd
-
       - name: Move contract and presentation audit
         run: ./godot --headless --path . --script tests/move_contract_test.gd
-
       - name: Evolution resolver test
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
-
       - name: Combat lab config regression test
         run: ./godot --headless --path . --script tests/combat_lab_config_test.gd
-
       - name: Local PvP flow regression test
         run: ./godot --headless --path . --script tests/pvp_flow_test.gd
-
       - name: Bisasam family TM inventory/runtime test
         run: ./godot --headless --path . --script tests/bulbasaur_tm_runtime_test.gd
-
       - name: Bisasam family TM mechanics test
         run: ./godot --headless --path . --script tests/bulbasaur_family_tm_mechanics_test.gd
-
       - name: Glumanda family TM mechanics test
         run: ./godot --headless --path . --script tests/charmander_family_tm_mechanics_test.gd
-
+      - name: Schiggy family TM mechanics test
+        run: ./godot --headless --path . --script tests/squirtle_family_tm_mechanics_test.gd
       - name: Periodic wait effects regression test
         run: ./godot --headless --path . --script tests/periodic_wait_effects_test.gd
-
       - name: Combat roster layout regression test
         run: ./godot --headless --path . --script tests/combat_roster_layout_test.gd
-
       - name: Combat connector horizontal regression test
         run: ./godot --headless --path . --script tests/combat_connector_horizontal_test.gd
-
       - name: Move preview accuracy regression test
         run: ./godot --headless --path . --script tests/move_preview_accuracy_test.gd
-
       - name: Miss ATB recovery regression test
         run: ./godot --headless --path . --script tests/miss_atb_recovery_test.gd
-
       - name: Player attack text regression test
         run: ./godot --headless --path . --script tests/player_attack_text_test.gd
-
       - name: Bibor infobox and Toxic Spikes regression test
         run: ./godot --headless --path . --script tests/bibor_infobox_runtime_test.gd
-
       - name: Lockduft regression test
         run: ./godot --headless --path . --script tests/lockduft_regression_test.gd
-
       - name: Route level-up move details regression test
         run: ./godot --headless --path . --script tests/route_levelup_move_details_test.gd
-
       - name: Rettan level-up move regression test
         run: ./godot --headless --path . --script tests/rettan_levelup_move_regression_test.gd
-
       - name: Rettan species source sync regression test
         run: ./godot --headless --path . --script tests/rettan_species_source_sync_test.gd
-
       - name: Route XP progress bonus regression test
         run: ./godot --headless --path . --script tests/route_xp_progress_bonus_test.gd
-
       - name: Route encounter level curve regression test
         run: ./godot --headless --path . --script tests/route_encounter_level_curve_test.gd
-
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
-
       - name: Meta progression test
         run: ./godot --headless --path . --script tests/meta_progression_test.gd
-
       - name: Weather behavior test
         run: ./godot --headless --path . --script tests/weather_system_test.gd
-
       - name: Weather runtime integration test
         run: ./godot --headless --path . --script tests/weather_runtime_integration_test.gd
-
       - name: Weather validation test
         run: ./godot --headless --path . --script tests/weather_validation_test.gd
