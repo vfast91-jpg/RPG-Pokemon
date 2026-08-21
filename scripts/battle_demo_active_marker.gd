@@ -1,12 +1,13 @@
 extends "res://scripts/battle_demo_stat_profiles.gd"
 
 # Final active-turn marker layer.
-# A high-contrast white triangle with a dark outline floats above the player's
-# currently selected Pokemon while the move choice is open.
+# A high-contrast white triangle with a dark outline floats closely above the
+# player's currently selected Pokemon while the move choice is open.
 
 const TURN_MARKER_BOB_DISTANCE: float = 6.0
 const TURN_MARKER_BOB_PERIOD: float = 1.1
-const TURN_MARKER_BASE_OFFSET_Y: float = 9.0
+const TURN_MARKER_VISIBLE_GAP: float = 7.0
+const TURN_MARKER_TIP_Y: float = 8.0
 const TURN_MARKER_MIN_Y: float = 8.0
 const TURN_MARKER_OUTLINE := Color("17211f")
 const TURN_MARKER_FILL := Color("ffffff")
@@ -36,6 +37,10 @@ func _layout_team(area: Control, team: Array, enemy: bool) -> void:
 
         var marker: Node2D = _make_turn_marker(area, combatant_id)
         ui["turn_marker"] = marker
+        # Pokemon artwork often contains transparent padding. Anchor the marker
+        # to the actually visible pixels instead of the 72x72 TextureRect box,
+        # otherwise small Pokemon can appear far away from their turn arrow.
+        ui["turn_marker_anchor"] = _turn_marker_anchor(sprite)
         cards[combatant_id] = ui
 
     _update_turn_markers()
@@ -82,6 +87,53 @@ func _make_turn_marker(area: Control, combatant_id: String) -> Node2D:
     return marker
 
 
+func _turn_marker_anchor(sprite: TextureRect) -> Vector2:
+    # Fallback still centers the marker over the TextureRect if texture pixels
+    # cannot be inspected for any reason.
+    var fallback := Vector2(
+        sprite.size.x * 0.5,
+        -TURN_MARKER_TIP_Y - TURN_MARKER_VISIBLE_GAP
+    )
+    var texture: Texture2D = sprite.texture
+    if texture == null:
+        return fallback
+
+    var texture_size: Vector2 = texture.get_size()
+    if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+        return fallback
+
+    # BattleTexture uses STRETCH_KEEP_ASPECT_CENTERED. Recreate that geometry so
+    # the alpha bounds from the source image map exactly into the 72x72 box.
+    var scale: float = minf(
+        sprite.size.x / texture_size.x,
+        sprite.size.y / texture_size.y
+    )
+    if scale <= 0.0:
+        return fallback
+
+    var rendered_size: Vector2 = texture_size * scale
+    var rendered_offset: Vector2 = (sprite.size - rendered_size) * 0.5
+    var visible_center_x: float = rendered_offset.x + rendered_size.x * 0.5
+    var visible_top_y: float = rendered_offset.y
+
+    var image: Image = texture.get_image()
+    if image != null and not image.is_empty():
+        var used_rect: Rect2i = image.get_used_rect()
+        if used_rect.size.x > 0 and used_rect.size.y > 0:
+            visible_center_x = rendered_offset.x + (
+                float(used_rect.position.x) + float(used_rect.size.x) * 0.5
+            ) * scale
+            visible_top_y = rendered_offset.y + float(used_rect.position.y) * scale
+
+    # The triangle's tip is +8px from its origin. With a 7px neutral gap and
+    # the existing +/-6px bob, the tip now moves from 1px to 13px above the
+    # visible Pokemon: close and unambiguous without changing the nice animation.
+    return Vector2(
+        visible_center_x,
+        visible_top_y - TURN_MARKER_TIP_Y - TURN_MARKER_VISIBLE_GAP
+    )
+
+
 func _update_turn_markers() -> void:
     var active_id: String = ""
     if battle_active \
@@ -112,9 +164,15 @@ func _update_turn_markers() -> void:
         if not marker.visible:
             continue
 
-        var center_x: float = sprite.position.x + sprite.size.x * 0.5
+        var fallback_anchor := Vector2(
+            sprite.size.x * 0.5,
+            -TURN_MARKER_TIP_Y - TURN_MARKER_VISIBLE_GAP
+        )
+        var anchor_value: Variant = ui.get("turn_marker_anchor", fallback_anchor)
+        var anchor: Vector2 = anchor_value if anchor_value is Vector2 else fallback_anchor
+        var center_x: float = sprite.position.x + anchor.x
         var base_y: float = maxf(
             TURN_MARKER_MIN_Y,
-            sprite.position.y - TURN_MARKER_BASE_OFFSET_Y
+            sprite.position.y + anchor.y
         )
         marker.position = Vector2(center_x, base_y + bob_offset)
