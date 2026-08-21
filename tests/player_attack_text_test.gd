@@ -78,8 +78,12 @@ func _initialize() -> void:
         "mechanics": [{"kind": "db_toxic_spikes", "max_layers": 2}]
     })
     _check(
-        toxic_spikes_summary.contains("Giftspitzen: 1 Lage pro Einsatz (max. 2)"),
-        "Giftspitzen erklärt die Feldgefahr nicht in Spielersprache."
+        toxic_spikes_summary.contains("1 Lage: Vergiftung")
+        and toxic_spikes_summary.contains("2 Lagen: schwere Vergiftung")
+        and toxic_spikes_summary.contains("physische Kontaktattacke")
+        and toxic_spikes_summary.contains("Gift/Stahl immun")
+        and toxic_spikes_summary.contains("Turbodreher"),
+        "Giftspitzen erklärt Lagen, Auslösung, Immunitäten und Entfernung nicht vollständig."
     )
     _check(
         not toxic_spikes_summary.to_lower().contains("db toxic spikes")
