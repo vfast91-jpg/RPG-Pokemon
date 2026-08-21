@@ -29,10 +29,87 @@
         "balance_override_reason": "RPG-Balance: Stärke 50 + Selbst-Cleanse + Entfernung eigener Eintrittsgefahren + Statuswert-basierte Beschleunigung des nächsten ATB-Zyklus; bewusst AP6 statt PP-Mapping AP1"
       }
     },
+    "focus_energy": {
+      "id": "focus_energy",
+      "name": "Energiefokus",
+      "description": "Der Anwender konzentriert sich auf Schwachstellen und erhöht seine Chance auf Volltreffer. Jeder weitere Statuspunkt verbessert den Bonus weiter.",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 3,
+      "target": "self",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🎯",
+      "effect_source": "persistent_effect(critical_focus, critical_chance_bonus_pp=100*special/(75+special), duration=until_switch_or_battle_end, stackable=false)",
+      "special_rules": "Soft-Cap statt hartem 25er-Cap. Bei Status 25 weiterhin +25 Prozentpunkte; danach abnehmender, aber dauerhaft positiver Zugewinn. Nicht stapelbar.",
+      "mechanics": [
+        {"kind": "critical_focus", "softcap_curve": 75.0, "softcap_max": 100.0}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Status soll auch oberhalb von 25 weiter zur Volltrefferchance beitragen, ohne Energiefokus allein bei einem endlichen Statuswert auf garantierte Volltreffer zu setzen."
+      }
+    },
+    "synthesis": {
+      "id": "synthesis",
+      "name": "Synthese",
+      "description": "Der Anwender regeneriert KP abhängig von seinem Statuswert. Die Heilung nähert sich mit steigendem Statuswert 100 Prozent an.",
+      "type": "grass",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 8,
+      "target": "self",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🌞",
+      "effect_source": "heal_self(percent_max_hp=100*special/(50+special))",
+      "special_rules": "Status-Soft-Cap gegen 100% Heilung: Status 50 = 50%, Status 100 ≈ 66,7%, Status 200 = 80%. Jeder weitere Statuspunkt bleibt wirksam; Aggro nur aus tatsächlich geheilten KP.",
+      "mechanics": [
+        {"kind": "db_heal_self", "softcap_curve": 50.0, "softcap_max": 100.0}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Heilung soll keine harte Statusgrenze bei 100 besitzen; die natürliche 100%-Heilgrenze wird asymptotisch angenähert."
+      }
+    },
+    "roost": {
+      "id": "roost",
+      "name": "Ruheort",
+      "description": "Heilt den Anwender abhängig von seinem Statuswert und entfernt kurzzeitig seinen Flug-Typ.",
+      "type": "flying",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 8,
+      "target": "self",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🪺",
+      "effect_source": "[heal_self(percent_max_hp=100*special/(50+special)), temporary_remove_type(flying,until=next_own_action_start)]",
+      "special_rules": "Status-Soft-Cap gegen 100% Heilung: Status 50 = 50%, Status 100 ≈ 66,7%, Status 200 = 80%. Bei vollen KP Fehlschlag; tatsächliche Heilung erzeugt Aggro.",
+      "mechanics": [
+        {"kind": "db_heal_self", "softcap_curve": 50.0, "softcap_max": 100.0},
+        {"kind": "db_remove_type_until_next_action", "type": "flying"}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "fails_at_full_hp": true,
+        "balance_override_reason": "Wie Synthese verwendet Ruheort eine unbegrenzt weiter skalierende Status-Soft-Cap-Kurve statt eines harten 100er-Statuslimits."
+      }
+    },
     "light_screen": {
       "id": "light_screen",
       "name": "Lichtschild",
-      "description": "Schützt das gesamte eigene Team gegen spezielle Attackenkategorien. Die Stärke entspricht dem aktuellen Statuswert des Anwenders.",
+      "description": "Schützt das gesamte eigene Team gegen spezielle Attackenkategorien. Die Stärke skaliert dauerhaft mit dem Statuswert des Anwenders.",
       "type": "psychic",
       "category": "status",
       "power": null,
@@ -44,14 +121,14 @@
       "opening": false,
       "contact": false,
       "emoji": "🛡️",
-      "effect_source": "team_temporary_effect(special_category_damage_reduction,strength=special,duration=3_source_own_actions)",
-      "special_rules": "Kein künstliches 50%-Limit. Durchbruch kann den Schild entfernen. Kategorie-Metadaten physical/special bleiben relevant, obwohl ein zentraler Angriffs-/Verteidigungswert verwendet wird.",
+      "effect_source": "team_temporary_effect(special_category_damage_reduction,strength=100*special/(50+special),duration=3_source_own_actions)",
+      "special_rules": "Status-Soft-Cap gegen 100% Spezial-Schadensreduktion: Status 50 = 50%, Status 100 ≈ 66,7%, Status 200 = 80%. Durchbruch kann den Schild entfernen; physische Attacken bleiben unverändert.",
       "mechanics": [
-        {"kind": "db_light_screen", "duration_actions": 3}
+        {"kind": "db_light_screen", "softcap_curve": 50.0, "softcap_max": 100.0, "duration_actions": 3}
       ],
       "runtime": {
         "runtime_supported": true,
-        "balance_override_reason": "Status soll für Lichtschild nicht ab 50 wirkungslos werden; vollständiger aktueller Statuswert wird verwendet."
+        "balance_override_reason": "Der frühere harte 50%-Cap und die anschließende lineare 100%-Immunitätsgrenze werden durch eine dauerhaft weiter skalierende Soft-Cap-Kurve ersetzt."
       }
     }
   }
