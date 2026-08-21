@@ -16,8 +16,8 @@
       "opening": false,
       "contact": true,
       "emoji": "🌀",
-      "effect_source": "[damage, cleanse(self: seeded+binding), field_cleanse(allied_side: entry_hazard), temporary_effect(next_atb_cycle_reduction, strength=special*1.0, duration=next_atb_cycle)]",
-      "special_rules": "Alle Sekundäreffekte nur bei erfolgreichem Treffer. next_atb_cycle_multiplier = 1 - special/100.",
+      "effect_source": "[damage, cleanse(self: seeded+binding), field_cleanse(allied_side: entry_hazard), next_atb_cycle_multiplier=1/(1+status_curve(special))]",
+      "special_rules": "Statuskurve R=special/(75+special); nächster ATB-Zyklus ×1/(1+R). Alle Sekundäreffekte nur bei erfolgreichem Treffer.",
       "mechanics": [
         {"kind": "damage"},
         {"kind": "cleanse_self", "effects": ["seeded", "binding"]},
@@ -26,7 +26,7 @@
       ],
       "runtime": {
         "runtime_supported": true,
-        "balance_override_reason": "RPG-Balance: Stärke 50 + Selbst-Cleanse + Entfernung eigener Eintrittsgefahren + Statuswert-basierte Beschleunigung des nächsten ATB-Zyklus; bewusst AP6 statt PP-Mapping AP1"
+        "balance_override_reason": "RPG-Balance: Stärke 50 + Selbst-Cleanse + Entfernung eigener Eintrittsgefahren + Statuskurven-basierte Beschleunigung; bewusst AP6."
       }
     },
     "focus_energy": {
@@ -45,13 +45,13 @@
       "contact": false,
       "emoji": "🎯",
       "effect_source": "persistent_effect(critical_focus, critical_chance_bonus_pp=100*special/(75+special), duration=until_switch_or_battle_end, stackable=false)",
-      "special_rules": "Soft-Cap statt hartem 25er-Cap. Bei Status 25 weiterhin +25 Prozentpunkte; danach abnehmender, aber dauerhaft positiver Zugewinn. Nicht stapelbar.",
+      "special_rules": "Gemeinsame Statuskurve R=special/(75+special). Volltrefferbonus = 100R Prozentpunkte; nicht stapelbar.",
       "mechanics": [
-        {"kind": "critical_focus", "softcap_curve": 75.0, "softcap_max": 100.0}
+        {"kind": "critical_focus"}
       ],
       "runtime": {
         "runtime_supported": true,
-        "balance_override_reason": "Status soll auch oberhalb von 25 weiter zur Volltrefferchance beitragen, ohne Energiefokus allein bei einem endlichen Statuswert auf garantierte Volltreffer zu setzen."
+        "balance_override_reason": "Kein harter 25er-Cap; jeder weitere Statuspunkt bleibt wirksam."
       }
     },
     "synthesis": {
@@ -69,14 +69,14 @@
       "opening": false,
       "contact": false,
       "emoji": "🌞",
-      "effect_source": "heal_self(percent_max_hp=100*special/(50+special))",
-      "special_rules": "Status-Soft-Cap gegen 100% Heilung: Status 50 = 50%, Status 100 ≈ 66,7%, Status 200 = 80%. Jeder weitere Statuspunkt bleibt wirksam; Aggro nur aus tatsächlich geheilten KP.",
+      "effect_source": "heal_self(percent_max_hp=100*special/(75+special))",
+      "special_rules": "Gemeinsame Statuskurve R=special/(75+special); Heilung = 100R% Max-KP. Aggro nur aus tatsächlich geheilten KP.",
       "mechanics": [
-        {"kind": "db_heal_self", "softcap_curve": 50.0, "softcap_max": 100.0}
+        {"kind": "db_heal_self"}
       ],
       "runtime": {
         "runtime_supported": true,
-        "balance_override_reason": "Heilung soll keine harte Statusgrenze bei 100 besitzen; die natürliche 100%-Heilgrenze wird asymptotisch angenähert."
+        "balance_override_reason": "Kein harter Status-100-Endpunkt; Heilung nähert sich 100% asymptotisch an."
       }
     },
     "roost": {
@@ -94,16 +94,16 @@
       "opening": false,
       "contact": false,
       "emoji": "🪺",
-      "effect_source": "[heal_self(percent_max_hp=100*special/(50+special)), temporary_remove_type(flying,until=next_own_action_start)]",
-      "special_rules": "Status-Soft-Cap gegen 100% Heilung: Status 50 = 50%, Status 100 ≈ 66,7%, Status 200 = 80%. Bei vollen KP Fehlschlag; tatsächliche Heilung erzeugt Aggro.",
+      "effect_source": "[heal_self(percent_max_hp=100*special/(75+special)), temporary_remove_type(flying,until=next_own_action_start)]",
+      "special_rules": "Gemeinsame Statuskurve R=special/(75+special); Heilung = 100R% Max-KP. Bei vollen KP Fehlschlag; tatsächliche Heilung erzeugt Aggro.",
       "mechanics": [
-        {"kind": "db_heal_self", "softcap_curve": 50.0, "softcap_max": 100.0},
+        {"kind": "db_heal_self"},
         {"kind": "db_remove_type_until_next_action", "type": "flying"}
       ],
       "runtime": {
         "runtime_supported": true,
         "fails_at_full_hp": true,
-        "balance_override_reason": "Wie Synthese verwendet Ruheort eine unbegrenzt weiter skalierende Status-Soft-Cap-Kurve statt eines harten 100er-Statuslimits."
+        "balance_override_reason": "Wie Synthese ohne harten Status-Endpunkt."
       }
     },
     "light_screen": {
@@ -121,14 +121,70 @@
       "opening": false,
       "contact": false,
       "emoji": "🛡️",
-      "effect_source": "team_temporary_effect(special_category_damage_reduction,strength=100*special/(50+special),duration=3_source_own_actions)",
-      "special_rules": "Status-Soft-Cap gegen 100% Spezial-Schadensreduktion: Status 50 = 50%, Status 100 ≈ 66,7%, Status 200 = 80%. Durchbruch kann den Schild entfernen; physische Attacken bleiben unverändert.",
+      "effect_source": "team_temporary_effect(special_category_damage_reduction,strength=100*special/(75+special),duration=3_source_own_actions)",
+      "special_rules": "Gemeinsame Statuskurve R=special/(75+special); Spezial-Schadensreduktion = 100R%. Durchbruch kann den Schild entfernen; physische Attacken bleiben unverändert.",
       "mechanics": [
-        {"kind": "db_light_screen", "softcap_curve": 50.0, "softcap_max": 100.0, "duration_actions": 3}
+        {"kind": "db_light_screen", "duration_actions": 3}
       ],
       "runtime": {
         "runtime_supported": true,
-        "balance_override_reason": "Der frühere harte 50%-Cap und die anschließende lineare 100%-Immunitätsgrenze werden durch eine dauerhaft weiter skalierende Soft-Cap-Kurve ersetzt."
+        "balance_override_reason": "Kein 50er-Cap und keine lineare Immunitätsgrenze bei Status 100."
+      }
+    },
+    "rain_dance": {
+      "id": "rain_dance",
+      "name": "Regentanz",
+      "description": "Aktiviert den eigenständigen globalen Wetterzustand Regen.",
+      "type": "water",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 8,
+      "target": "global_battlefield",
+      "area": true,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "🌧️",
+      "effect_source": "activate_weather(rain)",
+      "special_rules": "Keine Status-/Spezial-Skalierung. Die Attacke aktiviert nur weather_id=rain; Stärke, Dauer und Wirkung gehören zur zentralen Wetterdefinition.",
+      "mechanics": [
+        {"kind": "weather"}
+      ],
+      "weather": {
+        "weather_id": "rain"
+      },
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Attacke und Wetterzustand sind getrennt; andere Quellen können denselben Regen aktivieren."
+      }
+    },
+    "sunny_day": {
+      "id": "sunny_day",
+      "name": "Sonnentag",
+      "description": "Aktiviert den eigenständigen globalen Wetterzustand Sonne.",
+      "type": "fire",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "ap": 8,
+      "target": "global_battlefield",
+      "area": true,
+      "priority": 0,
+      "opening": false,
+      "contact": false,
+      "emoji": "☀️",
+      "effect_source": "activate_weather(sun)",
+      "special_rules": "Keine Status-/Spezial-Skalierung. Die Attacke aktiviert nur weather_id=sun; Stärke, Dauer und Wirkung gehören zur zentralen Wetterdefinition.",
+      "mechanics": [
+        {"kind": "weather"}
+      ],
+      "weather": {
+        "weather_id": "sun"
+      },
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Attacke und Wetterzustand sind getrennt; andere Quellen können dieselbe Sonne aktivieren."
       }
     }
   }
