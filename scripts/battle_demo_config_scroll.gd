@@ -11,6 +11,11 @@ extends "res://scripts/battle_demo_timeflow_weather.gd"
 # spreadsheet definition uses the Status soft-cap R = Status / (75 + Status),
 # and affected targets must visibly show that attacks against them are more
 # accurate for their next three own actions.
+#
+# Fassade is also finalized here: its conditional power boost already comes
+# from the TM runtime layer, while this layer makes the player-facing special
+# rule explicit and prevents the generic burn Attack penalty from reducing
+# Fassade itself.
 
 var config_scroll: ScrollContainer = null
 
@@ -62,11 +67,42 @@ func open_config() -> void:
 
 
 func _compact_effect_summary(move: Dictionary) -> String:
+    var move_id: String = str(move.get("id", ""))
+
     # Sorgensamen has two technical database mechanics. Those internal db_*
     # identifiers must never leak into the player-facing attack description.
-    if str(move.get("id", "")) == "worry_seed":
+    if move_id == "worry_seed":
         return "Schlaf entfernen · Schutz vor neuem Schlaf für 3 eigene Aktionen"
+
+    # Canonical Fassade rule from the attack database. The inherited generic
+    # summary sees only a damage mechanic and would otherwise show nothing but
+    # "direkter Schaden".
+    if move_id == "facade":
+        return (
+            "direkter Schaden · Stärke 140 bei Verbrennung, Vergiftung, "
+            + "schwerer Vergiftung oder Paralyse · bei Verbrennung ohne "
+            + "Verbrennungs-Angriffsmalus"
+        )
+
     return super._compact_effect_summary(move)
+
+
+func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
+    var active_move_id: String = str(_active_special_move.get("id", ""))
+    var major_status: String = str(actor.get("major_status", ""))
+
+    # The generic status layer halves physical damage while burned. Fassade is
+    # the explicit exception: it keeps every other Attack modifier, but the burn
+    # penalty itself must not apply to this move. Temporarily hiding only the
+    # burn status from the inherited damage calculation isolates exactly that
+    # penalty; the status is restored before after-action burn damage resolves.
+    if active_move_id == "facade" and major_status == "burn" and category == "physical":
+        actor["major_status"] = ""
+        var facade_damage: int = super._damage(actor, target, power, move_type, category)
+        actor["major_status"] = major_status
+        return facade_damage
+
+    return super._damage(actor, target, power, move_type, category)
 
 
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
