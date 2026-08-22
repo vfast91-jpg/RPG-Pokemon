@@ -22,19 +22,24 @@ func _initialize() -> void:
     ]
     route.stage = 11
 
-    # Dynamic opponent scaling.
+    # Protected onboarding through stage 10, then dynamic opponent scaling.
     _check(route._highest_team_level() == 18, "Aktive Route muss das höchste Teamlevel Lv.18 erkennen.")
-    _check(route._enemy_level_for_encounter(11, 1) == 23, "Aktive Route: 1 Gegner muss Lv.23 sein.")
-    _check(route._enemy_level_for_encounter(11, 2) == 20, "Aktive Route: 2 Gegner müssen Lv.20 sein.")
-    _check(route._enemy_level_for_encounter(11, 3) == 18, "Aktive Route: 3 Gegner müssen Lv.18 sein.")
-    _check(route._enemy_level_for_encounter(11, 4) == 16, "Aktive Route: 4 Gegner müssen Lv.16 sein.")
-    _check(route._enemy_level_for_encounter(1, 1) == 2, "Etappe 1 muss weiterhin den geschützten Lv.2-Kampf verwenden.")
-    _check(route._enemy_level_for_encounter(5, 3) == 4, "Etappe 5 muss weiterhin den geschützten Lv.4-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(1, 1) == 2, "Etappe 1 muss den geschützten Lv.2-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(5, 3) == 4, "Etappe 5 muss den geschützten Lv.4-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(6, 2) == 5, "Etappe 6 muss den geschützten 2x-Lv.5-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(7, 2) == 6, "Etappe 7 muss den geschützten 2x-Lv.6-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(8, 3) == 6, "Etappe 8 muss den geschützten 3x-Lv.6-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(9, 3) == 7, "Etappe 9 muss den geschützten 3x-Lv.7-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(10, 3) == 8, "Etappe 10 muss den geschützten 3x-Lv.8-Kampf verwenden.")
+    _check(route._enemy_level_for_encounter(11, 1) == 23, "Aktive Route ab Etappe 11: 1 Gegner muss Lv.23 sein.")
+    _check(route._enemy_level_for_encounter(11, 2) == 20, "Aktive Route ab Etappe 11: 2 Gegner müssen Lv.20 sein.")
+    _check(route._enemy_level_for_encounter(11, 3) == 18, "Aktive Route ab Etappe 11: 3 Gegner müssen Lv.18 sein.")
+    _check(route._enemy_level_for_encounter(11, 4) == 16, "Aktive Route ab Etappe 11: 4 Gegner müssen Lv.16 sein.")
 
     # Notice semantics.
-    _check(not route._route_level_notice_for_stage(6).is_empty(), "Etappe 6 braucht den einmaligen Hinweis zum dynamischen Gegnerniveau.")
-    _check(route._route_level_notice_for_stage(11).is_empty(), "Etappe 11 darf keinen alten Levelband-Hinweis mehr besitzen.")
-    _check(route._route_level_notice_for_stage(21).is_empty(), "Etappe 21 darf keinen alten Levelband-Hinweis mehr besitzen.")
+    _check(route._route_level_notice_for_stage(6).is_empty(), "Etappe 6 darf noch keinen Hinweis zum dynamischen Gegnerniveau zeigen.")
+    _check(not route._route_level_notice_for_stage(11).is_empty(), "Etappe 11 braucht den einmaligen Hinweis zum dynamischen Gegnerniveau.")
+    _check(route._route_level_notice_for_stage(21).is_empty(), "Etappe 21 darf keinen weiteren Levelband-Hinweis besitzen.")
 
     # XP pacing and level cap strategy.
     _check(route._route_stage_xp(1) == 46, "Aktive Route muss die halbierten Etappen-EP verwenden.")
@@ -60,10 +65,22 @@ func _initialize() -> void:
     _check(str(route._healing_item_for_stage(1).get("name", "")) == "Trank", "Frühe Fundstelle muss Trank anbieten.")
     _check(str(route._healing_item_for_stage(61).get("name", "")) == "Top-Trank", "Späte Fundstelle muss Top-Trank anbieten.")
 
-    # Five-event pool: exactly 3 distinct choices, no Direct/Dangerous path.
+    # Protected event pool: no boss through stage 10. From stage 11 onward use
+    # exactly 3 distinct choices from the complete five-event pool.
+    for stage: int in [1, 5, 10]:
+        for _sample: int in range(32):
+            var early_choices: Array[Dictionary] = route._choices_for_stage(stage)
+            _check(early_choices.size() == 3, "Etappe %d muss genau drei Wege auswürfeln." % stage)
+            var early_kinds: Array[String] = []
+            for choice: Dictionary in early_choices:
+                var kind: String = str(choice.get("kind", ""))
+                _check(kind != route.EVENT_RARE, "Etappe %d darf im geschützten Einstieg keinen Boss anbieten." % stage)
+                _check(not early_kinds.has(kind), "Etappe %d würfelt dasselbe Ereignis doppelt: %s" % [stage, kind])
+                early_kinds.append(kind)
+
     for _sample: int in range(64):
         var choices: Array[Dictionary] = route._choices_for_stage(11)
-        _check(choices.size() == 3, "Aktive Route muss genau drei Wege auswürfeln.")
+        _check(choices.size() == 3, "Aktive Route muss ab Etappe 11 genau drei Wege auswürfeln.")
         var kinds: Array[String] = []
         for choice: Dictionary in choices:
             var kind: String = str(choice.get("kind", ""))
@@ -73,7 +90,7 @@ func _initialize() -> void:
         _check(not kinds.has(route.EVENT_DIRECT), "Direkter Pfad darf im finalen aktiven System nicht vorkommen.")
         _check(not kinds.has(route.EVENT_DANGEROUS), "Gefährlicher Pfad darf im finalen aktiven System nicht vorkommen.")
 
-    # Boss contract.
+    # Boss contract remains unchanged once bosses become available at stage 11.
     _check(route._boss_level() == 23, "Boss muss bei Teammaximum Lv.18 auf Lv.23 liegen.")
     _check(is_equal_approx(route.BOSS_HP_MULTIPLIER, 2.0), "Boss muss den doppelten KP-Pool behalten.")
 
