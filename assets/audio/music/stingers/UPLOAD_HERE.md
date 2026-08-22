@@ -1,13 +1,14 @@
 # Kurze Musikstücke hier hochladen
 
-Für kurze musikalische Ereignisse sind diese Dateinamen vorgesehen:
+Diese aktuell ausgewählten MP3-Dateien kommen **unverändert in diesen Ordner**. Bitte vorerst **nicht umbenennen**.
 
-- `victory_normal.ogg` – normaler Kampfsieg
-- `victory_boss.ogg` – besonderer/Boss-Sieg
-- `level_up.ogg` – Level-Up
-- `item_obtained.ogg` – besondere Belohnung / wichtiges Item
-- `evolution.ogg` – Entwicklung läuft
-- `evolution_success.ogg` – Entwicklung abgeschlossen
-- `pokemon_obtained.ogg` – Pokémon erhalten/gefangen, falls wir dafür ein eigenes Stück verwenden
+- `16. Victory! (Wild Pokémon).mp3` – normaler Kampfsieg
+- `47. Victory! (Gym Leader).mp3` – besonderer/Boss-Sieg
+- `50. Level Up!.mp3` – Level-Up
+- `18. Obtained an Item!.mp3` – besondere Belohnung / wichtiges Item
+- `63. Congratulations! Your Pokémon Evolved!.mp3` – Entwicklung abgeschlossen
+- `201. Obtained a Pokémon! [Unused].mp3` – Pokémon erhalten/gefangen
 
-Diese Dateien laufen normalerweise nicht in Dauerschleife.
+Diese Stücke laufen normalerweise **nicht in Dauerschleife**.
+
+Falls später noch ein eigenes Stück für den eigentlichen Entwicklungsvorgang hinzukommt, wird es hier ergänzt.
