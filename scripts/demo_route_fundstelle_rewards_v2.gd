@@ -51,8 +51,8 @@ func _on_route_battle_finished(victory: bool, updated_team: Array) -> void:
     super._on_route_battle_finished(victory, updated_team)
     if victory:
         AudioManager.play_route(stage)
-    else:
-        AudioManager.stop_music()
+    # On defeat the top-level audio bridge owns the Lose stinger. Do not stop
+    # the music channel here, otherwise that cue would be cut off almost at once.
 
 
 func _show_next_levelup_popup() -> void:
