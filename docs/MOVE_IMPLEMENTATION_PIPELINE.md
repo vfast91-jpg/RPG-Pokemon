@@ -13,6 +13,22 @@ Neue Attacken sollen nicht mehr an mehreren UI- und Runtime-Stellen unabhängig 
 7. `MovePresenter` erzeugt kanonische Spielerbegriffe. Technische Multiplikatoren und IDs dürfen nicht in Tooltip oder Detailanzeige gelangen.
 8. Die GitHub-Action `move_contract_test.gd` prüft bei jedem Push nach `main` das komplette aktuelle Attackenpaket sowie den Vertrag selbst.
 
+## Verbindliche Skalierungsentscheidung pro Wirkungskomponente
+
+Für jede neue oder migrierte Attacke wird **jede Wirkungskomponente einzeln** klassifiziert. Die Attackenkategorie allein entscheidet nicht über den verwendeten Attributswert.
+
+Grundregel:
+
+- direkter KP-Schaden einer Attacke → **Angriff**
+- quantitativ skalierbare nicht-schädigende Wirkung → grundsätzlich **Statuswert**
+- feste, binäre oder zentral anderweitig geregelte Mechanik → keine automatische Status-Skalierung
+
+Dadurch dürfen Hybridattacken gleichzeitig mehrere Quellen verwenden. Bei Drain-Attacken wird beispielsweise der Schaden über Angriff berechnet, während die skalierbare Rückheilung eine Statuswert-Komponente ist.
+
+Nicht automatisch Statuswert-basiert sind insbesondere die bloße Anwendung standardisierter Hauptstatuszustände, feste Regelzustände wie Verhöhner/Zugabe/Aussetzer, Feldgefahren, die feste zentrale Zurückschrecken-Wirkung, Schutzschild als binärer Block sowie Wetteraktivierung. Eine ausdrücklich definierte zentrale Sonderregel hat immer Vorrang.
+
+Die aktive Statuskurve bleibt zentral in `data/rules/status_scaling.json` definiert (`R = Status / (75 + Status)`). Einzelne Attacken dürfen keine konkurrierende Statusformel hartkodieren. Für Drain-Rückheilung ist die Zuständigkeit Statuswert bereits verbindlich; die gemeinsame numerische Drain-Kalibrierung wird vor der Bestandsmigration einmal zentral festgelegt.
+
 ## Wann eine Attacke strikt geprüft wird
 
 Die aktive Integration schaltet den strikten Vertrag automatisch ein, sobald mindestens eines davon vorhanden ist:
