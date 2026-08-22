@@ -15,12 +15,18 @@ const TRACK_BATTLE_FINAL: String = "res://assets/audio/music/loops/168. Battle! 
 
 const STINGER_VICTORY_NORMAL: String = "res://assets/audio/music/stingers/16. Victory! (Wild Pokémon).mp3"
 const STINGER_VICTORY_BOSS: String = "res://assets/audio/music/stingers/47. Victory! (Gym Leader).mp3"
+const STINGER_DEFEAT: String = "res://assets/audio/music/stingers/1-38. Lose.mp3"
 const STINGER_LEVEL_UP: String = "res://assets/audio/music/stingers/50. Level Up!.mp3"
 const STINGER_ITEM: String = "res://assets/audio/music/stingers/18. Obtained an Item!.mp3"
 const STINGER_EVOLUTION: String = "res://assets/audio/music/stingers/63. Congratulations! Your Pokémon Evolved!.mp3"
 const STINGER_POKEMON: String = "res://assets/audio/music/stingers/201. Obtained a Pokémon! [Unused].mp3"
 
 const SFX_ATTACK: String = "res://assets/audio/sfx/freesound_community-whoosh-6316.mp3"
+const SFX_FAINT: String = "res://assets/audio/sfx/freesound_community-retro-video-game-death-95730.mp3"
+
+# One central reduction for the complete game mix. Individual channel values
+# below keep their relative balance; this only lowers Pokemon Timeflow as a whole.
+const MASTER_VOLUME_DB: float = -5.0
 
 # Global rule for every long music track:
 # - first playback starts at 0:00 so the musical intro is heard once
@@ -63,6 +69,10 @@ var _next_sfx_player: int = 0
 
 
 func _ready() -> void:
+    var master_bus: int = AudioServer.get_bus_index("Master")
+    if master_bus >= 0:
+        AudioServer.set_bus_volume_db(master_bus, MASTER_VOLUME_DB)
+
     _music_player = AudioStreamPlayer.new()
     _music_player.name = "MusicPlayerA"
     _music_player.volume_db = MUSIC_VOLUME_DB
@@ -143,6 +153,11 @@ func play_victory(kind: String = "normal") -> void:
     _play_one_shot_on_music_channel(path)
 
 
+func play_defeat() -> void:
+    _stop_event_for_context_change()
+    _play_one_shot_on_music_channel(STINGER_DEFEAT)
+
+
 func play_level_up() -> void:
     _play_event(STINGER_LEVEL_UP)
 
@@ -160,9 +175,17 @@ func play_pokemon_obtained() -> void:
 
 
 func play_attack_sfx() -> void:
+    _play_sfx(SFX_ATTACK)
+
+
+func play_faint_sfx() -> void:
+    _play_sfx(SFX_FAINT)
+
+
+func _play_sfx(path: String) -> void:
     if _sfx_players.is_empty():
         return
-    var stream: AudioStream = _load_audio(SFX_ATTACK)
+    var stream: AudioStream = _load_audio(path)
     if stream == null:
         return
 
