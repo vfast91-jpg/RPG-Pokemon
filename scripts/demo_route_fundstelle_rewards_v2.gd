@@ -12,6 +12,7 @@ extends "res://scripts/demo_route_cleanup_v1.gd"
 # This keeps the already deep route script chain stable.
 
 const AUDIO_FINAL_STAGE: int = 90
+const POST_BATTLE_SETTLE_SECONDS: float = 0.65
 
 
 func start_route() -> void:
@@ -40,6 +41,13 @@ func _start_special_battle(kind: String, enemy_party: Array, heading: String) ->
 
 
 func _on_route_battle_finished(victory: bool, updated_team: Array) -> void:
+    # The battle result panel already stays visible briefly inside BattleDemo.
+    # Give the victory cue one additional beat after that panel closes before XP,
+    # level-up popups and route music begin. This prevents the whole post-battle
+    # chain from firing almost on top of the final attack.
+    if victory:
+        await get_tree().create_timer(POST_BATTLE_SETTLE_SECONDS).timeout
+
     super._on_route_battle_finished(victory, updated_team)
     if victory:
         AudioManager.play_route(stage)
