@@ -5,6 +5,21 @@ extends "res://scripts/demo_route_levelup_evolution_order_fix.gd"
 # mature battle, level-up, evolution, team-card and capture-preview layers.
 
 const NORMAL_STAGE_XP_FRACTION: float = 0.50
+const ENCOUNTER_FAMILY_DATA_PATH: String = "res://data/gen1_species_encounter_families_v1.json"
+const CAPTURE_LEVEL_OFFSET: int = 3
+const CAPTURE_SEARCH_LEVEL_MULTIPLIERS: Array[float] = [1.0, 0.75, 0.50]
+const CAPTURE_SEARCH_RARITY_EXPONENTS: Array[float] = [1.0, 0.5, 0.25]
+const CAPTURE_SEARCH_MAX: int = 3
+
+var _encounter_families: Dictionary = {}
+var _encounter_species_to_family: Dictionary = {}
+var _capture_search_number: int = 0
+var _capture_seen_families: Array[String] = []
+
+
+func start_route() -> void:
+    _reset_capture_search_state()
+    super.start_route()
 
 
 func _route_stage_xp(current_stage: int) -> int:
@@ -13,3 +28,278 @@ func _route_stage_xp(current_stage: int) -> int:
         1,
         int(round(float(previous_stage_xp) * NORMAL_STAGE_XP_FRACTION))
     )
+
+
+func _capture_level_for_stage(_current_stage: int) -> int:
+    return maxi(1, _highest_team_level() - CAPTURE_LEVEL_OFFSET)
+
+
+func _capture_level_for_search(search_number: int) -> int:
+    var base_level: int = _capture_level_for_stage(stage)
+    var index: int = clampi(search_number - 1, 0, CAPTURE_SEARCH_LEVEL_MULTIPLIERS.size() - 1)
+    return maxi(
+        1,
+        int(floor(float(base_level) * CAPTURE_SEARCH_LEVEL_MULTIPLIERS[index]))
+    )
+
+
+func _capture_rarity_exponent_for_search(search_number: int) -> float:
+    var index: int = clampi(search_number - 1, 0, CAPTURE_SEARCH_RARITY_EXPONENTS.size() - 1)
+    return CAPTURE_SEARCH_RARITY_EXPONENTS[index]
+
+
+func _reset_capture_search_state() -> void:
+    _capture_search_number = 0
+    _capture_seen_families.clear()
+
+
+func _ensure_encounter_family_data() -> void:
+    if not _encounter_families.is_empty() and not _encounter_species_to_family.is_empty():
+        return
+
+    var file := FileAccess.open(ENCOUNTER_FAMILY_DATA_PATH, FileAccess.READ)
+    if file == null:
+        push_error("Fangwiese: Familien-Fangraten fehlen: " + ENCOUNTER_FAMILY_DATA_PATH)
+        return
+
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    if not (parsed is Dictionary):
+        push_error("Fangwiese: Familien-Fangraten sind ungültig.")
+        return
+
+    var families_value: Variant = (parsed as Dictionary).get("families", {})
+    var mapping_value: Variant = (parsed as Dictionary).get("species_to_family", {})
+    if families_value is Dictionary:
+        _encounter_families = (families_value as Dictionary).duplicate(true)
+    if mapping_value is Dictionary:
+        _encounter_species_to_family = (mapping_value as Dictionary).duplicate(true)
+
+
+func _family_id_for_species(species_id: String) -> String:
+    _ensure_encounter_family_data()
+    return str(_encounter_species_to_family.get(species_id, species_id))
+
+
+func _family_catch_rate(family_id: String) -> float:
+    _ensure_encounter_family_data()
+    var family_value: Variant = _encounter_families.get(family_id, {})
+    if family_value is Dictionary:
+        return maxf(0.0001, float((family_value as Dictionary).get("family_catch_rate", 1.0)))
+    return 1.0
+
+
+func _capture_family_weight(family_id: String, search_number: int) -> float:
+    return pow(
+        _family_catch_rate(family_id),
+        _capture_rarity_exponent_for_search(search_number)
+    )
+
+
+func _weighted_capture_root(roots: Array, search_number: int) -> String:
+    if roots.is_empty():
+        return ""
+
+    var candidates: Array[String] = []
+    for root_value: Variant in roots:
+        var root_id: String = str(root_value)
+        var family_id: String = _family_id_for_species(root_id)
+        if not _capture_seen_families.has(family_id):
+            candidates.append(root_id)
+
+    # Defensive fallback for a future tiny encounter pool: never make the
+    # Fangwiese unusable merely because every available family was seen once.
+    if candidates.is_empty():
+        for root_value: Variant in roots:
+            candidates.append(str(root_value))
+
+    var total_weight: float = 0.0
+    var weights: Array[float] = []
+    for root_id: String in candidates:
+        var family_id: String = _family_id_for_species(root_id)
+        var weight: float = maxf(0.0001, _capture_family_weight(family_id, search_number))
+        weights.append(weight)
+        total_weight += weight
+
+    if total_weight <= 0.0:
+        return candidates.pick_random()
+
+    var roll: float = randf() * total_weight
+    var cumulative: float = 0.0
+    for index: int in range(candidates.size()):
+        cumulative += weights[index]
+        if roll <= cumulative:
+            return candidates[index]
+    return candidates[candidates.size() - 1]
+
+
+func _begin_capture_event() -> void:
+    _reset_capture_search_state()
+    _capture_search_number = 1
+    _offer_capture_search()
+
+
+func _offer_capture_search() -> void:
+    _clear_container(capture_actions)
+    continue_button.visible = false
+    pending_capture = {}
+    _capture_preview_member = {}
+    _capture_preview_team_index = -1
+
+    if battle_demo == null:
+        return
+
+    var capture_level: int = _capture_level_for_search(_capture_search_number)
+    var max_reachable_level: int = _max_reachable_level_from_stage(capture_level, stage)
+    var roots: Array = battle_demo.route_species_ids_valid_through_level(max_reachable_level)
+    if roots.is_empty():
+        event_label.text = "An dieser Fangwiese taucht heute kein vollständig spielbares Pokémon auf."
+        continue_button.visible = true
+        return
+
+    var root_id: String = _weighted_capture_root(roots, _capture_search_number)
+    if root_id.is_empty():
+        event_label.text = "An dieser Fangwiese konnte keine passende Pokémon-Familie bestimmt werden."
+        continue_button.visible = true
+        return
+
+    var family_id: String = _family_id_for_species(root_id)
+    if not _capture_seen_families.has(family_id):
+        _capture_seen_families.append(family_id)
+
+    var species_id: String = battle_demo.route_resolve_species_for_level(root_id, capture_level)
+    if species_id.is_empty():
+        event_label.text = "Diese Begegnung wurde verworfen, weil die notwendige Entwicklungsform nicht eindeutig auflösbar ist."
+        continue_button.visible = true
+        return
+
+    pending_capture = battle_demo.route_new_member(species_id, capture_level)
+    if pending_capture.is_empty():
+        event_label.text = "Das gefundene Pokémon konnte nicht aus den Speziesdaten erzeugt werden."
+        continue_button.visible = true
+        return
+
+    pending_capture.erase("prevent_evolution")
+    _capture_preview_member = pending_capture.duplicate(true)
+    _capture_preview_team_index = -1
+    _show_current_capture_offer()
+
+
+func _show_current_capture_offer() -> void:
+    if pending_capture.is_empty():
+        return
+
+    _clear_container(capture_actions)
+    continue_button.visible = false
+
+    var name: String = str(pending_capture.get("name", "Pokémon"))
+    var level: int = maxi(1, int(pending_capture.get("level", 1)))
+    event_label.text = (
+        "[b]🌿 Fangwiese · Suche %d/%d[/b]\n"
+        + "%s Lv.%d wurde gefunden. Du kannst es vollständig ansehen und jetzt entscheiden."
+    ) % [_capture_search_number, CAPTURE_SEARCH_MAX, name, level]
+
+    if team.size() < ROUTE_TEAM_MAX:
+        var accept_button := Button.new()
+        accept_button.text = "INS TEAM AUFNEHMEN"
+        accept_button.custom_minimum_size = Vector2(0, 28)
+        accept_button.pressed.connect(_accept_pending_capture)
+        capture_actions.add_child(accept_button)
+    else:
+        var replace_button := Button.new()
+        replace_button.text = "TEAM-POKÉMON ERSETZEN"
+        replace_button.custom_minimum_size = Vector2(0, 28)
+        replace_button.pressed.connect(_show_replace_choices)
+        capture_actions.add_child(replace_button)
+
+    if _capture_search_number < CAPTURE_SEARCH_MAX:
+        var next_search: int = _capture_search_number + 1
+        var next_level: int = _capture_level_for_search(next_search)
+        var search_button := Button.new()
+        search_button.text = "WEITERSUCHEN · NÄCHSTES POKÉMON CA. LV.%d" % next_level
+        search_button.custom_minimum_size = Vector2(0, 28)
+        search_button.tooltip_text = (
+            "Das aktuelle Pokémon wird nicht aufgenommen. Suche %d senkt das Fanglevel, "
+            + "erhöht aber relativ die Chance auf schwerer fangbare Pokémon-Familien."
+        ) % next_search
+        search_button.pressed.connect(_search_capture_again)
+        capture_actions.add_child(search_button)
+    else:
+        var leave_button := Button.new()
+        leave_button.text = "NICHT AUFNEHMEN · FANGWIESE VERLASSEN"
+        leave_button.custom_minimum_size = Vector2(0, 28)
+        leave_button.tooltip_text = "Nach der dritten Suche gibt es keine weitere Suche und keine EP-Trostbelohnung."
+        leave_button.pressed.connect(_leave_capture_without_capture)
+        capture_actions.add_child(leave_button)
+
+    _add_capture_preview_card()
+
+
+func _search_capture_again() -> void:
+    if _capture_search_number >= CAPTURE_SEARCH_MAX:
+        return
+    _capture_search_number += 1
+    _offer_capture_search()
+
+
+func _accept_pending_capture() -> void:
+    if pending_capture.is_empty() or team.size() >= ROUTE_TEAM_MAX:
+        return
+
+    var accepted: Dictionary = pending_capture
+    var name: String = str(accepted.get("name", "Pokémon"))
+    var level: int = maxi(1, int(accepted.get("level", 1)))
+    team.append(accepted)
+    pending_capture = {}
+
+    _capture_preview_team_index = team.size() - 1
+    _capture_preview_member = (team[_capture_preview_team_index] as Dictionary).duplicate(true)
+    _clear_container(capture_actions)
+    event_label.text = "[b]✓ %s Lv.%d kommt in dein Team.[/b]" % [name, level]
+    continue_button.visible = true
+    _refresh_team_panel()
+    _add_capture_preview_card()
+
+
+func _leave_capture_without_capture() -> void:
+    if pending_capture.is_empty():
+        return
+
+    pending_capture = {}
+    _capture_preview_member = {}
+    _capture_preview_team_index = -1
+    _clear_container(capture_actions)
+    event_label.text = (
+        "[b]Fangwiese verlassen.[/b]\n"
+        + "Du nimmst keines der drei gefundenen Pokémon auf. Es gibt dafür keine zusätzliche EP-Belohnung."
+    )
+    continue_button.visible = true
+    _refresh_team_panel()
+
+
+func _begin_capture_event_again() -> void:
+    _show_current_capture_offer()
+
+
+func _show_full_team_capture_actions() -> void:
+    _show_current_capture_offer()
+
+
+func _add_capture_preview_card() -> void:
+    super._add_capture_preview_card()
+    if pending_capture.is_empty() or capture_actions == null:
+        return
+
+    var card: Node = capture_actions.get_node_or_null("CapturePokemonPreview")
+    if card == null:
+        return
+    _mark_capture_preview_as_found(card)
+
+
+func _mark_capture_preview_as_found(node: Node) -> bool:
+    if node is Label and (node as Label).text == "✓ GEFANGEN":
+        (node as Label).text = "🌿 GEFUNDEN"
+        return true
+    for child: Node in node.get_children():
+        if _mark_capture_preview_as_found(child):
+            return true
+    return false
