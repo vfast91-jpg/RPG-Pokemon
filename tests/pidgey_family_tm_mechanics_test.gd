@@ -76,19 +76,19 @@ func _assert_steel_wing_status_curve(lab) -> void:
     var multiplier: float = lab._cf_status_modifier_for_type(
         actor,
         "incoming_damage_mod",
-        1.0,
+        -1.0,
         "steel"
     )
-    # Status 25 -> R = 25 / (75 + 25) = 0.25. Ein positiver
-    # Verteidigungsbonus reduziert eingehenden Schaden zentral auf 1/(1+R).
-    assert(is_equal_approx(multiplier, 0.8), "Stahlflügel muss die zentrale 1×-Statuswert-Kurve verwenden.")
+    # Status 25 -> R = 25 / (75 + 25) = 0.25. Die zentrale
+    # Verteidigungsdarstellung verwendet deshalb den Faktor 1 + R = 1.25.
+    assert(is_equal_approx(multiplier, 1.25), "Stahlflügel muss die zentrale 1×-Statuswert-Kurve als Verteidigungsbonus verwenden.")
 
-    lab._cf_apply_self_modifier(actor, "incoming_damage_mod", 1.0, "steel", "Stahlflügel")
+    lab._cf_apply_self_modifier(actor, "incoming_damage_mod", -1.0, "steel", "Stahlflügel")
     var modifiers: Array = actor.get("timed_modifiers", [])
     assert(modifiers.size() == 1, "Stahlflügel muss genau einen zentralen Verteidigungsmodifier anlegen.")
     var modifier: Dictionary = modifiers[0]
     assert(str(modifier.get("kind", "")) == "incoming_damage_mod")
-    assert(is_equal_approx(float(modifier.get("multiplier", 0.0)), 0.8))
+    assert(is_equal_approx(float(modifier.get("multiplier", 0.0)), 1.25))
     assert(int(modifier.get("expires_after_action", -1)) == 3, "Stahlflügel-Buff muss drei eigene Aktionen halten.")
 
     assert(is_equal_approx(lab._cf_effect_chance(actor, 0.10), 0.10), "Grundchance von Stahlflügel muss 10 % bleiben.")
