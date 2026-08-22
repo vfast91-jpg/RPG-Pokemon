@@ -1,6 +1,6 @@
 extends SceneTree
 
-const RouteScript = preload("res://scripts/demo_route_training_hp_cost.gd")
+const RouteScript = preload("res://scripts/demo_route_rebalance_v1.gd")
 
 var failures: int = 0
 
@@ -9,7 +9,8 @@ func _initialize() -> void:
     var route = RouteScript.new()
     route._load_progression_data()
 
-    # Medium Fast is the neutral route reference.
+    # Medium Fast remains the neutral route reference. The species growth
+    # curves themselves must not change when route rewards are rebalanced.
     _check(route._xp_needed_for_curve("medium_fast", 5) == 91, "Medium Fast Lv.5 -> 6 muss 91 EP benötigen.")
     _check(route._xp_needed_for_curve("medium_fast", 10) == 331, "Medium Fast Lv.10 -> 11 muss 331 EP benötigen.")
     _check(route._xp_needed_for_curve("medium_fast", 20) == 1261, "Medium Fast Lv.20 -> 21 muss 1261 EP benötigen.")
@@ -29,11 +30,13 @@ func _initialize() -> void:
         "Pikachus individuelle Lv.5-EP-Anforderung ist falsch."
     )
 
-    # A normal stage reward is independent of the defeated opponent and tracks
-    # the Medium-Fast reference level: Lv.5 on stage 1, Lv.14 on stage 10, etc.
-    _check(route._route_stage_xp(1) == 91, "Etappe 1 muss 91 Basis-EP geben.")
-    _check(route._route_stage_xp(10) == 631, "Etappe 10 muss 631 Basis-EP geben.")
-    _check(route._route_stage_xp(90) == 26791, "Etappe 90 muss 26791 Basis-EP geben.")
+    # Phase D changes only the normal route reward amount: exactly 50% of the
+    # previous stage reward, rounded to the nearest full XP. Growth curves stay
+    # untouched and every route battle reads this same central helper.
+    _check(is_equal_approx(route.NORMAL_STAGE_XP_FRACTION, 0.50), "Normale Etappen-EP müssen auf 50% gesetzt sein.")
+    _check(route._route_stage_xp(1) == 46, "Etappe 1 muss nach Halbierung 46 EP geben.")
+    _check(route._route_stage_xp(10) == 316, "Etappe 10 muss nach Halbierung 316 EP geben.")
+    _check(route._route_stage_xp(90) == 13396, "Etappe 90 muss nach Halbierung 13396 EP geben.")
 
     # Training costs 15% of NEW max HP, rounded to the nearest full HP.
     # A living Pokemon can never be reduced below 1 HP by training exhaustion.
@@ -52,7 +55,7 @@ func _initialize() -> void:
 
     var messages: Array[String] = route._apply_next_level_progress_bonus(members, 0.25)
 
-    # 25% bonuses use each Pokemon's OWN complete next-level requirement.
+    # This legacy bonus stays covered until its dedicated event-removal phase.
     # Pikachu: 25% of 91 = 22.75 -> 23. Bisasam: 25% of 44 = 11.
     _check(int((members[0] as Dictionary).get("xp", 0)) == 25, "Pikachu-Bonus aus individueller EP-Kurve ist falsch.")
     _check(int((members[1] as Dictionary).get("xp", 0)) == 103, "Pikachu-Bonus hängt fälschlich vom aktuellen EP-Stand ab.")
