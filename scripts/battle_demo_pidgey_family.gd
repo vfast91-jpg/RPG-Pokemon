@@ -23,10 +23,12 @@ func _cf_apply_post_hit_runtime(
     if randf() > chance:
         return
 
+    # incoming_damage_mod uses the central sign convention: a negative signed
+    # weight creates a Defense-up multiplier above 1.0 (e.g. Status 25 -> 1.25).
     _cf_apply_self_modifier(
         actor,
         "incoming_damage_mod",
-        absf(float(runtime.get("timeflow_self_defense_buff_weight", 1.0))),
+        -absf(float(runtime.get("timeflow_self_defense_buff_weight", 1.0))),
         str(move.get("type", "normal")),
         str(move.get("name", "Attacke"))
     )
