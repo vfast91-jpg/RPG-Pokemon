@@ -8,6 +8,15 @@ extends "res://scripts/battle_demo_rettan_arbok_family.gd"
 const MoveCategoryLock = preload("res://scripts/battle/move_category_lock.gd")
 
 
+# Virtual hook used by the later Cleffa family layer. The Cleffa base processes
+# pending Future Sight events before the concrete resolver is introduced in its
+# child script. Keeping a no-op definition this early makes that forward hook
+# statically resolvable while normal virtual dispatch still reaches the later
+# Cleffa implementation in the active final battle class.
+func _cleffa_resolve_future_sight(_event: Dictionary) -> void:
+    pass
+
+
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
     var combatant: Dictionary = super._make_combatant(side, index, setup)
     MoveCategoryLock.ensure_state(combatant)
