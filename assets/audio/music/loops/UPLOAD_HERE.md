@@ -1,13 +1,29 @@
 # Hintergrundmusik hier hochladen
 
-Für die erste Timeflow-Version sind diese neutralen Dateinamen vorgesehen:
+Die aktuell ausgewählten MP3-Dateien aus der Pokémon-Diamant/Perl-Auswahl kommen **alle unverändert in diesen Ordner**. Bitte vorerst **nicht umbenennen**.
 
-- `menu_main.ogg` – Hauptmenü
-- `route_early.ogg` – frühe Etappen
-- `route_mid.ogg` – mittlere Etappen
-- `route_late.ogg` – späte Etappen
-- `battle_normal.ogg` – normaler Kampf
-- `battle_boss.ogg` – besonderer/Bosskampf
-- `battle_final.ogg` – optionaler Endgame-/Finalkampf
+## Fest vorgesehene Kampfmusik
 
-Wenn die Ausgangsdateien zunächst MP3 sind, können sie vorerst auch hier abgelegt werden. Vor der endgültigen Einbindung können wir sie passend aufbereiten und die Loop-Punkte festlegen.
+- `15. Battle! (Wild Pokémon).mp3` – normaler Kampf
+- `46. Battle! (Gym Leader).mp3` – besonderer/Bosskampf
+- `168. Battle! (Champion).mp3` – sehr besonderer/Finalkampf
+
+## Kandidaten für Startmenü und Etappen-/Routenmenü
+
+Diese fünf Stücke werden nach dem Upload gemeinsam endgültig zugeordnet:
+
+- `45. Pokémon Gym.mp3`
+- `94. Fight Area (Day).mp3`
+- `91. Victory Road.mp3`
+- `78. Team Galactic HQ.mp3`
+- `82. Spear Pillar.mp3`
+
+Ziel ist eine deutlich kämpferischere, spannendere Stimmung als klassische gemütliche Pokémon-Routenmusik.
+
+## Später beim Einbau
+
+- sinnvolle neutrale Dateinamen vergeben
+- Lautstärken angleichen
+- Loop-Punkte pro Track bestimmen
+- Intros nur einmal spielen und anschließend nur den Loop-Teil wiederholen
+- Übergänge zwischen Startmenü, Etappenmenü, Kampf und Sieg sauber ausblenden/einblenden
