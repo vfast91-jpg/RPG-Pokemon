@@ -44,7 +44,7 @@ func _initialize() -> void:
                     )
 
     var route = ActiveRouteScript.new()
-    _check(route.ROUTE_STAGE_COUNT == 100, "Aktive Route muss 100 Etappen besitzen.")
+    _check(route.ENDGAME_ROUTE_STAGE_COUNT == 100, "Aktive Route muss 100 Etappen besitzen.")
     _check(route.ENDGAME_STAGE_START == 91, "Superbosslauf muss auf Etappe 91 beginnen.")
     _check(route.ENDGAME_STAGE_END == 100, "Superbosslauf muss auf Etappe 100 enden.")
 
