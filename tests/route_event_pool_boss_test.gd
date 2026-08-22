@@ -19,16 +19,43 @@ func _initialize() -> void:
         route.EVENT_TRAINING,
         route.EVENT_RARE
     ]
-    _check(route.ACTIVE_ROUTE_EVENTS.size() == 5, "Der aktive Wegpool muss genau fünf Ereignisse enthalten.")
+    _check(route.ACTIVE_ROUTE_EVENTS.size() == 5, "Der vollständige aktive Wegpool muss genau fünf Ereignisse enthalten.")
     for kind: String in expected_events:
         _check(route.ACTIVE_ROUTE_EVENTS.has(kind), "Aktiver Wegpool fehlt: %s" % kind)
     _check(not route.ACTIVE_ROUTE_EVENTS.has(route.EVENT_DIRECT), "Direkter Pfad darf nicht mehr im aktiven Wegpool sein.")
     _check(not route.ACTIVE_ROUTE_EVENTS.has(route.EVENT_DANGEROUS), "Gefährlicher Pfad darf nicht mehr im aktiven Wegpool sein.")
 
+    # Stages 1-10 are protected: the boss is excluded, but the remaining four
+    # events stay fully random and three distinct choices are shown.
+    for stage: int in [1, 5, 10]:
+        var early_pool: Array[String] = route._route_event_pool_for_stage(stage)
+        _check(early_pool.size() == 4, "Etappe %d muss genau vier mögliche Wegereignisse im geschützten Pool haben." % stage)
+        _check(not early_pool.has(route.EVENT_RARE), "Etappe %d darf keinen Boss im Wegpool haben." % stage)
+        _check(early_pool.has(route.EVENT_HEAL), "Etappe %d muss Heilquelle erlauben." % stage)
+        _check(early_pool.has(route.EVENT_CATCH), "Etappe %d muss Fangwiese erlauben." % stage)
+        _check(early_pool.has(route.EVENT_TM), "Etappe %d muss Fundstelle erlauben." % stage)
+        _check(early_pool.has(route.EVENT_TRAINING), "Etappe %d muss Trainingsplatz erlauben." % stage)
+
+        for _sample: int in range(80):
+            var early_choices: Array[Dictionary] = route._choices_for_stage(stage)
+            _check(early_choices.size() == 3, "Etappe %d muss genau drei Wegoptionen anbieten." % stage)
+            var early_kinds: Array[String] = []
+            for choice: Dictionary in early_choices:
+                var kind: String = str(choice.get("kind", ""))
+                _check(kind != route.EVENT_RARE, "Etappe %d hat trotz Schutzphase eine Besondere Begegnung angeboten." % stage)
+                _check(not early_kinds.has(kind), "Etappe %d darf kein Wegereignis doppelt anbieten: %s" % [stage, kind])
+                early_kinds.append(kind)
+
+    # Stage 11 switches to the full five-event pool. From there every event,
+    # including the boss, must be reachable in the fully random selection.
+    var stage11_pool: Array[String] = route._route_event_pool_for_stage(11)
+    _check(stage11_pool.size() == 5, "Ab Etappe 11 muss der vollständige Fünferpool aktiv sein.")
+    _check(stage11_pool.has(route.EVENT_RARE), "Ab Etappe 11 muss die Besondere Begegnung wieder möglich sein.")
+
     var seen: Dictionary = {}
     for _sample: int in range(160):
         var choices: Array[Dictionary] = route._choices_for_stage(25)
-        _check(choices.size() == 3, "Jede Etappe muss genau drei Wegoptionen anbieten.")
+        _check(choices.size() == 3, "Jede Etappe ab 11 muss genau drei Wegoptionen anbieten.")
 
         var kinds: Array[String] = []
         for choice: Dictionary in choices:
@@ -41,11 +68,8 @@ func _initialize() -> void:
         _check(not kinds.has(route.EVENT_DIRECT), "Direkter Pfad wurde trotz Entfernung ausgewürfelt.")
         _check(not kinds.has(route.EVENT_DANGEROUS), "Gefährlicher Pfad wurde trotz Entfernung ausgewürfelt.")
 
-    # With a shuffled five-item pool every event must be reachable in any of the
-    # three positions. 160 samples makes a missing event effectively a logic
-    # error rather than a balancing expectation.
     for kind: String in expected_events:
-        _check(bool(seen.get(kind, false)), "Wegereignis wurde in der Zufallsauswahl nie erreicht: %s" % kind)
+        _check(bool(seen.get(kind, false)), "Wegereignis wurde ab Etappe 11 in der Zufallsauswahl nie erreicht: %s" % kind)
 
     # Normal enemy species selection uses the same family catch-rate foundation
     # as Fangwiese search 1: higher catch rate = more encounter weight.
