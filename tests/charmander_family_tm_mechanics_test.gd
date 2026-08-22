@@ -15,6 +15,8 @@ func _initialize() -> void:
     _assert_charmander_tm031_compatibility(lab)
     _assert_weight_system(lab)
     _assert_semi_invulnerable_states(lab)
+    _assert_semi_invulnerable_aggro_targeting(lab)
+    _assert_charge_entry_clears_aggro(lab)
     _assert_fling_uses_status(lab)
     _assert_pledge_helpers(lab)
     _assert_dragon_cheer(lab)
@@ -71,6 +73,59 @@ func _assert_semi_invulnerable_states(lab) -> void:
     assert(lab._cf_target_reachable_by_move(target,"thunder"))
     assert(lab._cf_target_reachable_by_move(target,"hurricane"))
     assert(not lab._cf_target_reachable_by_move(target,"tackle"))
+
+func _assert_semi_invulnerable_aggro_targeting(lab) -> void:
+    var actor: Dictionary = lab._make_combatant("player",0,{"species_id":"charmander","level":30})
+    var hidden: Dictionary = lab._make_combatant("enemy",0,{"species_id":"pikachu","level":30})
+    var visible: Dictionary = lab._make_combatant("enemy",1,{"species_id":"pikachu","level":30})
+    hidden["aggro"] = 100.0
+    visible["aggro"] = 20.0
+    lab.player_team = [actor]
+    lab.enemy_team = [hidden,visible]
+    lab.combatants = [actor,hidden,visible]
+
+    lab._tf_set_state(hidden,"airborne_fly",true)
+    lab._semi_targeting_move_id = "tackle"
+    var normal_targets: Array = lab._targets(actor,"enemy_highest_aggro")
+    assert(normal_targets.size() == 1 and str((normal_targets[0] as Dictionary).get("id", "")) == str(visible.get("id", "")), "Normale Attacken müssen ein fliegendes Aggro-Ziel überspringen.")
+
+    lab._semi_targeting_move_id = "gust"
+    var gust_targets: Array = lab._targets(actor,"enemy_highest_aggro")
+    assert(gust_targets.size() == 1 and str((gust_targets[0] as Dictionary).get("id", "")) == str(hidden.get("id", "")), "Windstoß muss ein Fliegen-Ziel weiterhin auswählen dürfen.")
+
+    lab._tf_set_state(hidden,"airborne_fly",false)
+    lab._tf_set_state(hidden,"underground",true)
+    lab._semi_targeting_move_id = "tackle"
+    normal_targets = lab._targets(actor,"enemy_highest_aggro")
+    assert(normal_targets.size() == 1 and str((normal_targets[0] as Dictionary).get("id", "")) == str(visible.get("id", "")), "Normale Attacken müssen ein unterirdisches Aggro-Ziel überspringen.")
+
+    lab._semi_targeting_move_id = "earthquake"
+    var quake_targets: Array = lab._targets(actor,"enemy_highest_aggro")
+    assert(quake_targets.size() == 1 and str((quake_targets[0] as Dictionary).get("id", "")) == str(hidden.get("id", "")), "Erdbeben muss ein unterirdisches Ziel weiterhin auswählen dürfen.")
+    lab._semi_targeting_move_id = ""
+
+func _assert_charge_entry_clears_aggro(lab) -> void:
+    var actor: Dictionary = lab._make_combatant("player",0,{"species_id":"charizard","level":40})
+    var target: Dictionary = lab._make_combatant("enemy",0,{"species_id":"pikachu","level":40})
+    lab.player_team = [actor]
+    lab.enemy_team = [target]
+    lab.combatants = [actor,target]
+
+    actor["aggro"] = 88.0
+    lab._execute_move(actor,"fly")
+    assert(str(actor.get("db_charge_move", "")) == "fly", "Fliegen muss nach der ersten Aktion als Ladeangriff gespeichert sein.")
+    assert(lab._tf_has_state(actor,"airborne_fly"), "Fliegen muss nach der ersten Aktion den Luftzustand setzen.")
+    assert(is_equal_approx(float(actor.get("aggro", -1.0)),0.0), "Fliegen muss beim Hochfliegen die eigene Aggro auf 0 setzen.")
+
+    lab._tf_set_state(actor,"airborne_fly",false)
+    actor["db_charge_move"] = ""
+    actor["db_charge_target_id"] = ""
+    actor["db_charge_firing"] = false
+    actor["aggro"] = 77.0
+    lab._execute_move(actor,"dig")
+    assert(str(actor.get("db_charge_move", "")) == "dig", "Schaufler muss nach der ersten Aktion als Ladeangriff gespeichert sein.")
+    assert(lab._tf_has_state(actor,"underground"), "Schaufler muss nach der ersten Aktion den Untergrundzustand setzen.")
+    assert(is_equal_approx(float(actor.get("aggro", -1.0)),0.0), "Schaufler muss beim Eingraben die eigene Aggro auf 0 setzen.")
 
 func _assert_fling_uses_status(lab) -> void:
     var actor: Dictionary = lab._make_combatant("player",0,{"species_id":"charmander","level":30})
