@@ -1,6 +1,6 @@
 extends SceneTree
 
-const RouteScript = preload("res://scripts/demo_route_training_hp_cost.gd")
+const RouteScript = preload("res://scripts/demo_route_pacing_balance.gd")
 
 var failures: int = 0
 
@@ -29,11 +29,27 @@ func _initialize() -> void:
         "Pikachus individuelle Lv.5-EP-Anforderung ist falsch."
     )
 
-    # A normal stage reward is independent of the defeated opponent and tracks
-    # the Medium-Fast reference level: Lv.5 on stage 1, Lv.14 on stage 10, etc.
-    _check(route._route_stage_xp(1) == 91, "Etappe 1 muss 91 Basis-EP geben.")
-    _check(route._route_stage_xp(10) == 631, "Etappe 10 muss 631 Basis-EP geben.")
-    _check(route._route_stage_xp(90) == 26791, "Etappe 90 muss 26791 Basis-EP geben.")
+    # Normal stage XP is deliberately 55% of the old one-full-reference-level
+    # reward. This keeps the player's natural progression behind a fresh level
+    # plateau at band entry, then lets it catch up during that band.
+    _check(route._route_stage_xp(1) == 50, "Etappe 1 muss 50 Basis-EP geben.")
+    _check(route._route_stage_xp(10) == 347, "Etappe 10 muss 347 Basis-EP geben.")
+    _check(route._route_stage_xp(90) == 14735, "Etappe 90 muss 14735 Basis-EP geben.")
+
+    # Regression for the intended sawtooth: a Medium-Fast Lv.5 starter taking
+    # only normal stage XP reaches stage 11 around Lv.12, not Lv.15. Optional
+    # route rewards can still move individual Pokemon ahead of this baseline.
+    var reference_level: int = 5
+    var reference_xp: int = 0
+    for current_stage: int in range(1, 11):
+        reference_xp += route._route_stage_xp(current_stage)
+        while reference_level < 100:
+            var required: int = route._xp_needed_for_curve("medium_fast", reference_level)
+            if required <= 0 or reference_xp < required:
+                break
+            reference_xp -= required
+            reference_level += 1
+    _check(reference_level == 12, "Normale EP müssen vor Etappe 11 ungefähr Lv.12 statt Lv.15 ergeben.")
 
     # Training costs 15% of NEW max HP, rounded to the nearest full HP.
     # A living Pokemon can never be reduced below 1 HP by training exhaustion.
