@@ -33,3 +33,6 @@ jobs:
 
       - name: Vulpix and Ninetales integration test
         run: ./godot --headless --path . --script tests/vulpix_family_runtime_test.gd
+
+      - name: Vulpix and Ninetales data registry test
+        run: ./godot --headless --path . --script tests/vulpix_family_data_registry_test.gd
