@@ -36,6 +36,13 @@ const LOOP_END_SKIP_SECONDS: float = 5.0
 const MUSIC_CROSSFADE_SECONDS: float = 0.65
 const MUSIC_FADE_FLOOR_DB: float = -48.0
 const MUSIC_VOLUME_DB: float = -9.0
+
+# Short reward/event jingles should sit clearly in front of the route music.
+# Instead of letting both compete at full volume, the active music is briefly
+# ducked and returns smoothly after the event has finished.
+const EVENT_MUSIC_DUCK_DB: float = -22.0
+const EVENT_DUCK_SECONDS: float = 0.18
+const EVENT_RELEASE_SECONDS: float = 0.35
 const EVENT_VOLUME_DB: float = -4.0
 const SFX_VOLUME_DB: float = -5.0
 const SFX_POOL_SIZE: int = 4
@@ -50,6 +57,7 @@ var _music_player: AudioStreamPlayer
 var _music_standby_player: AudioStreamPlayer
 var _music_transition_tween: Tween
 var _event_player: AudioStreamPlayer
+var _event_duck_tween: Tween
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _next_sfx_player: int = 0
 
@@ -68,6 +76,7 @@ func _ready() -> void:
     _event_player = AudioStreamPlayer.new()
     _event_player.name = "EventPlayer"
     _event_player.volume_db = EVENT_VOLUME_DB
+    _event_player.finished.connect(_on_event_finished)
     add_child(_event_player)
 
     for index: int in range(SFX_POOL_SIZE):
@@ -117,7 +126,7 @@ func play_prepared_battle() -> void:
 
 func play_battle(kind: String = "normal") -> void:
     current_battle_kind = _normalized_battle_kind(kind)
-    _event_player.stop()
+    _stop_event_for_context_change()
 
     match current_battle_kind:
         "final":
@@ -129,7 +138,7 @@ func play_battle(kind: String = "normal") -> void:
 
 
 func play_victory(kind: String = "normal") -> void:
-    _event_player.stop()
+    _stop_event_for_context_change()
     var path: String = STINGER_VICTORY_BOSS if _normalized_battle_kind(kind) in ["boss", "final"] else STINGER_VICTORY_NORMAL
     _play_one_shot_on_music_channel(path)
 
@@ -172,6 +181,9 @@ func stop_music() -> void:
     if _music_transition_tween != null:
         _music_transition_tween.kill()
         _music_transition_tween = null
+    if _event_duck_tween != null:
+        _event_duck_tween.kill()
+        _event_duck_tween = null
 
     if _music_player != null:
         _music_player.stop()
@@ -235,8 +247,8 @@ func _transition_music_stream(
     if _music_player == null or _music_standby_player == null:
         return
 
-    # If another music change happened during the previous 0.65 s crossfade,
-    # stop that tween and use the two current players for the newest request.
+    # If another music change happened during the previous crossfade, stop that
+    # tween and reuse the two current players for the newest request.
     if _music_transition_tween != null:
         _music_transition_tween.kill()
         _music_transition_tween = null
@@ -244,10 +256,11 @@ func _transition_music_stream(
     var outgoing: AudioStreamPlayer = _music_player
     var incoming: AudioStreamPlayer = _music_standby_player
     var has_outgoing: bool = outgoing.playing
+    var target_volume_db: float = _music_target_volume_db()
 
     incoming.stop()
     incoming.stream = stream
-    incoming.volume_db = MUSIC_FADE_FLOOR_DB if has_outgoing else MUSIC_VOLUME_DB
+    incoming.volume_db = MUSIC_FADE_FLOOR_DB if has_outgoing else target_volume_db
 
     # Every newly selected track is a genuinely new playback and therefore gets
     # its complete musical intro once. LOOP_START_SECONDS is used only later by
@@ -261,7 +274,7 @@ func _transition_music_stream(
     _current_music_path = path
 
     if not has_outgoing:
-        incoming.volume_db = MUSIC_VOLUME_DB
+        incoming.volume_db = target_volume_db
         outgoing.stop()
         outgoing.volume_db = MUSIC_VOLUME_DB
         return
@@ -277,7 +290,7 @@ func _transition_music_stream(
     _music_transition_tween.tween_property(
         incoming,
         "volume_db",
-        MUSIC_VOLUME_DB,
+        target_volume_db,
         MUSIC_CROSSFADE_SECONDS
     )
     _music_transition_tween.finished.connect(_finish_music_transition.bind(outgoing))
@@ -297,10 +310,78 @@ func _play_event(path: String) -> void:
     if stream == null:
         return
     _disable_loop(stream)
+
+    # A new event supersedes the previous short jingle. Music remains ducked,
+    # so even rapid reward sequences do not create two full-volume music layers.
     _event_player.stop()
+    _duck_music_for_event()
     _event_player.stream = stream
     _event_player.volume_db = EVENT_VOLUME_DB
     _event_player.play()
+
+
+func _duck_music_for_event() -> void:
+    _settle_music_transition()
+
+    if _event_duck_tween != null:
+        _event_duck_tween.kill()
+        _event_duck_tween = null
+    if _music_player == null or not _music_player.playing:
+        return
+
+    _event_duck_tween = create_tween()
+    _event_duck_tween.tween_property(
+        _music_player,
+        "volume_db",
+        EVENT_MUSIC_DUCK_DB,
+        EVENT_DUCK_SECONDS
+    )
+
+
+func _on_event_finished() -> void:
+    _settle_music_transition()
+
+    if _event_duck_tween != null:
+        _event_duck_tween.kill()
+        _event_duck_tween = null
+    if _music_player == null or not _music_player.playing:
+        return
+
+    _event_duck_tween = create_tween()
+    _event_duck_tween.tween_property(
+        _music_player,
+        "volume_db",
+        MUSIC_VOLUME_DB,
+        EVENT_RELEASE_SECONDS
+    )
+
+
+func _stop_event_for_context_change() -> void:
+    if _event_player != null:
+        _event_player.stop()
+    if _event_duck_tween != null:
+        _event_duck_tween.kill()
+        _event_duck_tween = null
+    if _music_player != null and _music_player.playing:
+        _music_player.volume_db = MUSIC_VOLUME_DB
+
+
+func _settle_music_transition() -> void:
+    # If an event starts in the middle of a crossfade, keep the newly selected
+    # track and remove the outgoing one. Otherwise the event would have to fight
+    # two background tracks at once.
+    if _music_transition_tween != null:
+        _music_transition_tween.kill()
+        _music_transition_tween = null
+    if _music_standby_player != null and _music_standby_player.playing:
+        _music_standby_player.stop()
+        _music_standby_player.volume_db = MUSIC_VOLUME_DB
+
+
+func _music_target_volume_db() -> float:
+    if _event_player != null and _event_player.playing:
+        return EVENT_MUSIC_DUCK_DB
+    return MUSIC_VOLUME_DB
 
 
 func _load_audio(path: String) -> AudioStream:
