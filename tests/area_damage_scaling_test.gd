@@ -97,7 +97,7 @@ func _assert_current_area_damage_registry(lab) -> void:
 
 
 func _assert_runtime_target_counting(lab) -> void:
-    var actor: Dictionary = {"id":"player_0", "side":"player", "alive":true}
+    var actor: Dictionary = {"id":"player_0", "side":"player", "alive":true, "action_serial":7}
     var enemy_a: Dictionary = {"id":"enemy_0", "side":"enemy", "alive":true}
     var enemy_b: Dictionary = {"id":"enemy_1", "side":"enemy", "alive":true}
     var enemy_c: Dictionary = {"id":"enemy_2", "side":"enemy", "alive":true}
@@ -117,8 +117,18 @@ func _assert_runtime_target_counting(lab) -> void:
     enemy_b["alive"] = false
     assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, electroweb), 1.0), "Elektronetz muss gegen nur 1 lebenden Gegner vollen Schaden behalten.")
 
+    # Freeze regression: all targets of ONE attack must retain the multiplier
+    # established before an earlier target can be KO'd by that same attack.
     enemy_b["alive"] = true
     enemy_c["alive"] = true
+    enemy_d["alive"] = true
+    lab._area_damage_action_multipliers.clear()
+    assert(is_equal_approx(lab._area_damage_multiplier_for_resolution(actor, electroweb), 0.50), "Erster Treffer einer 4-Ziel-Aktion muss 50 % festschreiben.")
+    enemy_d["alive"] = false
+    assert(is_equal_approx(lab._area_damage_multiplier_for_resolution(actor, electroweb), 0.50), "Ein KO innerhalb derselben Aktion darf den Spread-Multiplikator nicht erhoehen.")
+    actor["action_serial"] = 8
+    assert(is_equal_approx(lab._area_damage_multiplier_for_resolution(actor, electroweb), 0.60), "Eine neue Aktion muss die aktuelle Zielzahl neu auswerten.")
+
     enemy_d["alive"] = true
     var swift: Dictionary = moves.get("swift", {})
     assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, swift), 1.0), "Sternschauer muss seine explizite Vollschaden-Ausnahme behalten.")
