@@ -89,6 +89,8 @@ jobs:
         run: ./godot --headless --path . --script tests/route_fundstelle_vitamin_test.gd
       - name: Route event pool and boss regression test
         run: ./godot --headless --path . --script tests/route_event_pool_boss_test.gd
+      - name: Route rebalance integration test
+        run: ./godot --headless --path . --script tests/route_rebalance_integration_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
       - name: Meta progression test
