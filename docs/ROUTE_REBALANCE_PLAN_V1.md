@@ -10,11 +10,11 @@ Ausschließlich `main`. Keine neuen Branches, kein Branch-Wechsel.
 
 - Phase A: abgeschlossen – Sicherheitsbaseline und Regression-Sperrliste
 - Phase B: abgeschlossen – Speziesfamilien und Familien-Fangraten
-- Phase C: abgeschlossen – dynamisches Gegnerlevel ab Etappe 6
+- Phase C: abgeschlossen – geschütztes Onboarding Etappe 1–10, dynamisches Gegnerlevel ab Etappe 11
 - Phase D: abgeschlossen – normale Etappen-EP auf 50 % als Testwert
 - Phase E: abgeschlossen – Fangwiese mit drei Suchen und Seltenheitsgewichtung
 - Phase F: abgeschlossen – Fundstelle mit TM, Heilitem und Vitaminen
-- Phase G: abgeschlossen – finaler Fünfer-Ereignispool, Boss-Umbau und Familiengewichtung normaler Gegner
+- Phase G: abgeschlossen – finaler Fünfer-Ereignispool, Boss-Umbau und Familiengewichtung normaler Gegner; Boss erst ab Etappe 11
 - Phase H: abgeschlossen – alte Direct/Dangerous/+25%-Einstiegspunkte im aktiven Layer gesperrt; tiefe Altdateien bleiben nur als ungefährliche Vererbungsbasis erhalten, damit funktionierende UI-/Entwicklungslogik nicht unnötig beschädigt wird
 - Phase I: automatisierte Regressionen und Integrationstest sind im Workflow eingetragen; die abschließende visuelle Godot-Spielprüfung bleibt lokal auszuführen
 
@@ -56,15 +56,22 @@ Diese Systeme dürfen durch den Route-Umbau nicht nebenbei verändert werden:
 
 ## Neue Gegnerlevel-Regel
 
-Etappen 1–5 bleiben als geschütztes Onboarding exakt erhalten:
+Etappen 1–10 sind als geschütztes Onboarding fest gesetzt:
 
 - Etappe 1: 1 Gegner Lv.2
 - Etappe 2: 1 Gegner Lv.3
 - Etappe 3: 2 Gegner Lv.3
 - Etappe 4: 2 Gegner Lv.4
 - Etappe 5: 3 Gegner Lv.4
+- Etappe 6: 2 Gegner Lv.5
+- Etappe 7: 2 Gegner Lv.6
+- Etappe 8: 3 Gegner Lv.6
+- Etappe 9: 3 Gegner Lv.7
+- Etappe 10: 3 Gegner Lv.8
 
-Ab Etappe 6 gilt:
+In Etappe 1–10 gibt es keine Vierergruppe und keine dynamische Skalierung nach dem eigenen Team. Das gibt Zeit, das Kampfsystem kennenzulernen und das Team aufzubauen.
+
+Ab Etappe 11 gilt:
 
 `Referenzlevel = höchstes Level im eigenen Team`
 
@@ -79,7 +86,7 @@ Immer auf Level 1–100 begrenzen.
 
 Die bisherigen festen Zehner-Levelplateaus entfallen vollständig.
 
-Bei Etappe 6 erscheint einmal pro Run ein Hinweis, dass sich das Gegnerniveau ab jetzt nach dem höchstleveligen eigenen Pokémon richtet. Die bisherigen Hinweise bei Etappe 11/21/31/... entfallen.
+Bei Etappe 11 erscheint einmal pro Run ein Hinweis, dass sich das Gegnerniveau ab jetzt nach dem höchstleveligen eigenen Pokémon richtet. Weitere Levelband-Hinweise entfallen.
 
 ## EP-Tempo
 
@@ -91,7 +98,7 @@ Bosskämpfe verwenden dieselbe normale Etappenkampf-EP wie normale Etappenkämpf
 
 ## Wegereignisse
 
-Aktiver Pool:
+Vollständiger aktiver Pool:
 
 1. Heilquelle
 2. Fangwiese
@@ -101,15 +108,17 @@ Aktiver Pool:
 
 `Direkter Pfad` und `Gefährlicher Pfad` werden nicht mehr angeboten oder ausgeführt.
 
-Pro Etappe werden drei verschiedene Ereignisse vollständig zufällig aus diesen fünf gezogen. Keine feste Position mehr und keine Sonderregel, dass Slot 1 Heilquelle oder Fangwiese sein muss.
+Während des geschützten Einstiegs Etappe 1–10 wird die Besondere Begegnung / der Boss aus dem Pool entfernt. Pro Etappe werden drei verschiedene Ereignisse vollständig zufällig aus Heilquelle, Fangwiese, Fundstelle und Trainingsplatz gezogen.
 
-Bei gleichmäßiger Gewichtung ergibt das:
+Ab Etappe 11 werden wieder drei verschiedene Ereignisse vollständig zufällig aus allen fünf aktiven Ereignissen gezogen. Keine feste Position und keine Sonderregel, dass Slot 1 Heilquelle oder Fangwiese sein muss.
+
+Ab Etappe 11 ergibt die gleichmäßige Gewichtung der fünf Ereignisse:
 
 - 90 % Chance, dass mindestens Heilquelle oder Fangwiese in der Auswahl ist
 - 30 % Chance, dass beide enthalten sind
 - 10 % Chance, dass weder Heilquelle noch Fangwiese enthalten ist; dann besteht die Auswahl aus Fundstelle, Trainingsplatz und Boss
 
-Die anfängliche Gewichtung aller fünf Ereignisse bleibt gleich. Erst Tests dürfen später eine Gewichtungsänderung begründen.
+Die anfängliche Gewichtung bleibt gleich. Erst Tests dürfen später eine Gewichtungsänderung begründen.
 
 ## Fangwiese
 
@@ -192,6 +201,8 @@ Die bisherige Alternative `keine TM → +25 % EP` entfällt.
 
 ## Boss / Besondere Begegnung
 
+Die Besondere Begegnung ist erst ab Etappe 11 im Wegpool verfügbar.
+
 - Bosslevel = höchstes eigenes Pokémon-Level +5, maximal Lv.100
 - echter doppelter KP-Pool bleibt
 - normale Etappenkampf-EP, kein Bonusmultiplikator
@@ -205,11 +216,11 @@ Die bestehende sichere Sequenzidee wird weiterverwendet: erst Kampf, dann EP/Lev
 
 A. Sicherheitsbaseline und Regression-Sperrliste
 B. Datenbasis für Speziesfamilie und Familien-Fangrate
-C. Dynamisches Gegnerscaling und neuer Etappe-6-Hinweis
+C. Geschütztes Onboarding Etappe 1–10, danach dynamisches Gegnerscaling und Etappe-11-Hinweis
 D. EP-Tempo und zentrale Etappen-EP-Quelle
 E. Fangwiese mit drei Suchen und Seltenheitsgewichtung
 F. Fundstelle mit TM, Heilitem und Vitaminen
-G. Spezialereignisse: Direkter/Gefährlicher Pfad entfernen, Boss umbauen
+G. Spezialereignisse: Direkter/Gefährlicher Pfad entfernen, Boss umbauen und erst ab Etappe 11 erlauben
 H. Verwaiste Altlogik kontrolliert absichern
 I. Gesamttests und visuelle Godot-Prüfung
 
