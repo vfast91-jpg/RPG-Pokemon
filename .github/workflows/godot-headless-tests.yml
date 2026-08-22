@@ -51,6 +51,8 @@ jobs:
         run: ./godot --headless --path . --script tests/charmander_family_tm_mechanics_test.gd
       - name: Schiggy family TM mechanics test
         run: ./godot --headless --path . --script tests/squirtle_family_tm_mechanics_test.gd
+      - name: Raupy family TM mechanics test
+        run: ./godot --headless --path . --script tests/caterpie_family_tm_mechanics_test.gd
       - name: Periodic wait effects regression test
         run: ./godot --headless --path . --script tests/periodic_wait_effects_test.gd
       - name: Combat roster layout regression test
