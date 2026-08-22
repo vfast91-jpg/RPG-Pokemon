@@ -22,7 +22,7 @@ func _compact_effect_summary(move: Dictionary) -> String:
     var base_summary: String = super._compact_effect_summary(move)
     var mechanics_value: Variant = move.get("mechanics", [])
     if not (mechanics_value is Array):
-        return base_summary
+        return _append_effective_speed_power_summary(move, base_summary)
 
     var result: String = base_summary
     for mechanic_value: Variant in mechanics_value:
@@ -90,7 +90,37 @@ func _compact_effect_summary(move: Dictionary) -> String:
                             player_label
                         )
 
-    return result
+    return _append_effective_speed_power_summary(move, result)
+
+
+func _append_effective_speed_power_summary(move: Dictionary, source: String) -> String:
+    var runtime_value: Variant = move.get("runtime", {})
+    if not (runtime_value is Dictionary):
+        return source
+    var runtime: Dictionary = runtime_value
+    if not bool(runtime.get("timeflow_effective_speed_power", false)):
+        return source
+
+    var power_tiers_value: Variant = runtime.get("power_tiers", [])
+    var note: String = "Stärke abhängig vom aktuellen Geschwindigkeitsverhältnis Anwender/Ziel"
+    if power_tiers_value is Array and not (power_tiers_value as Array).is_empty():
+        var power_tiers: Array = power_tiers_value
+        var minimum_power: int = int(power_tiers[0])
+        var maximum_power: int = minimum_power
+        for tier_value: Variant in power_tiers:
+            var tier: int = int(tier_value)
+            minimum_power = mini(minimum_power, tier)
+            maximum_power = maxi(maximum_power, tier)
+        note = (
+            "Stärke %d–%d · abhängig vom aktuellen Geschwindigkeitsverhältnis Anwender/Ziel"
+            % [minimum_power, maximum_power]
+        )
+
+    if source.is_empty():
+        return note
+    if source.contains("Geschwindigkeitsverhältnis"):
+        return source
+    return source + " · " + note
 
 
 func _endeavor_damage_summary(move: Dictionary) -> String:
