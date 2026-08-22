@@ -26,7 +26,7 @@ func _initialize() -> void:
 
 func _assert_inventory(lab) -> void:
     var moves: Dictionary = lab.data.get("moves", {})
-    assert(moves.size() == 221, "Runtime muss nach dem Raupy-Paket 221 Attacken enthalten.")
+    assert(moves.size() == 228, "Runtime muss nach dem Bibor-Paket 228 Attacken enthalten.")
     for move_id: String in NEW_MOVE_IDS + CORRECTED_MOVE_IDS:
         assert(moves.has(move_id), "Raupy-Familienattacke fehlt: " + move_id)
         var runtime: Dictionary = (moves[move_id] as Dictionary).get("runtime", {})
