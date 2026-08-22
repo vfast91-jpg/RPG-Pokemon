@@ -1,6 +1,6 @@
 extends SceneTree
 
-const CombatLab = preload("res://scripts/battle_demo_caterpie_family.gd")
+const CombatLab = preload("res://scripts/battle_demo_caterpie_family_ui.gd")
 const NEW_MOVE_IDS: Array[String] = [
     "thief", "snore", "attract", "u_turn", "echoed_voice", "draining_kiss",
     "psychic", "baton_pass", "shadow_ball", "skill_swap", "pollen_puff"
