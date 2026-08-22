@@ -12,6 +12,7 @@ func _initialize() -> void:
     _assert_inventory_and_contracts(lab)
     _assert_family_tm_lists(lab)
     _assert_taunt_category_lock(lab)
+    _assert_taunt_aggro_and_ai_filter(lab)
     _assert_shock_wave(lab)
     _assert_charge_beam_refresh(lab)
     _assert_strength(lab)
@@ -84,6 +85,34 @@ func _assert_taunt_category_lock(lab) -> void:
     assert(MoveCategoryLock.remaining_actions(target, "status") == 3, "Erneuter Verhöhner muss auf drei Aktionen auffrischen.")
 
 
+func _assert_taunt_aggro_and_ai_filter(lab) -> void:
+    var taunt: Dictionary = lab._move_data("taunt")
+    var mechanic: Dictionary = (taunt.get("mechanics", []) as Array)[0]
+    var actor: Dictionary = lab._make_combatant("player", 0, {"species_id":"rattata", "level":20})
+    var target: Dictionary = lab._make_combatant("enemy", 0, {"species_id":"raticate", "level":20})
+    lab.player_team = [actor]
+    lab.enemy_team = [target]
+    lab.combatants = [actor, target]
+
+    var expected_one_action_aggro: float = float(target.get("max_hp", 1)) * 0.10
+    var first_aggro: float = lab._effect(actor, target, mechanic)
+    assert(is_equal_approx(first_aggro, expected_one_action_aggro * 3.0), "Erstes Verhöhner muss genau drei neu erzeugte Sperr-Aktionen als Status-Aggro bewerten.")
+    assert(MoveCategoryLock.remaining_actions(target, "status") == 3)
+
+    var same_action_refresh_aggro: float = lab._effect(actor, target, mechanic)
+    assert(is_zero_approx(same_action_refresh_aggro), "Identisches Auffrischen ohne zusätzliche Wirkungsdauer darf keine künstliche Zusatz-Aggro erzeugen.")
+
+    target["action_serial"] = 1
+    var one_action_refresh_aggro: float = lab._effect(actor, target, mechanic)
+    assert(is_equal_approx(one_action_refresh_aggro, expected_one_action_aggro), "Nach einer verbrauchten Zielaktion darf Auffrischen nur die tatsächlich neu hinzugewonnene Aktion bewerten.")
+
+    target["moves"] = ["taunt", "strength"]
+    var allowed: Array = lab._rattata_allowed_moves(target)
+    assert(allowed.size() == 1 and str(allowed[0]) == "strength", "Die KI muss unter Verhöhner Statusattacken filtern und Schadensattacken behalten.")
+    target["moves"] = ["taunt"]
+    assert(lab._rattata_allowed_moves(target).is_empty(), "Hat die KI unter Verhöhner nur Statusattacken, muss der Filter leer sein; der Laufzeitpfad fällt dann auf Warten zurück.")
+
+
 func _assert_shock_wave(lab) -> void:
     var move: Dictionary = lab._move_data("shock_wave")
     assert(str(move.get("type", "")) == "electric")
@@ -93,6 +122,13 @@ func _assert_shock_wave(lab) -> void:
     assert(int(move.get("original_pp", 0)) == 20)
     assert(int(move.get("ap", 0)) == 5)
     assert(not bool(move.get("contact", true)))
+
+    var target: Dictionary = lab._make_combatant("enemy", 0, {"species_id":"pikachu", "level":20})
+    lab._tf_set_state(target, "underground", true)
+    assert(not lab._cf_target_reachable_by_move(target, "shock_wave"), "Schockwelle darf echte Unverwundbarkeit durch Schaufler nicht umgehen.")
+    lab._tf_set_state(target, "underground", false)
+    lab._tf_set_state(target, "airborne_fly", true)
+    assert(not lab._cf_target_reachable_by_move(target, "shock_wave"), "Schockwelle darf echte Unverwundbarkeit durch Fliegen nicht umgehen.")
 
 
 func _assert_charge_beam_refresh(lab) -> void:
