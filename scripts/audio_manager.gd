@@ -51,6 +51,7 @@ const EVENT_DUCK_SECONDS: float = 0.18
 const EVENT_RELEASE_SECONDS: float = 0.35
 const EVENT_VOLUME_DB: float = -4.0
 const SFX_VOLUME_DB: float = -5.0
+const SFX_FAINT_VOLUME_DB: float = -11.0
 const SFX_POOL_SIZE: int = 4
 
 var current_battle_kind: String = "normal"
@@ -175,14 +176,14 @@ func play_pokemon_obtained() -> void:
 
 
 func play_attack_sfx() -> void:
-    _play_sfx(SFX_ATTACK)
+    _play_sfx(SFX_ATTACK, SFX_VOLUME_DB)
 
 
 func play_faint_sfx() -> void:
-    _play_sfx(SFX_FAINT)
+    _play_sfx(SFX_FAINT, SFX_FAINT_VOLUME_DB)
 
 
-func _play_sfx(path: String) -> void:
+func _play_sfx(path: String, volume_db: float) -> void:
     if _sfx_players.is_empty():
         return
     var stream: AudioStream = _load_audio(path)
@@ -193,6 +194,7 @@ func _play_sfx(path: String) -> void:
     _next_sfx_player = (_next_sfx_player + 1) % _sfx_players.size()
     player.stop()
     player.stream = stream
+    player.volume_db = volume_db
     player.play()
 
 
