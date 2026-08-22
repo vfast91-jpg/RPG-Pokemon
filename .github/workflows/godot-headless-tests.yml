@@ -63,6 +63,8 @@ jobs:
         run: ./godot --headless --path . --script tests/rattata_family_tm_mechanics_test.gd
       - name: Rettan/Arbok TM mechanics test
         run: ./godot --headless --path . --script tests/rettan_arbok_family_tm_mechanics_test.gd
+      - name: Sandan/Sandamer family integration test
+        run: ./godot --headless --path . --script tests/sandshrew_family_integration_test.gd
       - name: Periodic wait effects regression test
         run: ./godot --headless --path . --script tests/periodic_wait_effects_test.gd
       - name: Combat roster layout regression test

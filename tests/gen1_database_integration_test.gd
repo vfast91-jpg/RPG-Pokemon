@@ -17,6 +17,10 @@ const RETTAN_ARBOK_NEW_MOVES: Array[String] = [
     "poison_tail","snarl","psychic_fangs","leech_life","spite","lash_out",
     "scale_shot","sludge_wave","skitter_smack","pain_split","throat_chop"
 ]
+const SANDSHREW_NEW_MOVES: Array[String] = [
+    "defense_curl","rollout","crush_claw","fury_swipes","sand_tomb",
+    "low_kick","spikes","stealth_rock","stone_edge","high_horsepower"
+]
 
 
 func _initialize() -> void:
@@ -39,9 +43,11 @@ func _initialize() -> void:
         for move_id_value: Variant in entries.keys():
             moves[str(move_id_value)] = entries[move_id_value]
 
-    assert(species.size() == int(manifest.get("species_count", -1)) and species.size() == 27, "Manifest/Spezieszahl muss 27 sein.")
-    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 244, "Manifest/Attackenzahl muss 244 sein.")
-    assert((meta.get("route_roots", []) as Array).size() == 10, "Die Demo braucht zehn Basislinien.")
+    assert(species.size() == int(manifest.get("species_count", -1)) and species.size() == 30, "Manifest/Spezieszahl muss 30 sein.")
+    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 266, "Manifest/Attackenzahl muss 266 sein.")
+    assert((meta.get("route_roots", []) as Array).size() == 11, "Die Demo braucht elf Basislinien.")
+    assert(int(manifest.get("route_root_count", -1)) == 11, "Manifest muss elf Basislinien ausweisen.")
+    assert((meta.get("route_roots", []) as Array).has("sandshrew"), "Sandan muss als spielbare Basislinie registriert sein.")
 
     _assert_evolution(species,"bulbasaur","ivysaur",16)
     _assert_evolution(species,"ivysaur","venusaur",32)
@@ -57,6 +63,7 @@ func _initialize() -> void:
     _assert_evolution(species,"ekans","arbok",22)
     _assert_evolution(species,"pichu","pikachu",15)
     _assert_evolution(species,"pikachu","raichu",30)
+    _assert_evolution(species,"sandshrew","sandslash",22)
 
     _assert_tm_count(species,"squirtle",35)
     _assert_tm_count(species,"wartortle",35)
@@ -74,6 +81,8 @@ func _initialize() -> void:
     _assert_tm_count(species,"raticate",34)
     _assert_tm_count(species,"ekans",42)
     _assert_tm_count(species,"arbok",53)
+    _assert_tm_count(species,"sandshrew",49)
+    _assert_tm_count(species,"sandslash",54)
 
     var blastoise_tms: Dictionary = (((species.get("blastoise", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     for tm_id: String in ["TM046","TM149","TM154","TM158","TM172","TM179"]:
@@ -110,6 +119,19 @@ func _initialize() -> void:
     assert(str(arbok_tms.get("TM202", "")) == "pain_split")
     assert(str(arbok_tms.get("TM221", "")) == "throat_chop")
 
+    var sandshrew: Dictionary = species.get("sandshrew", {})
+    var sandslash: Dictionary = species.get("sandslash", {})
+    assert(int((sandshrew.get("base_stats", {}) as Dictionary).get("defense", 0)) == 75)
+    assert(int((sandshrew.get("base_stats", {}) as Dictionary).get("special", 0)) == 30)
+    assert(int((sandslash.get("base_stats", {}) as Dictionary).get("attack", 0)) == 95)
+    assert(int((sandslash.get("base_stats", {}) as Dictionary).get("defense", 0)) == 110)
+    var sandshrew_levels: Dictionary = ((sandshrew.get("learnset", {}) as Dictionary).get("level_up", {}))
+    assert((sandshrew_levels.get("1", []) as Array).has("defense_curl"))
+    assert((sandshrew_levels.get("9", []) as Array).has("rollout"))
+    var sandslash_learnset: Dictionary = sandslash.get("learnset", {})
+    assert((sandslash_learnset.get("evolution_moves", []) as Array).has("crush_claw"))
+    assert(((sandslash_learnset.get("level_up", {}) as Dictionary).get("26", []) as Array).has("fury_swipes"))
+
     for move_id: String in SQUIRTLE_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Schiggy")
     for move_id: String in CATERPIE_NEW_MOVES:
@@ -122,15 +144,17 @@ func _initialize() -> void:
         _assert_runtime_move(moves, move_id, "Rattfratz")
     for move_id: String in RETTAN_ARBOK_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Rettan/Arbok")
+    for move_id: String in SANDSHREW_NEW_MOVES:
+        _assert_runtime_move(moves, move_id, "Sandan/Sandamer")
 
-    for unsupported_id: String in ["belch","electro_ball"]:
+    for unsupported_id: String in ["belch"]:
         var unsupported_move: Dictionary = moves.get(unsupported_id, {})
         assert(not bool((unsupported_move.get("runtime", {}) as Dictionary).get("runtime_supported", true)), unsupported_id + " muss als unabhängige Runtime-Lücke deaktiviert bleiben.")
 
     var gaps: Dictionary = meta.get("data_gaps", {})
     var missing_tm: Array = gaps.get("missing_tm_move_definitions", [])
     assert(not missing_tm.has("tera_blast"), "Tera-Ausbruch darf nicht als offene Timeflow-TM geführt werden.")
-    for move_id: String in SQUIRTLE_NEW_MOVES + CATERPIE_NEW_MOVES + BEEDRILL_NEW_MOVES + PIDGEY_NEW_MOVES + RATTATA_NEW_MOVES + RETTAN_ARBOK_NEW_MOVES:
+    for move_id: String in SQUIRTLE_NEW_MOVES + CATERPIE_NEW_MOVES + BEEDRILL_NEW_MOVES + PIDGEY_NEW_MOVES + RATTATA_NEW_MOVES + RETTAN_ARBOK_NEW_MOVES + SANDSHREW_NEW_MOVES:
         assert(not missing_tm.has(move_id), "Implementierte TM darf nicht mehr als Datenlücke geführt werden: " + move_id)
 
     var partial_rules: Array = gaps.get("runtime_partial_rules", [])
@@ -138,6 +162,8 @@ func _initialize() -> void:
         assert(not str(rule_value).begins_with("pluck:"), "Pflücker ist final itemfrei und darf nicht mehr als Runtime-Teilregel geführt werden.")
 
     _assert_rettan_stat_profiles()
+    _assert_sandshrew_stat_profiles()
+
     for species_value: Variant in species.values():
         var entry: Dictionary = species_value
         var display_name: String = str(entry.get("display_name", ""))
@@ -150,7 +176,10 @@ func _initialize() -> void:
     assert(route_guard_text.contains("res://scripts/battle_demo_rattata_family.gd"), "Die aktive BattleDemo-Kette muss die Rattfratz-Runtime laden.")
     var rattata_text: String = FileAccess.get_file_as_string("res://scripts/battle_demo_rattata_family.gd")
     assert(rattata_text.contains("res://scripts/battle_demo_rettan_arbok_family.gd"), "Die aktive BattleDemo-Kette muss die Rettan/Arbok-Runtime laden.")
+    var type_help_text: String = FileAccess.get_file_as_string("res://scripts/battle_demo_type_help_button_polish.gd")
+    assert(type_help_text.contains("res://scripts/battle_demo_database_sandshrew_family.gd"), "Die aktive BattleDemo-Kette muss die Sandan/Sandamer-Runtime laden.")
     assert(scene_text.contains("res://scripts/demo_route_cleanup_v1.gd"), "main.tscn muss den aktuellen Demo-Routen-Einstieg laden.")
+
     print("Gen1 database integration tests: OK")
     quit(0)
 
@@ -159,6 +188,7 @@ func _assert_runtime_move(moves: Dictionary, move_id: String, family_name: Strin
     assert(moves.has(move_id), "Neue " + family_name + "-Familien-TM fehlt: " + move_id)
     var runtime: Dictionary = (moves[move_id] as Dictionary).get("runtime", {})
     assert(bool(runtime.get("runtime_supported", false)), move_id + " muss aktiv sein.")
+    assert(bool(runtime.get("strict_contract", false)), move_id + " muss Strict-V4-fähig sein.")
 
 
 func _assert_tm_count(species: Dictionary, species_id: String, expected_count: int) -> void:
@@ -176,6 +206,18 @@ func _assert_rettan_stat_profiles() -> void:
     var arbok_stats: Dictionary = profiles.get("arbok", {})
     assert(int(arbok_stats.get("hp",0)) == 60 and int(arbok_stats.get("attack",0)) == 105)
     assert(int(arbok_stats.get("special",0)) == 75 and int(arbok_stats.get("speed",0)) == 80)
+
+
+func _assert_sandshrew_stat_profiles() -> void:
+    var profiles: Dictionary = _read_json(STAT_PROFILE_PATH).get("species", {})
+    var sandshrew_stats: Dictionary = profiles.get("sandshrew", {})
+    assert(int(sandshrew_stats.get("hp",0)) == 50 and int(sandshrew_stats.get("attack",0)) == 65)
+    assert(int(sandshrew_stats.get("defense",0)) == 75 and int(sandshrew_stats.get("special",0)) == 30)
+    assert(int(sandshrew_stats.get("speed",0)) == 40)
+    var sandslash_stats: Dictionary = profiles.get("sandslash", {})
+    assert(int(sandslash_stats.get("hp",0)) == 75 and int(sandslash_stats.get("attack",0)) == 95)
+    assert(int(sandslash_stats.get("defense",0)) == 110 and int(sandslash_stats.get("special",0)) == 30)
+    assert(int(sandslash_stats.get("speed",0)) == 65)
 
 
 func _assert_evolution(species: Dictionary, source_id: String, target_id: String, level: int) -> void:

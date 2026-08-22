@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "source_date": "2026-08-21",
-  "source": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-21_OHNE_TERA.xlsx",
+  "source_date": "2026-08-22",
+  "source": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_SANDAN_SANDAMER_V2.xlsx",
   "weights_kg": {
     "bulbasaur": 6.9,
     "ivysaur": 13.0,
@@ -29,6 +29,8 @@
     "arbok": 65.0,
     "pikachu": 6.0,
     "raichu": 30.0,
-    "pichu": 2.0
+    "pichu": 2.0,
+    "sandshrew": 12.0,
+    "sandslash": 29.5
   }
 }
