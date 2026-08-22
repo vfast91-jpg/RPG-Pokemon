@@ -1,9 +1,8 @@
 extends "res://scripts/demo_route_fundstelle_v1.gd"
 
-# Phase G: final five-event route pool and boss reward flow.
-# Direct Path and Dangerous Path remain only as unreachable inherited legacy
-# code until Phase H removes dead compatibility layers. They are never rolled
-# or advertised by this active layer.
+# Phase G: final five-event route pool, encounter-family weighting and boss
+# reward flow. Direct Path and Dangerous Path remain only as unreachable
+# inherited legacy code until Phase H removes dead compatibility entry points.
 
 const ACTIVE_ROUTE_EVENTS: Array[String] = [
     EVENT_HEAL,
@@ -61,6 +60,57 @@ func _active_event_choice(kind: String, current_stage: int) -> Dictionary:
     return choice
 
 
+func _encounter_species_weight(species_id: String) -> float:
+    return _family_catch_rate(_family_id_for_species(species_id))
+
+
+func _weighted_encounter_species(candidates: Array) -> String:
+    if candidates.is_empty():
+        return ""
+
+    var total_weight: float = 0.0
+    var weights: Array[float] = []
+    for species_value: Variant in candidates:
+        var species_id: String = str(species_value)
+        var weight: float = maxf(0.0001, _encounter_species_weight(species_id))
+        weights.append(weight)
+        total_weight += weight
+
+    if total_weight <= 0.0:
+        return str(candidates.pick_random())
+
+    var roll: float = randf() * total_weight
+    var cumulative: float = 0.0
+    for index: int in range(candidates.size()):
+        cumulative += weights[index]
+        if roll <= cumulative:
+            return str(candidates[index])
+    return str(candidates[candidates.size() - 1])
+
+
+func _enemy_party_for_stage(current_stage: int) -> Array:
+    if battle_demo == null:
+        return []
+
+    var enemy_count: int = _roll_enemy_count(current_stage)
+    var enemy_level: int = _enemy_level_for_encounter(current_stage, enemy_count)
+    var candidates: Array = battle_demo.route_species_ids_for_level(enemy_level)
+    if candidates.is_empty():
+        push_error(
+            "Demo-Route: Keine vollständig spielbare Spezies für Gegnerlevel %d verfügbar."
+            % enemy_level
+        )
+        return []
+
+    var result: Array = []
+    for _index: int in range(enemy_count):
+        result.append({
+            "species_id": _weighted_encounter_species(candidates),
+            "level": enemy_level
+        })
+    return result
+
+
 func _boss_level() -> int:
     return clampi(_highest_team_level() + 5, 1, 100)
 
@@ -74,7 +124,7 @@ func _begin_rare_encounter() -> void:
         return
 
     var party: Array = [{
-        "species_id": str(candidates.pick_random()),
+        "species_id": _weighted_encounter_species(candidates),
         "level": boss_level,
         "boss": true,
         "hp_multiplier": BOSS_HP_MULTIPLIER
