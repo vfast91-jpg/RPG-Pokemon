@@ -2,14 +2,17 @@ extends "res://scripts/demo_route_user_polish.gd"
 
 # Dynamic route encounter level scaling.
 #
-# Stages 1-5 remain the protected, hand-tuned onboarding sequence. From stage 6
-# onward the highest level in the player's CURRENT team is the neutral
+# Stages 1-10 remain the protected, hand-tuned onboarding sequence. From stage
+# 11 onward the highest level in the player's CURRENT team is the neutral
 # reference. Enemy group size then compensates for action economy:
 # 1 enemy +5, 2 enemies +2, 3 enemies +/-0, 4 enemies -2.
 #
-# Capture levels deliberately remain on the legacy table in this isolated phase
-# so Phase C changes only opponent scaling and its player-facing notice. The
-# Fangwiese gets its own highest-team-level -3 rule in Phase E.
+# The protected opening deliberately never creates four-enemy groups. It gives
+# the player ten stages to learn the route and build a larger team before full
+# dynamic scaling starts.
+#
+# Capture levels deliberately remain on the legacy table in this isolated layer;
+# the active Fangwiese layer overrides them with highest-team-level -3.
 
 const ENCOUNTER_LEVEL_MODIFIERS := {
     1: 5,
@@ -23,7 +26,12 @@ const ONBOARDING_ENCOUNTERS := {
     2: {"count": 1, "level": 3},
     3: {"count": 2, "level": 3},
     4: {"count": 2, "level": 4},
-    5: {"count": 3, "level": 4}
+    5: {"count": 3, "level": 4},
+    6: {"count": 2, "level": 5},
+    7: {"count": 2, "level": 6},
+    8: {"count": 3, "level": 6},
+    9: {"count": 3, "level": 7},
+    10: {"count": 3, "level": 8}
 }
 
 var _dynamic_scaling_notice_shown: bool = false
@@ -44,8 +52,9 @@ func _highest_team_level() -> int:
 
 
 func _route_base_level_for_stage(current_stage: int) -> int:
-    if current_stage <= 5:
-        return 3
+    var onboarding_value: Variant = ONBOARDING_ENCOUNTERS.get(current_stage, {})
+    if onboarding_value is Dictionary and not (onboarding_value as Dictionary).is_empty():
+        return clampi(int((onboarding_value as Dictionary).get("level", 1)), 1, 100)
     return _highest_team_level()
 
 
@@ -102,7 +111,7 @@ func _enemy_level_for_encounter(current_stage: int, enemy_count: int) -> int:
 
 
 func _show_stage_choices(message: String = "") -> void:
-    if stage == 6 and not _dynamic_scaling_notice_shown:
+    if stage == 11 and not _dynamic_scaling_notice_shown:
         var level_notice: String = _route_level_notice_for_stage(stage)
         if not level_notice.is_empty():
             if message.is_empty():
@@ -114,7 +123,7 @@ func _show_stage_choices(message: String = "") -> void:
 
 
 func _route_level_notice_for_stage(current_stage: int) -> String:
-    if current_stage != 6:
+    if current_stage != 11:
         return ""
 
     return (
