@@ -105,6 +105,10 @@ jobs:
         run: ./godot --headless --path . --script tests/route_rebalance_integration_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
+      - name: Fluffeluff family runtime behavior test
+        run: ./godot --headless --path . --script tests/igglybuff_family_runtime_test.gd
+      - name: Fluffeluff family data registry test
+        run: ./godot --headless --path . --script tests/igglybuff_family_data_registry_test.gd
       - name: Meta progression test
         run: ./godot --headless --path . --script tests/meta_progression_test.gd
       - name: Weather behavior test
