@@ -10,6 +10,8 @@ const CAPTURE_LEVEL_OFFSET: int = 3
 const CAPTURE_SEARCH_LEVEL_MULTIPLIERS: Array[float] = [1.0, 0.75, 0.50]
 const CAPTURE_SEARCH_RARITY_EXPONENTS: Array[float] = [1.0, 0.5, 0.25]
 const CAPTURE_SEARCH_MAX: int = 3
+const ROUTE_RARITY_MAX_STAGE: int = 100
+const ROUTE_RARITY_STAGE_SHIFT_MAX: float = 2.0
 
 var _encounter_families: Dictionary = {}
 var _encounter_species_to_family: Dictionary = {}
@@ -46,6 +48,32 @@ func _capture_level_for_search(search_number: int) -> int:
 func _capture_rarity_exponent_for_search(search_number: int) -> float:
     var index: int = clampi(search_number - 1, 0, CAPTURE_SEARCH_RARITY_EXPONENTS.size() - 1)
     return CAPTURE_SEARCH_RARITY_EXPONENTS[index]
+
+
+func _route_rarity_progress_for_stage(current_stage: int) -> float:
+    var normalized: float = clampf(
+        float(current_stage - 1) / float(ROUTE_RARITY_MAX_STAGE - 1),
+        0.0,
+        1.0
+    )
+    # Smoothstep: slow change near stage 1 and stage 100, stronger change in
+    # the middle. This is the approved soft route-rarity curve.
+    return normalized * normalized * (3.0 - 2.0 * normalized)
+
+
+func _route_rarity_stage_shift(current_stage: int) -> float:
+    return ROUTE_RARITY_STAGE_SHIFT_MAX * _route_rarity_progress_for_stage(current_stage)
+
+
+func _route_rarity_exponent_for_stage(current_stage: int) -> float:
+    return 1.0 - _route_rarity_stage_shift(current_stage)
+
+
+func _capture_effective_rarity_exponent(search_number: int, current_stage: int) -> float:
+    return (
+        _capture_rarity_exponent_for_search(search_number)
+        - _route_rarity_stage_shift(current_stage)
+    )
 
 
 func _reset_capture_search_state() -> void:
@@ -91,7 +119,7 @@ func _family_catch_rate(family_id: String) -> float:
 func _capture_family_weight(family_id: String, search_number: int) -> float:
     return pow(
         _family_catch_rate(family_id),
-        _capture_rarity_exponent_for_search(search_number)
+        _capture_effective_rarity_exponent(search_number, stage)
     )
 
 
