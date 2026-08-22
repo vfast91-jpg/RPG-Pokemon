@@ -1,7 +1,7 @@
 extends SceneTree
 const DATA_PATH: String = "res://data/gen1_species_encounter_families_v1.json"
-const EXPECTED_FAMILY_COUNT: int = 12
-const EXPECTED_SPECIES_COUNT: int = 32
+const EXPECTED_FAMILY_COUNT: int = 16
+const EXPECTED_SPECIES_COUNT: int = 43
 var failures: int = 0
 func _initialize() -> void:
     var file := FileAccess.open(DATA_PATH, FileAccess.READ)
@@ -33,6 +33,8 @@ func _initialize() -> void:
     _check_close(_family_rate(families, "pichu"), 151.666667, 0.00001, "Pichu/Pikachu/Raichu-Familien-Fangrate")
     _check_close(_family_rate(families, "sandshrew"), 172.5, 0.000001, "Sandan/Sandamer-Familien-Fangrate")
     _check_close(_family_rate(families, "nidoran_f"), 133.33333333333334, 0.00001, "Nidoran♀-Familien-Fangrate")
+    _check_close(_family_rate(families, "vulpix"), 132.5, 0.000001, "Vulpix/Vulnona-Familien-Fangrate")
+    _check_close(_family_rate(families, "igglybuff"), 130.0, 0.000001, "Fluffeluff/Pummeluff/Knuddeluff-Familien-Fangrate")
     for family_id_value: Variant in families.keys():
         var family_id: String = str(family_id_value)
         var family_value: Variant = families.get(family_id, {})
