@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_attack_text_final.gd"
+extends "res://scripts/battle_demo_database_pichu_family.gd"
 
 # Final visual polish for the optional type-reference button.
 # Keeps the button compact and visually consistent with the battle UI without
