@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "rule_id": "start_aggro_level_species_v1",
+  "description": "Start-Aggro beruecksichtigt Level und die Summe der fuenf Timeflow-Basiswerte einer Spezies.",
+  "formula": "base_aggro + level * level_weight + species_base_stat_total * species_base_stat_weight",
+  "base_aggro": 10.0,
+  "level_weight": 2.0,
+  "species_base_stat_weight": 0.05,
+  "base_stat_keys": ["hp", "attack", "defense", "special", "speed"],
+  "design_note": "Die Speziesstaerke soll merkbar sein, aber niedriglevelige oder schwache Pokemon nicht praktisch unantastbar machen. Der Gewichtungsfaktor ist zentral anpassbar."
+}
