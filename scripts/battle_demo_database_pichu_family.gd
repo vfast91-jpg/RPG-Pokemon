@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_database_effects.gd"
+extends "res://scripts/battle_demo_attack_text_final.gd"
 
 # Pichu/Pikachu/Raichu Gate-2 runtime bridge.
 # All mechanics are generic Timeflow mechanics; the species only reference them
