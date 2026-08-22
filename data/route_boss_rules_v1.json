@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "legendary_policy": {
+    "normal_stage_battles": false,
+    "special_boss_encounters_before_endgame": false,
+    "capture_event": true,
+    "species_ids": [
+      "articuno",
+      "zapdos",
+      "moltres",
+      "mew",
+      "mewtwo"
+    ]
+  },
+  "standard_special_boss": {
+    "level_offset": 5,
+    "hp_multiplier": 2.0,
+    "hp_bars": 2,
+    "species_mode": "random_non_legendary"
+  },
+  "planned_endgame": {
+    "enabled": false,
+    "stage_start": 91,
+    "stage_end": 100,
+    "boss_profile": {
+      "level_offset": 5,
+      "hp_multiplier": 4.0,
+      "hp_bars": 4
+    },
+    "stages": [
+      {"stage": 91, "species_mode": "random_non_legendary"},
+      {"stage": 92, "species_mode": "random_non_legendary"},
+      {"stage": 93, "species_mode": "random_non_legendary"},
+      {"stage": 94, "species_mode": "random_non_legendary"},
+      {"stage": 95, "species_mode": "random_non_legendary"},
+      {"stage": 96, "species_mode": "fixed", "species_id": "articuno", "display_name": "Arktos"},
+      {"stage": 97, "species_mode": "fixed", "species_id": "zapdos", "display_name": "Zapdos"},
+      {"stage": 98, "species_mode": "fixed", "species_id": "moltres", "display_name": "Lavados"},
+      {"stage": 99, "species_mode": "fixed", "species_id": "mew", "display_name": "Mew"},
+      {"stage": 100, "species_mode": "fixed", "species_id": "mewtwo", "display_name": "Mewtu"}
+    ]
+  }
+}
