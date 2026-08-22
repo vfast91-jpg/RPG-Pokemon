@@ -6,6 +6,13 @@ extends "res://scripts/demo_route_training_hp_cost.gd"
 # level-up overlay is currently visible leaves a race where the evolution popup
 # can appear first.
 #
+# Route-run isolation:
+# Progression presentation queues belong to exactly one route run. Without an
+# explicit reset, an evolution that was queued in an earlier/aborted run can be
+# presented much later in a new run even though the current Pokemon never
+# evolved. This is especially misleading around level thresholds (for example
+# Pichu Lv.14 while Pichu -> Pikachu is correctly configured for Lv.15).
+#
 # Capture presentation polish:
 # The Fangwiese now keeps the caught Pokemon visually prominent with its sprite
 # and opens the same complete between-battle member view used by the team cards
@@ -14,6 +21,25 @@ extends "res://scripts/demo_route_training_hp_cost.gd"
 
 var _capture_preview_member: Dictionary = {}
 var _capture_preview_team_index: int = -1
+
+
+func start_route() -> void:
+    _reset_progression_presentation_state()
+    super.start_route()
+
+
+func _reset_progression_presentation_state() -> void:
+    _levelup_queue.clear()
+    _evolution_queue.clear()
+    _evolution_choice_queue.clear()
+    _active_evolution_choice = {}
+
+    if _levelup_overlay != null:
+        _levelup_overlay.visible = false
+    if _evolution_overlay != null:
+        _evolution_overlay.visible = false
+    if _evolution_choice_overlay != null:
+        _evolution_choice_overlay.visible = false
 
 
 func _show_stage_choices(message: String = "") -> void:
