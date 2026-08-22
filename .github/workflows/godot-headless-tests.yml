@@ -85,6 +85,8 @@ jobs:
         run: ./godot --headless --path . --script tests/route_encounter_family_data_test.gd
       - name: Route Fangwiese search regression test
         run: ./godot --headless --path . --script tests/route_capture_search_test.gd
+      - name: Route Fundstelle vitamin regression test
+        run: ./godot --headless --path . --script tests/route_fundstelle_vitamin_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
       - name: Meta progression test
