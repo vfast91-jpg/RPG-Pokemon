@@ -2,6 +2,7 @@ extends RefCounted
 class_name MovePresenter
 
 const Registry = preload("res://scripts/battle/move_effect_registry.gd")
+const FlinchRules = preload("res://scripts/battle/flinch_rules.gd")
 
 
 static func modifier_text(kind: String, multiplier: float) -> String:
@@ -89,13 +90,21 @@ static func effect_summary(move: Dictionary) -> String:
             "recoil":
                 text = "Rückstoß " + _percent(float(mechanic.get("fraction", 0.0)) * 100.0) + " des verursachten KP-Schadens"
             "atb_knockback":
-                text = _percent(float(mechanic.get("chance", 0.0)) * 100.0) + " Zurückschrecken"
+                text = FlinchRules.player_summary(float(mechanic.get("chance", 1.0)))
             "db_chance_mechanic":
                 var nested_value: Variant = mechanic.get("mechanic", {})
                 if nested_value is Dictionary:
-                    var nested_move: Dictionary = {"mechanics": [nested_value]}
-                    var nested: String = effect_summary(nested_move)
-                    text = _percent(float(mechanic.get("chance", 0.0)) * 100.0) + " " + nested
+                    var nested_kind: String = str((nested_value as Dictionary).get("kind", ""))
+                    if nested_kind == "atb_knockback":
+                        var combined_chance: float = (
+                            float(mechanic.get("chance", 1.0))
+                            * float((nested_value as Dictionary).get("chance", 1.0))
+                        )
+                        text = FlinchRules.player_summary(combined_chance)
+                    else:
+                        var nested_move: Dictionary = {"mechanics": [nested_value]}
+                        var nested: String = effect_summary(nested_move)
+                        text = _percent(float(mechanic.get("chance", 0.0)) * 100.0) + " " + nested
             _:
                 text = Registry.player_label_for_effect(kind)
 

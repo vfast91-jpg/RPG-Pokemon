@@ -80,6 +80,23 @@ Dadurch entstehen bei hohen Statuswerten keine negativen ATB-Zeiten, keine Schad
 
 Technische Referenz: `data/rules/status_scaling.json`, `scripts/battle_demo_status_softcaps.gd` und die finale Verfeinerung `scripts/battle_demo_status_curve_final.gd`.
 
+## Zurückschrecken
+
+**Zurückschrecken ist ein fester zentraler Timeflow-Kontrolleffekt.** Die einzelne Attacke definiert nur ihre Chance auf Zurückschrecken.
+
+Wenn Zurückschrecken auslöst:
+
+- wird die **aktuell gefüllte Aktionsleiste des betroffenen Ziels sofort auf 0 % gesetzt**;
+- gibt es **keinen** festen Rückwurf um 25 %, keinen anderen Teil-Rückwurf und keine Skalierung der Rückwurfstärke;
+- verändert der Kampfwert Status die Stärke dieses Resets nicht;
+- verändert ein Typ-/Statusbonus die Stärke dieses Resets nicht.
+
+Historische Datenfelder wie `amount: 0.25` bei älteren Attackenpaketen sind Legacy-Metadaten und dürfen die Runtime nicht mehr beeinflussen. Für neue Zurückschrecken-Effekte reicht mechanisch die Proc-Chance; die Wirkung selbst kommt ausschließlich aus der zentralen Regel.
+
+Jede Spieleranzeige muss den Effekt selbst erklären. Zulässige Formulierung ist zum Beispiel: **„30 % Chance auf Zurückschrecken: Aktionsleiste auf 0 %“**. Eine Anzeige wie „Aktionsleiste −25 %“ ist falsch.
+
+Technische Referenz: `scripts/battle/flinch_rules.gd`, `scripts/battle/move_effect_registry.gd`, `scripts/battle/move_presenter.gd` und die aktive finale Kampfschicht `scripts/battle_demo_caterpie_family_ui.gd`.
+
 ## Wetter als eigenständiger globaler Kampfzustand
 
 **Regentanz** und **Sonnentag** skalieren nicht mit Status/Spezial. Die Attacken besitzen nur noch eine Aufgabe:

@@ -8,6 +8,9 @@ const UNSUPPORTED: String = "unsupported"
 # One registry entry is the contract between attack data, runtime and every
 # player-facing surface. Bad Poison, Freeze and Zurückschrecken are fully
 # implemented by the final Timeflow battle layers.
+#
+# Zurückschrecken deliberately requires only a chance. Historical `amount`
+# fields are legacy metadata; the canonical effect is always ATB -> 0 %.
 const EFFECTS: Dictionary = {
     "damage": {"player_label":"Schaden","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "status": {"player_label":"Haupt-/Kampfstatus","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["status"]},
@@ -16,7 +19,7 @@ const EFFECTS: Dictionary = {
     "incoming_damage_mod": {"player_label":"Verteidigung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["multiplier_from_special"]},
     "accuracy_mod": {"player_label":"Genauigkeit","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["multiplier_from_special"]},
     "atb_cycle_mod": {"player_label":"Geschwindigkeit","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["multiplier_from_special"]},
-    "atb_knockback": {"player_label":"Zurückschrecken","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":["chance","amount"]},
+    "atb_knockback": {"player_label":"Zurückschrecken","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":["chance"]},
     "critical_focus": {"player_label":"Volltrefferchance","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
     "seed": {"player_label":"Egelsamen","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
     "binding": {"player_label":"Fesselung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["min_ticks","max_ticks"]},
