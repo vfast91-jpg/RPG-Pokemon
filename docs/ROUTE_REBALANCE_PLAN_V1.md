@@ -12,7 +12,7 @@ Ausschließlich `main`. Keine neuen Branches, kein Branch-Wechsel.
 - Phase B: abgeschlossen – Speziesfamilien und Familien-Fangraten
 - Phase C: abgeschlossen – geschütztes Onboarding Etappe 1–10, dynamisches Gegnerlevel ab Etappe 11
 - Phase D: abgeschlossen – normale Etappen-EP auf 50 % als Testwert
-- Phase E: abgeschlossen – Fangwiese mit drei Suchen und Seltenheitsgewichtung
+- Phase E: abgeschlossen – Fangwiese mit drei Suchen und Seltenheitsgewichtung; zusätzlich weiche 100-Etappen-Seltenheitskurve für Fangwiese, normale Gegner und Bosse
 - Phase F: abgeschlossen – Fundstelle mit TM, Heilitem und Vitaminen
 - Phase G: abgeschlossen – finaler Fünfer-Ereignispool, Boss-Umbau und Familiengewichtung normaler Gegner; Boss erst ab Etappe 11
 - Phase H: abgeschlossen – alte Direct/Dangerous/+25%-Einstiegspunkte im aktiven Layer gesperrt; tiefe Altdateien bleiben nur als ungefährliche Vererbungsbasis erhalten, damit funktionierende UI-/Entwicklungslogik nicht unnötig beschädigt wird
@@ -49,10 +49,12 @@ Diese Systeme dürfen durch den Route-Umbau nicht nebenbei verändert werden:
 - Fangvorschau mit Sprite, Werten, Radar und Attacken
 - Heilquelle heilt das gesamte Team
 - Bossdarstellung und echter doppelter KP-Pool
-- 90 Etappen
+- 90 Etappen in der aktuellen Demo-Route
 - Bestenliste
 - TM-Kompatibilitätslogik
 - Attacken-Datenbank bleibt bei diesem Route-Umbau unangetastet
+
+Die Seltenheitsprogression wird trotzdem bereits auf das geplante spätere Maximum von 100 Etappen normiert. Die aktuelle Demo endet auf Etappe 90 und erreicht daher bewusst noch nicht den mathematischen Endpunkt der Kurve.
 
 ## Neue Gegnerlevel-Regel
 
@@ -148,17 +150,49 @@ Dieser vorberechnete Familienwert wird separat in den Runtime-Daten gehalten; di
 
 Die aktualisierte Tabellenquelle enthält außerdem `Speziesfamilien-ID` und `Familien-Fangrate`.
 
-Normale Gegner und Bosse verwenden als Grund-Begegnungsgewicht:
+### Weiche Routen-Seltenheitskurve
 
-`Gewicht = Familien-Fangrate`
+Die Progression ist bereits auf das geplante Endspiel mit 100 Etappen normiert:
 
-Gewichtung der Fangwiesen-Suchen:
+`x = clamp((Etappe - 1) / 99, 0, 1)`
 
-- Suche 1: `Familien-Fangrate ^ 1.0`
-- Suche 2: `Familien-Fangrate ^ 0.5`
-- Suche 3: `Familien-Fangrate ^ 0.25`
+Darauf wird eine weiche Smoothstep-Kurve angewendet:
 
-Dadurch steigen bei späteren Suchen die relativen Chancen schwerer fangbarer / seltener Familien, ohne sie zu garantieren.
+`Kurve = x² × (3 - 2x)`
+
+Der Etappen-Abzug lautet:
+
+`Etappen-Abzug = 2 × Kurve`
+
+Für normale Gegner und Bosse gilt:
+
+`Routen-Exponent = 1.0 - Etappen-Abzug`
+
+`Gewicht = Familien-Fangrate ^ Routen-Exponent`
+
+Damit gilt exakt:
+
+- Etappe 1: Routen-Exponent `+1.0` – hohe Familien-Fangraten / häufige Familien werden bevorzugt
+- Etappe 100: Routen-Exponent `-1.0` – niedrige Familien-Fangraten / seltene Familien werden bevorzugt
+- die aktuelle Demo endet auf Etappe 90 und liegt dadurch bereits klar im seltenheitsbevorzugenden Bereich, ohne den Endpunkt Etappe 100 vorwegzunehmen
+
+Die Kurve verändert sich nahe Etappe 1 und 100 sanfter und in der Mitte stärker. Es gibt keinen harten Umschaltpunkt und keine garantierten Familien.
+
+### Fangwiesen-Suchen
+
+Die bestehende Drei-Suchen-Logik bleibt erhalten:
+
+- Suche 1: Basis-Exponent `1.0`
+- Suche 2: Basis-Exponent `0.5`
+- Suche 3: Basis-Exponent `0.25`
+
+Der Etappenfortschritt wird zusätzlich auf jeden Such-Exponent angewendet:
+
+`Effektiver Such-Exponent = Basis-Such-Exponent - Etappen-Abzug`
+
+`Fangwiesen-Gewicht = Familien-Fangrate ^ Effektiver Such-Exponent`
+
+Dadurch gilt auf Etappe 1 exakt die bisherige Suchgewichtung. Mit fortschreitender Route werden seltene Familien allgemein wahrscheinlicher; Suche 2 und Suche 3 verstärken innerhalb derselben Fangwiese diese Verschiebung zusätzlich. Die Fanglevel-Regel der drei Suchen bleibt unverändert.
 
 Später kann ein Landschafts-/Typfaktor multiplikativ ergänzt werden:
 
@@ -206,7 +240,7 @@ Die Besondere Begegnung ist erst ab Etappe 11 im Wegpool verfügbar.
 - Bosslevel = höchstes eigenes Pokémon-Level +5, maximal Lv.100
 - echter doppelter KP-Pool bleibt
 - normale Etappenkampf-EP, kein Bonusmultiplikator
-- Boss-Spezies nutzt dieselbe Familien-Fangraten-Grundgewichtung wie normale Gegner
+- Boss-Spezies nutzt dieselbe weiche 100-Etappen-Familiengewichtung wie normale Gegner
 - nach vollständiger Abwicklung von EP, Level-Ups und Entwicklungen folgt eine vollständige Fundstelle als Zusatzbelohnung
 - nach der Boss-Fundstelle ist die Etappe beendet; es startet kein zweiter Etappenkampf
 
