@@ -11,8 +11,11 @@ extends RefCounted
 #
 # Individual moves may explicitly opt out via runtime.timeflow_full_spread_power
 # (currently used by moves whose design contract says "full power per target").
+# Conditional spread moves may advertise the central contract through
+# runtime.central_area_damage_scaling even while their base data is single-target.
 
 const FULL_SPREAD_RUNTIME_FLAG: String = "timeflow_full_spread_power"
+const CENTRAL_SCALING_RUNTIME_FLAG: String = "central_area_damage_scaling"
 
 
 static func damage_multiplier(target_count: int) -> float:
@@ -27,13 +30,13 @@ static func damage_multiplier(target_count: int) -> float:
 
 
 static func move_uses_central_scaling(move: Dictionary) -> bool:
-    if not bool(move.get("area", false)):
+    var runtime_value: Variant = move.get("runtime", {})
+    var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
+
+    if bool(runtime.get(FULL_SPREAD_RUNTIME_FLAG, false)):
         return false
 
-    var runtime_value: Variant = move.get("runtime", {})
-    if runtime_value is Dictionary:
-        var runtime: Dictionary = runtime_value
-        if bool(runtime.get(FULL_SPREAD_RUNTIME_FLAG, false)):
-            return false
-
-    return true
+    return (
+        bool(move.get("area", false))
+        or bool(runtime.get(CENTRAL_SCALING_RUNTIME_FLAG, false))
+    )
