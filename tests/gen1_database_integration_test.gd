@@ -13,6 +13,7 @@ const CATERPIE_NEW_MOVES: Array[String] = [
 const BEEDRILL_NEW_MOVES: Array[String] = [
     "payback","flash","x_scissor","swagger","cut","defog","rock_smash"
 ]
+const PIDGEY_NEW_MOVES: Array[String] = ["steel_wing"]
 
 func _initialize() -> void:
     var manifest: Dictionary = _read_json(MANIFEST_PATH)
@@ -35,7 +36,7 @@ func _initialize() -> void:
             moves[str(move_id_value)] = entries[move_id_value]
 
     assert(species.size() == int(manifest.get("species_count", -1)) and species.size() == 27, "Manifest/Spezieszahl muss 27 sein.")
-    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 228, "Manifest/Attackenzahl muss 228 sein.")
+    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 229, "Manifest/Attackenzahl muss 229 sein.")
     assert((meta.get("route_roots", []) as Array).size() == 10, "Die Demo braucht zehn Basislinien.")
 
     _assert_evolution(species,"bulbasaur","ivysaur",16)
@@ -46,6 +47,8 @@ func _initialize() -> void:
     _assert_evolution(species,"metapod","butterfree",10)
     _assert_evolution(species,"weedle","kakuna",7)
     _assert_evolution(species,"kakuna","beedrill",10)
+    _assert_evolution(species,"pidgey","pidgeotto",18)
+    _assert_evolution(species,"pidgeotto","pidgeot",36)
     _assert_evolution(species,"pichu","pikachu",15)
     _assert_evolution(species,"pikachu","raichu",30)
 
@@ -58,6 +61,9 @@ func _initialize() -> void:
     _assert_tm_count(species,"weedle",1)
     _assert_tm_count(species,"kakuna",2)
     _assert_tm_count(species,"beedrill",29)
+    _assert_tm_count(species,"pidgey",20)
+    _assert_tm_count(species,"pidgeotto",20)
+    _assert_tm_count(species,"pidgeot",22)
 
     var blastoise_tms: Dictionary = (((species.get("blastoise", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     for tm_id: String in ["TM046","TM149","TM154","TM158","TM172","TM179"]:
@@ -72,12 +78,21 @@ func _initialize() -> void:
     assert(weedle_tms.values().has("electroweb"), "Hornliu-Harmonisierung Elektronetz fehlt.")
     assert(kakuna_tms.values().has("electroweb") and kakuna_tms.values().has("iron_defense"), "Kokuna-Harmonisierung Elektronetz + Eisenabwehr fehlt.")
 
+    var pidgey_tms: Dictionary = (((species.get("pidgey", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
+    var pidgeotto_tms: Dictionary = (((species.get("pidgeotto", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
+    var pidgeot_tms: Dictionary = (((species.get("pidgeot", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
+    assert(str(pidgey_tms.get("TM047", "")) == "steel_wing", "Taubsi muss TM047 Stahlflügel lernen können.")
+    assert(str(pidgeotto_tms.get("TM047", "")) == "steel_wing", "Tauboga muss TM047 Stahlflügel lernen können.")
+    assert(str(pidgeot_tms.get("TM047", "")) == "steel_wing", "Tauboss muss TM047 Stahlflügel lernen können.")
+
     for move_id: String in SQUIRTLE_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Schiggy")
     for move_id: String in CATERPIE_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Raupy")
     for move_id: String in BEEDRILL_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Bibor")
+    for move_id: String in PIDGEY_NEW_MOVES:
+        _assert_runtime_move(moves, move_id, "Taubsi")
 
     for unsupported_id: String in ["belch","electro_ball"]:
         var move: Dictionary = moves.get(unsupported_id, {})
@@ -86,8 +101,12 @@ func _initialize() -> void:
     var gaps: Dictionary = meta.get("data_gaps", {})
     var missing_tm: Array = gaps.get("missing_tm_move_definitions", [])
     assert(not missing_tm.has("tera_blast"), "Tera-Ausbruch darf nicht als offene Timeflow-TM geführt werden.")
-    for move_id: String in SQUIRTLE_NEW_MOVES + CATERPIE_NEW_MOVES + BEEDRILL_NEW_MOVES:
+    for move_id: String in SQUIRTLE_NEW_MOVES + CATERPIE_NEW_MOVES + BEEDRILL_NEW_MOVES + PIDGEY_NEW_MOVES:
         assert(not missing_tm.has(move_id), "Implementierte TM darf nicht mehr als Datenlücke geführt werden: " + move_id)
+
+    var partial_rules: Array = gaps.get("runtime_partial_rules", [])
+    for rule_value: Variant in partial_rules:
+        assert(not str(rule_value).begins_with("pluck:"), "Pflücker ist final itemfrei und darf nicht mehr als Runtime-Teilregel geführt werden.")
 
     _assert_rettan_stat_profiles()
     for species_value: Variant in species.values():
@@ -99,7 +118,7 @@ func _initialize() -> void:
     var scene_text: String = FileAccess.get_file_as_string("res://main.tscn")
     assert(scene_text.contains("res://scripts/battle_demo_route_vitamins_v1.gd"), "main.tscn muss den aktuellen BattleDemo-Einstieg laden.")
     var route_guard_text: String = FileAccess.get_file_as_string("res://scripts/battle_demo_route_result_guard.gd")
-    assert(route_guard_text.contains("res://scripts/battle_demo_beedrill_family.gd"), "Die aktive BattleDemo-Kette muss die Bibor-Runtime laden.")
+    assert(route_guard_text.contains("res://scripts/battle_demo_pidgey_family.gd"), "Die aktive BattleDemo-Kette muss die Taubsi-Runtime laden.")
     assert(scene_text.contains("res://scripts/demo_route_cleanup_v1.gd"), "main.tscn muss den aktuellen Demo-Routen-Einstieg laden.")
     print("Gen1 database integration tests: OK")
     quit(0)
