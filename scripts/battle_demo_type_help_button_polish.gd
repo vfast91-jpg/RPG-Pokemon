@@ -1,7 +1,8 @@
-extends "res://scripts/battle_demo_database_nidoran_f_family.gd"
+extends "res://scripts/battle_demo_database_nidoran_m_family.gd"
 
 # Active family chain:
-# battle_demo_database_nidoran_f_family.gd extends
+# battle_demo_database_nidoran_m_family.gd extends
+# battle_demo_database_nidoran_f_family.gd, which extends
 # res://scripts/battle_demo_database_sandshrew_family.gd.
 #
 # Final visual polish for the optional type-reference button.
