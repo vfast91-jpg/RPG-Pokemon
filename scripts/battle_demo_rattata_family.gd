@@ -80,13 +80,16 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
     if category.is_empty() or duration <= 0:
         return 0.0
 
+    var old_remaining: int = MoveCategoryLock.remaining_actions(target, category)
     MoveCategoryLock.apply(target, category, duration)
+    var new_remaining: int = MoveCategoryLock.remaining_actions(target, category)
+    var added_actions: int = maxi(0, new_remaining - old_remaining)
     _spawn_feedback_label(
         target,
-        "😏 VERHÖHNT · " + str(duration) + " AKTIONEN",
+        "😏 VERHÖHNT · " + str(new_remaining) + " AKTIONEN",
         Color("e3b8cf")
     )
-    return _hp_scaled_aggro(target, 0.10)
+    return _hp_scaled_aggro(target, 0.10, added_actions) if added_actions > 0 else 0.0
 
 
 func _execute_move(actor: Dictionary, move_id: String) -> void:
