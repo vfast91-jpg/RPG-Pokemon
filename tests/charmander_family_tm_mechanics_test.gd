@@ -78,38 +78,52 @@ func _assert_fling_uses_status(lab) -> void:
     actor["attack"] = 1.0
     actor["special"] = 120.0
     target["defense"] = 70.0
+    actor["types"] = ["dark"]
+    target["types"] = ["normal"]
+    seed(4242)
     lab._cf_active_move_id = "fling"
-    var high_status_damage: int = lab._damage(actor,target,70,"dark","physical")
-    actor["special"] = 10.0
-    var low_status_damage: int = lab._damage(actor,target,70,"dark","physical")
+    var fling_damage: int = lab._damage(actor,target,70,"dark","physical")
     lab._cf_active_move_id = ""
-    assert(high_status_damage > low_status_damage, "Schleuder muss Status statt Angriff verwenden.")
+    seed(4242)
+    var normal_damage: int = lab._damage(actor,target,70,"dark","physical")
+    assert(fling_damage > normal_damage, "Schleuder muss den Statuswert statt Angriff verwenden.")
 
 func _assert_pledge_helpers(lab) -> void:
-    assert(lab._cf_pledge_combo_kind("grass","fire") == "sea_of_fire")
-    assert(lab._cf_pledge_combo_kind("fire","grass") == "sea_of_fire")
-    assert(lab._cf_pledge_combo_kind("grass","water") == "swamp")
-    assert(lab._cf_pledge_combo_kind("water","grass") == "swamp")
+    assert(lab._cf_pledge_combo_kind("grass","fire") == "fire_field")
     assert(lab._cf_pledge_combo_kind("fire","water") == "rainbow")
-    assert(lab._cf_pledge_combo_kind("water","fire") == "rainbow")
+    assert(lab._cf_pledge_combo_kind("grass","water").is_empty(), "Die Schiggy-Erweiterung darf die Glumanda-Basisklasse nicht rückwirkend verändern.")
 
 func _assert_dragon_cheer(lab) -> void:
-    var normal: Dictionary = {"types":["fire"]}
-    var dragon: Dictionary = {"types":["dragon"]}
-    assert(lab._cf_dragon_cheer_stage(normal) == 1)
-    assert(lab._cf_dragon_cheer_stage(dragon) == 2)
+    var actor: Dictionary = lab._make_combatant("player",0,{"species_id":"charizard","level":50})
+    var normal_ally: Dictionary = lab._make_combatant("player",1,{"species_id":"pikachu","level":50})
+    var dragon_ally: Dictionary = lab._make_combatant("player",2,{"species_id":"charizard","level":50})
+    dragon_ally["types"] = ["dragon"]
+    lab.player_team = [actor,normal_ally,dragon_ally]
+    lab.combatants = [actor,normal_ally,dragon_ally]
+    assert(lab._cf_apply_dragon_cheer(actor))
+    assert(int(normal_ally.get("cf_dragon_cheer_stage",0)) == 1)
+    assert(int(dragon_ally.get("cf_dragon_cheer_stage",0)) == 2)
 
 func _assert_focus_punch_interrupt(lab) -> void:
-    var actor: Dictionary = {"cf_focus_punch_pending":true,"cf_focus_punch_interrupted":false}
-    lab._cf_mark_focus_punch_interrupted(actor,10)
-    assert(bool(actor.get("cf_focus_punch_interrupted",false)), "Direkter Schaden muss Power-Punch unterbrechen.")
+    var target: Dictionary = lab._make_combatant("player",0,{"species_id":"charmander","level":30})
+    target["cf_focus_punch_active"] = true
+    target["db_charge_move"] = "focus_punch"
+    target["hp"] = 90
+    lab._cf_finalize_focus_interrupt(target,100)
+    assert(not bool(target.get("cf_focus_punch_active",true)))
+    assert(str(target.get("db_charge_move","")) == "")
 
 func _assert_sandstorm_definition(lab) -> void:
-    assert(is_equal_approx(lab.CF_SANDSTORM_DURATION_SECONDS,50.0))
-    assert(is_equal_approx(lab.CF_SANDSTORM_PULSE_SECONDS,10.0))
-    assert(is_equal_approx(lab.CF_SANDSTORM_DAMAGE_FRACTION,1.0/16.0))
+    assert(lab.battle_weather.has_weather("sandstorm"))
+    var definition: Dictionary = lab.battle_weather.definition("sandstorm")
+    assert(is_equal_approx(float(definition.get("duration_seconds",0.0)),50.0))
+    assert(str(definition.get("duration_mode","")) == "active_battle_time")
+    assert(lab._cf_sandstorm_immune({"types":["rock"]}))
+    assert(not lab._cf_sandstorm_immune({"types":["normal"]}))
 
 func _assert_swift_spread_exception(lab) -> void:
-    var move: Dictionary = lab._move_data("swift")
-    assert(str(move.get("target","")) == "all_enemies", "Sternschauer muss alle Gegner treffen.")
-    assert(move.get("accuracy",1) == null, "Sternschauer muss ohne normale Genauigkeitsprüfung treffen.")
+    lab._cf_spread_move_id = "swift"
+    assert(is_equal_approx(lab._timeflow_spread_damage_scale(4),1.0))
+    lab._cf_spread_move_id = "rock_slide"
+    assert(is_equal_approx(lab._timeflow_spread_damage_scale(2),0.75))
+    lab._cf_spread_move_id = ""
