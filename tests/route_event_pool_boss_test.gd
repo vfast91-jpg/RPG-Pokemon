@@ -71,14 +71,24 @@ func _initialize() -> void:
     for kind: String in expected_events:
         _check(bool(seen.get(kind, false)), "Wegereignis wurde ab Etappe 11 in der Zufallsauswahl nie erreicht: %s" % kind)
 
-    # Normal enemy species selection uses the same family catch-rate foundation
-    # as Fangwiese search 1: higher catch rate = more encounter weight.
-    _check_close(route._encounter_species_weight("bulbasaur"), 45.0, 0.000001, "Bisasam-Gegnergewicht")
-    _check_close(route._encounter_species_weight("caterpie"), 140.0, 0.000001, "Raupy-Gegnergewicht")
-    _check_close(route._encounter_species_weight("rattata"), 191.0, 0.000001, "Rattfratz-Gegnergewicht")
+    # At stage 1, normal enemy species selection still uses the old family
+    # catch-rate foundation exactly: higher catch rate = more encounter weight.
+    route.stage = 1
+    _check_close(route._encounter_species_weight("bulbasaur"), 45.0, 0.000001, "Bisasam-Gegnergewicht Etappe 1")
+    _check_close(route._encounter_species_weight("caterpie"), 140.0, 0.000001, "Raupy-Gegnergewicht Etappe 1")
+    _check_close(route._encounter_species_weight("rattata"), 191.0, 0.000001, "Rattfratz-Gegnergewicht Etappe 1")
     _check(
         route._encounter_species_weight("rattata") > route._encounter_species_weight("bulbasaur"),
-        "Leichter fangbare Familien müssen auch als normale Gegner häufiger gewichtet sein."
+        "Auf Etappe 1 müssen leichter fangbare Familien als normale Gegner häufiger gewichtet sein."
+    )
+
+    # At stage 100, the soft route curve must fully invert that relationship.
+    route.stage = 100
+    _check_close(route._encounter_species_weight("bulbasaur"), 1.0 / 45.0, 0.000001, "Bisasam-Gegnergewicht Etappe 100")
+    _check_close(route._encounter_species_weight("rattata"), 1.0 / 191.0, 0.000001, "Rattfratz-Gegnergewicht Etappe 100")
+    _check(
+        route._encounter_species_weight("bulbasaur") > route._encounter_species_weight("rattata"),
+        "Auf Etappe 100 müssen seltene Familien als normale Gegner häufiger gewichtet sein."
     )
 
     _check(route._boss_level() == 23, "Boss bei höchstem eigenen Pokémon Lv.18 muss Lv.23 sein.")
