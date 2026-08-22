@@ -2,6 +2,21 @@
 
 Dieses Dokument hält verbindliche Spielregeln fest, die bei späteren Änderungen nicht stillschweigend überschrieben werden dürfen.
 
+## Aggro-Halbierung bei erfolgreichen Einzelzielattacken
+
+Wird ein Pokémon von einer **gegnerischen Einzelzielattacke erfolgreich getroffen**, wird seine aktuelle Aggro **nach vollständiger Auflösung der gesamten Attacke genau einmal halbiert**:
+
+`Aggro_neu = Aggro_alt × 0.5`
+
+Diese Regel gilt unabhängig davon, ob die Attacke Schaden verursacht oder eine reine Status-, Debuff- oder Kontrollattacke ist. Die Halbierung darf insbesondere **nicht** an tatsächlich verursachten KP-Schaden gekoppelt werden.
+
+- Mehrfachtreffer gegen dasselbe Einzelziel halbieren die Aggro nur einmal nach der vollständigen Attacke.
+- Flächen- und Mehrzielattacken lösen keine Aggro-Halbierung aus, auch wenn beim Ausführen nur noch ein gültiges Ziel vorhanden ist.
+- Verfehlen, vollständige Abwehr oder eine Immunität ohne erfolgreichen Treffer lösen keine Halbierung aus.
+- Die Regel ist zentral umzusetzen und darf nicht pro Attacke hartkodiert werden.
+
+Kanonische Detailquellen: `docs/RPG_POKEMON_KAMPFREGELN_MASTER_V5.md` und `docs/RPG_POKEMON_ATTACKEN_DESIGN_GUIDE_V5.md`.
+
 ## Hornliu-, Kokuna- und Bibor-Maschinen
 
 Für die frühen Käferfamilien gilt eine bewusste Pokémon-Timeflow-Harmonisierung der Maschinen-Kompatibilität:
