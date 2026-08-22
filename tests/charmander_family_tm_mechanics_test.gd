@@ -29,7 +29,7 @@ func _initialize() -> void:
 
 func _assert_inventory_and_contract(lab) -> void:
     var moves: Dictionary = lab.data.get("moves", {})
-    assert(moves.size() == 221, "Manifest und Runtime müssen nach dem Raupy-Paket 221 Attacken enthalten.")
+    assert(moves.size() == 229, "Manifest und Runtime müssen mit dem Taubsi-Paket 229 Attacken enthalten.")
     for move_id: String in CHARMANER_FAMILY_MOVE_IDS:
         assert(moves.has(move_id), "Glumanda-Familienattacke fehlt: " + move_id)
         var runtime: Dictionary = (moves[move_id] as Dictionary).get("runtime", {})
