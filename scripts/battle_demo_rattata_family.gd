@@ -34,6 +34,21 @@ func _choose_move(move_id: String) -> void:
     super._choose_move(move_id)
 
 
+func _rattata_allowed_moves(actor: Dictionary) -> Array:
+    var result: Array = []
+    var moves_value: Variant = actor.get("moves", [])
+    if not (moves_value is Array):
+        return result
+    for move_value: Variant in moves_value:
+        var move_id: String = str(move_value)
+        var move: Dictionary = _move_data(move_id)
+        if move.is_empty():
+            continue
+        if not MoveCategoryLock.blocks(actor, str(move.get("category", ""))):
+            result.append(move_id)
+    return result
+
+
 func _enemy_act(actor: Dictionary) -> void:
     var moves_value: Variant = actor.get("moves", [])
     if not (moves_value is Array):
@@ -41,14 +56,7 @@ func _enemy_act(actor: Dictionary) -> void:
         return
 
     var original: Array = (moves_value as Array).duplicate()
-    var allowed: Array = []
-    for move_value: Variant in original:
-        var move_id: String = str(move_value)
-        var move: Dictionary = _move_data(move_id)
-        if move.is_empty():
-            continue
-        if not MoveCategoryLock.blocks(actor, str(move.get("category", ""))):
-            allowed.append(move_id)
+    var allowed: Array = _rattata_allowed_moves(actor)
 
     if allowed.is_empty() and not original.is_empty():
         # Reuse the complete central wait path so action_serial, periodic effects,
