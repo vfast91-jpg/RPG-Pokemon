@@ -106,6 +106,31 @@
         "balance_override_reason": "Wie Synthese ohne harten Status-Endpunkt."
       }
     },
+    "wing_attack": {
+      "id": "wing_attack",
+      "name": "Flügelschlag",
+      "description": "Ein zuverlässiger körperlicher Flügelschlag.",
+      "type": "flying",
+      "category": "physical",
+      "power": 60,
+      "accuracy": 100.0,
+      "ap": 4,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "priority": 0,
+      "opening": false,
+      "contact": true,
+      "emoji": "🪽",
+      "effect_source": "[damage]",
+      "special_rules": "",
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "balance_override_reason": "Timeflow-Balancing: Stärke 60 bei 100 % Genauigkeit und ohne Zusatznachteil wäre mit AP2 im Verhältnis zu Schnabel (Stärke 35/AP2) und Aero-Ass (Stärke 60/AP5, trifft immer) zu effizient; daher AP4."
+      }
+    },
     "light_screen": {
       "id": "light_screen",
       "name": "Lichtschild",
