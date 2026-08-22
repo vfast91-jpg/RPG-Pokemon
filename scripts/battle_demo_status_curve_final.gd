@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_status_softcaps.gd"
+extends "res://scripts/battle_demo_fixed_hp_healing.gd"
 
 # Final mathematical refinement of the shared Status curve.
 #
