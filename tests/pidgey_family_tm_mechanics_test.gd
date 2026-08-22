@@ -18,7 +18,7 @@ func _initialize() -> void:
 
 func _assert_inventory(lab) -> void:
     var moves: Dictionary = lab.data.get("moves", {})
-    assert(moves.size() == 229, "Runtime muss nach dem Taubsi-Paket 229 Attacken enthalten.")
+    assert(moves.size() == 233, "Runtime muss nach dem Rattfratz-Paket 233 Attacken enthalten.")
     assert(moves.has("steel_wing"), "Stahlflügel muss als Runtime-Attacke vorhanden sein.")
 
     var move: Dictionary = moves["steel_wing"]
