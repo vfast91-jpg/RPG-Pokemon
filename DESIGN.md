@@ -2,6 +2,30 @@
 
 Dieses Dokument hält verbindliche Spielregeln fest, die bei späteren Änderungen nicht stillschweigend überschrieben werden dürfen.
 
+## Hornliu-, Kokuna- und Bibor-Maschinen
+
+Für die frühen Käferfamilien gilt eine bewusste Pokémon-Timeflow-Harmonisierung der Maschinen-Kompatibilität:
+
+- Raupy: **Elektronetz**
+- Hornliu: **Elektronetz**
+- Safcon: **Elektronetz + Eisenabwehr**
+- Kokuna: **Elektronetz + Eisenabwehr**
+
+Die offizielle Referenz-/Fallback-Quelle der jeweiligen Spezies bleibt dokumentiert; diese kleine Timeflow-Ergänzung ist eine bewusste spielerische Harmonisierung und keine Behauptung über die offizielle TM-Liste des Fallback-Spiels.
+
+Bibor verwendet für seine offizielle Maschinenliste den dokumentierten BDSP-Fallback. Die zuvor fehlenden Maschinenattacken **Gegenstoß, Blitz, Kreuzschere, Angeberei, Zerschneider, Auflockern und Zertrümmerer** sind im aktiven Kampfsystem implementiert.
+
+Für diese Attacken gelten insbesondere folgende Timeflow-Regeln:
+
+- **Gegenstoß** ist eine Reaktionshaltung mit drei Ladungen. Ein erfolgreicher gegnerischer Schadensangriff, der tatsächlich KP-Schaden verursacht, verbraucht höchstens eine Ladung und löst sofort einen automatisch treffenden physischen Unlicht-Gegenangriff mit Stärke 35 aus. Mehrfachtreffer und Flächenattacken verbrauchen pro ausgeführter Attacke höchstens eine Ladung. Verfehlen, Schutz oder 0 tatsächlicher KP-Schaden verbrauchen keine Ladung. Gegenreaktionen lösen keine weiteren Gegenreaktionen aus. Ein erneuter Einsatz setzt die Haltung auf drei Ladungen zurück.
+- **Angeberei** erlaubt dem Spieler als Ziel entweder den Gegner mit höchster Aggro oder ein anderes aktives verbündetes Pokémon; Selbstziel ist ausgeschlossen. Die Trefferprüfung gilt für beide Zielarten. Bei Erfolg werden Verwirrung und der starke, drei eigene Aktionen dauernde Angriffsbonus auf dasselbe Ziel angewendet.
+- **Auflockern** trifft immer, erhöht für drei eigene Aktionen die Treffbarkeit des gewählten Ziels und entfernt Eintrittsgefahren auf beiden Seiten sowie gegnerische Team-Barrieren und aktives Terrain. Schutzschild, Wetter, Hauptstatus, Egelsamen und Bindung werden nicht entfernt.
+- **Blitz** verwendet den zentralen Genauigkeits-Debuff für drei eigene Aktionen des Ziels.
+- **Kreuzschere** und **Zerschneider** sind reine Schadensattacken ohne zusätzliche Kampfwirkung.
+- **Zertrümmerer** besitzt nach erfolgreichem Treffer eine 50-%-Chance auf den zentralen Verteidigungsdebuff für drei eigene Aktionen des Ziels.
+
+Technische Referenz: `data/gen1_moves_runtime_v3_14_beedrill_family_tms.json`, `data/gen1_species_v3_weedle_tm_override.json`, `scripts/battle_demo_beedrill_family.gd` und `tests/beedrill_family_tm_mechanics_test.gd`.
+
 ## Entwicklung
 
 - Entwicklungen können **nicht verhindert** werden.
