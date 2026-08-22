@@ -252,12 +252,12 @@ func _vulpix_foul_play_modifiers(actor_modifiers: Array, target: Dictionary) -> 
 
     var target_modifiers_value: Variant = target.get("timed_modifiers", [])
     if target_modifiers_value is Array:
-        for modifier_value: Variant in target_modifiers_value:
-            if not (modifier_value is Dictionary):
+        for target_modifier_value: Variant in target_modifiers_value:
+            if not (target_modifier_value is Dictionary):
                 continue
-            var modifier: Dictionary = modifier_value
-            if str(modifier.get("kind", "")) == "outgoing_damage_mod":
-                result.append(modifier.duplicate(true))
+            var target_modifier: Dictionary = target_modifier_value
+            if str(target_modifier.get("kind", "")) == "outgoing_damage_mod":
+                result.append(target_modifier.duplicate(true))
     return result
 
 
