@@ -89,9 +89,17 @@ func _move_tooltip(move: Dictionary) -> String:
 func _execute_move(actor: Dictionary, move_id: String) -> void:
     var move: Dictionary = _move_data(move_id)
     var candidate_targets: Array = []
+    var charge_preparation: bool = _is_charge_preparation(move)
 
     if not move.is_empty() and bool(actor.get("alive", false)):
-        candidate_targets = _targets(actor, str(move.get("target", "enemy_highest_aggro")))
+        # A real charge preparation has no interaction with the locked enemy
+        # yet. Animate at the user instead of sending a misleading projectile
+        # toward the current Aggro target. Derived move layers can still shape
+        # this preparation further (Fly rises; Dig intentionally shows none).
+        if charge_preparation:
+            candidate_targets = [actor]
+        else:
+            candidate_targets = _targets(actor, str(move.get("target", "enemy_highest_aggro")))
 
     _visual_move_id = move_id
     _visual_move = move
@@ -100,8 +108,8 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     super._execute_move(actor, move_id)
 
     # Damaging moves normally animate from _damage(), just before damage is
-    # calculated. This fallback covers status moves, buffs and future target
-    # rules without duplicating the combat logic.
+    # calculated. This fallback covers status moves, buffs and charge
+    # preparations without duplicating the combat logic.
     if not move.is_empty() and _move_was_resolved(move_id, move):
         for target_value: Variant in candidate_targets:
             if target_value is Dictionary:
@@ -110,6 +118,33 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     _visual_move_id = ""
     _visual_move = {}
     _visual_animated_targets.clear()
+
+
+func _is_charge_preparation(move: Dictionary) -> bool:
+    if move.is_empty():
+        return false
+
+    var runtime_value: Variant = move.get("runtime", {})
+    if not (runtime_value is Dictionary):
+        return false
+    var runtime: Dictionary = runtime_value
+    if not bool(runtime.get("charge_then_fire", false)):
+        return false
+
+    # The canonical action-sequence layer temporarily strips damage, accuracy
+    # and mechanics only for the first (preparation) action. A charged shot –
+    # including Solar Beam in sun, where preparation is skipped – keeps its
+    # actual payload and therefore must still animate toward the real target.
+    var mechanics_value: Variant = move.get("mechanics", [])
+    var mechanics_empty: bool = (
+        not (mechanics_value is Array)
+        or (mechanics_value as Array).is_empty()
+    )
+    return (
+        move.get("power", null) == null
+        and move.get("accuracy", null) == null
+        and mechanics_empty
+    )
 
 
 func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: String, category: String) -> int:
