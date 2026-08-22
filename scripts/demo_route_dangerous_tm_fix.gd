@@ -3,19 +3,20 @@ extends "res://scripts/demo_route_special_events.gd"
 # Hotfix for the promised Dangerous Path TM reward.
 #
 # A Dangerous Path must never be offered when the current team cannot receive
-# any remaining TM. The TM selection is also resolved before battle XP is
-# awarded, so a level-up cannot make the promised reward disappear.
+# any remaining TM. After a victory, battle XP is resolved first. The promised
+# TM selection is opened only after every resulting level-up and evolution has
+# been presented to the player.
 
-var _dangerous_pending_xp: int = 0
+var _dangerous_reward_sequence_id: int = 0
 
 
 func start_route() -> void:
-    _dangerous_pending_xp = 0
+    _dangerous_reward_sequence_id += 1
     super.start_route()
 
 
 func _show_stage_choices(message: String = "") -> void:
-    _dangerous_pending_xp = 0
+    _dangerous_reward_sequence_id += 1
     super._show_stage_choices(message)
 
 
@@ -84,25 +85,71 @@ func _on_route_battle_finished(victory: bool, updated_team: Array) -> void:
     visible = true
 
     if not victory:
-        _dangerous_pending_xp = 0
+        _dangerous_reward_sequence_id += 1
         _finish_run(false, "Dein Team wurde auf Etappe %d besiegt." % stage)
         return
 
-    # Keep XP pending until after the TM has been chosen. TM compatibility does
-    # not depend on current HP, so the set that made the path eligible before
-    # battle is still available here. Awarding XP first could cause a level-up
-    # to teach the same move naturally and remove the last valid TM candidate.
-    _dangerous_pending_xp = 20 + stage * 12
-    _dangerous_tm_reward_pending = true
-    _dangerous_battle_summary = (
-        "[b]⚠️ Gefährlicher Pfad bezwungen![/b]\n"
-        + "Wähle jetzt deine versprochene TM-Belohnung. Danach erhält dein Team [b]+%d EP[/b]."
-    ) % _dangerous_pending_xp
-    last_route_message = _dangerous_battle_summary
+    # Correct reward order:
+    # battle -> XP/level-ups -> evolutions -> TM selection.
+    # _award_experience updates the gameplay state immediately and queues the
+    # presentation overlays. The TM UI therefore has to wait until those queues
+    # and overlays are completely drained.
+    var gained_xp: int = 20 + stage * 12
+    var level_messages: Array[String] = _award_experience(gained_xp)
 
-    # This must produce a real selection. If it ever does not, the defensive
-    # availability checks above have caught a new regression elsewhere.
+    var summary: String = "[b]⚠️ Gefährlicher Pfad bezwungen![/b] · +%d EP" % gained_xp
+    if not level_messages.is_empty():
+        summary += "\n" + "\n".join(level_messages)
+
+    _dangerous_tm_reward_pending = true
+    _dangerous_battle_summary = summary
+    last_route_message = summary
+    event_label.text = (
+        summary
+        + "\n\nLevel-Ups und Entwicklungen werden zuerst abgeschlossen. "
+        + "Danach folgt deine TM-Belohnung."
+    )
+
+    _dangerous_reward_sequence_id += 1
+    var sequence_id: int = _dangerous_reward_sequence_id
+    _show_dangerous_tm_after_progression(sequence_id)
+
+
+func _show_dangerous_tm_after_progression(sequence_id: int) -> void:
+    # Give deferred popup callbacks one frame to become visible before checking
+    # the complete progression presentation state.
+    await get_tree().process_frame
+
+    while _dangerous_progression_presentation_pending():
+        if sequence_id != _dangerous_reward_sequence_id or not _dangerous_tm_reward_pending:
+            return
+        await get_tree().process_frame
+
+    if sequence_id != _dangerous_reward_sequence_id or not _dangerous_tm_reward_pending:
+        return
+
     _begin_tm_event()
+
+
+func _dangerous_progression_presentation_pending() -> bool:
+    if not _levelup_queue.is_empty():
+        return true
+    if _levelup_overlay != null and _levelup_overlay.visible:
+        return true
+
+    if not _evolution_queue.is_empty():
+        return true
+    if _evolution_overlay != null and _evolution_overlay.visible:
+        return true
+
+    if not _evolution_choice_queue.is_empty():
+        return true
+    if not _active_evolution_choice.is_empty():
+        return true
+    if _evolution_choice_overlay != null and _evolution_choice_overlay.visible:
+        return true
+
+    return false
 
 
 func _prepare_dangerous_reward_finish(reward_text: String) -> void:
@@ -111,26 +158,18 @@ func _prepare_dangerous_reward_finish(reward_text: String) -> void:
     event_label.text = reward_text
 
     var finish_button := Button.new()
-    finish_button.text = "EP ERHALTEN · WEITER ZUR NÄCHSTEN ETAPPE"
+    finish_button.text = "WEITER ZUR NÄCHSTEN ETAPPE"
     finish_button.custom_minimum_size = Vector2(0, 30)
     finish_button.pressed.connect(_finish_dangerous_reward.bind(reward_text))
     capture_actions.add_child(finish_button)
 
 
 func _finish_dangerous_reward(reward_text: String) -> void:
-    var gained_xp: int = maxi(0, _dangerous_pending_xp)
-    _dangerous_pending_xp = 0
-
-    var level_messages: Array[String] = []
-    if gained_xp > 0:
-        level_messages = _award_experience(gained_xp)
-
-    var summary: String = "[b]⚠️ Gefährlicher Pfad bezwungen![/b] · +%d EP" % gained_xp
+    var summary: String = _dangerous_battle_summary
     if not reward_text.is_empty():
         summary += "\n\n" + reward_text
-    if not level_messages.is_empty():
-        summary += "\n" + "\n".join(level_messages)
 
     _dangerous_tm_reward_pending = false
     _dangerous_battle_summary = ""
+    _dangerous_reward_sequence_id += 1
     _complete_special_stage(summary)
