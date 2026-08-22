@@ -51,8 +51,14 @@ Aktive dünne Integrationsschichten:
 
 Damit bleiben die bestehenden Menü-, Kampf- und Routenmechaniken unverändert und Audio kann unabhängig angepasst werden.
 
-## Loop-Status
+## Globale Loop-Regel
 
-Alle langen Tracks sind technisch als Loop vorbereitet. Die exakten musikalischen Loop-Offets stehen momentan bewusst auf `0.0` Sekunden. Dadurch funktioniert die Dauerschleife sofort, aber das jeweilige Intro wird beim erneuten Durchlauf noch mit wiederholt.
+Für **alle langen Musikstücke** gilt vorläufig dieselbe Regel:
 
-Für den gewünschten Ablauf `Intro → Loopteil → Loopteil → ...` müssen die exakten Einstiegspunkte pro Track einmal hörend bestimmt und anschließend nur in `LOOP_OFFSETS` in `audio_manager.gd` eingetragen werden. Es werden keine geratenen Zeitmarken verwendet.
+- Die ersten **3,0 Sekunden** werden übersprungen.
+- Die letzten **5,0 Sekunden** werden nicht abgespielt.
+- Sobald die Wiedergabe den Punkt `Tracklänge - 5 Sekunden` erreicht, springt sie direkt zurück auf **Sekunde 3,0**.
+- Auch beim erstmaligen Start eines langen Tracks beginnt die Wiedergabe bei **Sekunde 3,0**.
+- Kurze Stinger und Soundeffekte bleiben davon unberührt.
+
+Die Regel wird zentral in `audio_manager.gd` umgesetzt und kann bei Bedarf später für einzelne Stücke verfeinert werden, falls ein Track beim Hörtest einen abweichenden musikalischen Loop-Punkt benötigt.
