@@ -72,7 +72,10 @@ func _active_event_choice(kind: String, current_stage: int) -> Dictionary:
 
 
 func _encounter_species_weight(species_id: String) -> float:
-    return _family_catch_rate(_family_id_for_species(species_id))
+    return pow(
+        _family_catch_rate(_family_id_for_species(species_id)),
+        _route_rarity_exponent_for_stage(stage)
+    )
 
 
 func _weighted_encounter_species(candidates: Array) -> String:
