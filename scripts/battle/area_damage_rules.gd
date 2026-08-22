@@ -36,7 +36,9 @@ static func move_uses_central_scaling(move: Dictionary) -> bool:
     if bool(runtime.get(FULL_SPREAD_RUNTIME_FLAG, false)):
         return false
 
+    var target_rule: String = str(move.get("target", ""))
     return (
         bool(move.get("area", false))
+        or target_rule.begins_with("all_")
         or bool(runtime.get(CENTRAL_SCALING_RUNTIME_FLAG, false))
     )
