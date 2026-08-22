@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_beedrill_family.gd"
+extends "res://scripts/battle_demo_pidgey_family.gd"
 
 # Route-result reentrancy guard.
 #
