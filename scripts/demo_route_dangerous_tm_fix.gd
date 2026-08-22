@@ -8,6 +8,10 @@ extends "res://scripts/demo_route_special_events.gd"
 # been presented to the player.
 
 var _dangerous_reward_sequence_id: int = 0
+# Compatibility state for the inherited species-XP layer. The active final
+# route no longer exposes Dangerous Path, but legacy code still references this
+# field while the retained inheritance chain is parsed.
+var _dangerous_pending_xp: int = 0
 
 
 func start_route() -> void:
