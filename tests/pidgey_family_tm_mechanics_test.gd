@@ -10,6 +10,7 @@ func _initialize() -> void:
     _assert_family_tm_lists(lab)
     _assert_steel_wing_contract(lab)
     _assert_steel_wing_status_curve(lab)
+    _assert_pluck_final(lab)
     print("Taubsi/Tauboga/Tauboss TM mechanics test: PASS")
     lab.queue_free()
     quit(0)
@@ -92,3 +93,21 @@ func _assert_steel_wing_status_curve(lab) -> void:
     assert(int(modifier.get("expires_after_action", -1)) == 3, "Stahlflügel-Buff muss drei eigene Aktionen halten.")
 
     assert(is_equal_approx(lab._cf_effect_chance(actor, 0.10), 0.10), "Grundchance von Stahlflügel muss 10 % bleiben.")
+
+
+func _assert_pluck_final(lab) -> void:
+    var move: Dictionary = lab.data.get("moves", {}).get("pluck", {})
+    assert(str(move.get("name", "")) == "Pflücker")
+    assert(str(move.get("type", "")) == "flying")
+    assert(str(move.get("category", "")) == "physical")
+    assert(int(move.get("power", 0)) == 60)
+    assert(int(move.get("accuracy", 0)) == 100)
+    assert(int(move.get("original_pp", 0)) == 20)
+    assert(bool(move.get("contact", false)))
+    var mechanics: Array = move.get("mechanics", [])
+    assert(mechanics.size() == 1 and str((mechanics[0] as Dictionary).get("kind", "")) == "damage", "Pflücker darf keinen Item-/Beerenhook mehr besitzen.")
+    var runtime: Dictionary = move.get("runtime", {})
+    assert(bool(runtime.get("runtime_supported", false)))
+    assert(bool(runtime.get("strict_contract", false)))
+    assert(bool(runtime.get("contract_validated", false)))
+    assert(not bool(runtime.get("partial", false)), "Pflücker muss im itemfreien Timeflow final sein.")
