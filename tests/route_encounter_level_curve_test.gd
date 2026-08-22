@@ -8,12 +8,11 @@ const MODIFIERS := {
     3: -1,
     4: -3
 }
-const EARLY_LEVELS := {
-    1: {1: 2},
-    2: {1: 3, 2: 1},
-    3: {1: 5, 2: 3},
-    4: {1: 6, 2: 4, 3: 2},
-    5: {1: 8, 2: 6, 3: 4}
+const ONBOARDING_MODIFIERS := {
+    1: 2,
+    2: 1,
+    3: 0,
+    4: -1
 }
 const EARLY_MAX_COUNTS := {
     1: 1,
@@ -22,6 +21,18 @@ const EARLY_MAX_COUNTS := {
     4: 3,
     5: 3
 }
+const BASE_LEVEL_CHECKS: Array = [
+    [1, 3], [5, 3],
+    [6, 7], [10, 7],
+    [11, 15], [20, 15],
+    [21, 23], [30, 23],
+    [31, 31], [40, 31],
+    [41, 39], [50, 39],
+    [51, 47], [60, 47],
+    [61, 55], [70, 55],
+    [71, 63], [80, 63],
+    [81, 71], [90, 71]
+]
 
 class FakeBattleDemo:
     extends Node
@@ -37,7 +48,27 @@ func _initialize() -> void:
     var route = RouteScript.new()
     root.add_child(route)
 
-    # Stages 1-5 are deliberately hand-tuned onboarding encounters.
+    # The same plateau table is the single source of truth for neutral enemy
+    # level and capture level.
+    for check_value: Variant in BASE_LEVEL_CHECKS:
+        var check: Array = check_value
+        var stage: int = int(check[0])
+        var expected_base: int = int(check[1])
+        _check(
+            route._route_base_level_for_stage(stage) == expected_base,
+            "Etappe %d: Basisniveau muss Lv.%d sein." % [stage, expected_base]
+        )
+        _check(
+            route._capture_level_for_stage(stage) == expected_base,
+            "Etappe %d: Fangniveau muss Lv.%d sein." % [stage, expected_base]
+        )
+        _check(
+            route._enemy_level_for_stage(stage) == expected_base,
+            "Etappe %d: neutrales Gegnerniveau muss Lv.%d sein." % [stage, expected_base]
+        )
+
+    # Stages 1-5 retain their reduced encounter-count caps, but now all derive
+    # from the shared Lv.3 onboarding plateau.
     for stage: int in range(1, 6):
         var max_count: int = int(EARLY_MAX_COUNTS[stage])
         _check(
@@ -45,9 +76,8 @@ func _initialize() -> void:
             "Etappe %d darf höchstens %d Gegner haben." % [stage, max_count]
         )
 
-        var stage_levels: Dictionary = EARLY_LEVELS[stage]
         for enemy_count: int in range(1, max_count + 1):
-            var expected: int = int(stage_levels[enemy_count])
+            var expected: int = maxi(1, 3 + int(ONBOARDING_MODIFIERS[enemy_count]))
             var actual: int = route._enemy_level_for_encounter(stage, enemy_count)
             _check(
                 actual == expected,
@@ -55,11 +85,13 @@ func _initialize() -> void:
                 % [stage, enemy_count, expected, actual]
             )
 
-    # From stage 6 onward the revised universal action-economy formula applies.
-    for stage: int in range(6, 21):
+    # From stage 6 onward the established action-economy modifiers apply to the
+    # plateau baseline instead of directly to the stage number.
+    for stage: int in range(6, 91):
         _check(route._max_enemy_count_for_stage(stage) == 4, "Ab Etappe 6 müssen bis zu vier Gegner erlaubt sein.")
+        var base_level: int = _expected_base_level(stage)
         for enemy_count: int in range(1, 5):
-            var expected: int = maxi(1, stage + int(MODIFIERS[enemy_count]))
+            var expected: int = maxi(1, base_level + int(MODIFIERS[enemy_count]))
             var actual: int = route._enemy_level_for_encounter(stage, enemy_count)
             _check(
                 actual == expected,
@@ -67,26 +99,25 @@ func _initialize() -> void:
                 % [stage, enemy_count, expected, actual]
             )
 
-    # Concrete checks for the agreed onboarding curve and revised later curve.
-    _check(route._enemy_level_for_encounter(1, 1) == 2, "Etappe 1 / 1 Gegner muss Lv.2 sein.")
-    _check(route._enemy_level_for_encounter(2, 2) == 1, "Etappe 2 / 2 Gegner müssen Lv.1 sein.")
-    _check(route._enemy_level_for_encounter(3, 2) == 3, "Etappe 3 / 2 Gegner müssen Lv.3 sein.")
-    _check(route._enemy_level_for_encounter(4, 3) == 2, "Etappe 4 / 3 Gegner müssen Lv.2 sein.")
-    _check(route._enemy_level_for_encounter(5, 3) == 4, "Etappe 5 / 3 Gegner müssen Lv.4 sein.")
-    _check(route._enemy_level_for_encounter(6, 4) == 3, "Etappe 6 / 4 Gegner müssen Lv.3 sein.")
-    _check(route._enemy_level_for_encounter(11, 1) == 16, "Etappe 11 / 1 Gegner muss Lv.16 sein.")
-    _check(route._enemy_level_for_encounter(11, 2) == 12, "Etappe 11 / 2 Gegner müssen Lv.12 sein.")
-    _check(route._enemy_level_for_encounter(11, 3) == 10, "Etappe 11 / 3 Gegner müssen Lv.10 sein.")
-    _check(route._enemy_level_for_encounter(11, 4) == 8, "Etappe 11 / 4 Gegner müssen Lv.8 sein.")
+    # Concrete boundary checks for the new plateau jumps.
+    _check(route._enemy_level_for_encounter(1, 1) == 5, "Etappe 1 / 1 Gegner muss Lv.5 sein.")
+    _check(route._enemy_level_for_encounter(5, 3) == 3, "Etappe 5 / 3 Gegner müssen Lv.3 sein.")
+    _check(route._enemy_level_for_encounter(6, 4) == 4, "Etappe 6 / 4 Gegner müssen Lv.4 sein.")
+    _check(route._enemy_level_for_encounter(10, 1) == 12, "Etappe 10 / 1 Gegner muss Lv.12 sein.")
+    _check(route._enemy_level_for_encounter(11, 1) == 20, "Etappe 11 / 1 Gegner muss Lv.20 sein.")
+    _check(route._enemy_level_for_encounter(11, 2) == 16, "Etappe 11 / 2 Gegner müssen Lv.16 sein.")
+    _check(route._enemy_level_for_encounter(11, 3) == 14, "Etappe 11 / 3 Gegner müssen Lv.14 sein.")
+    _check(route._enemy_level_for_encounter(11, 4) == 12, "Etappe 11 / 4 Gegner müssen Lv.12 sein.")
+    _check(route._enemy_level_for_encounter(30, 1) == 28, "Etappe 30 / 1 Gegner muss Lv.28 sein.")
+    _check(route._enemy_level_for_encounter(31, 1) == 36, "Etappe 31 / 1 Gegner muss Lv.36 sein.")
+    _check(route._enemy_level_for_encounter(90, 4) == 68, "Etappe 90 / 4 Gegner müssen Lv.68 sein.")
 
-    # End-to-end regression through the actual active route inheritance chain.
-    # This catches later overrides of _enemy_party_for_stage that accidentally
-    # bypass either the onboarding table or the encounter-size modifier.
+    # End-to-end regression through the active encounter inheritance layer.
     var fake_battle := FakeBattleDemo.new()
     root.add_child(fake_battle)
     route.battle_demo = fake_battle
 
-    for stage: int in [1, 2, 3, 4, 5, 6, 10, 11, 20]:
+    for stage: int in [1, 5, 6, 10, 11, 20, 21, 30, 31, 40, 41, 50, 51, 60, 61, 70, 71, 80, 81, 90]:
         for _sample: int in range(32):
             var party: Array = route._enemy_party_for_stage(stage)
             var enemy_count: int = party.size()
@@ -122,12 +153,33 @@ func _initialize() -> void:
         quit(1)
 
 
+func _expected_base_level(stage: int) -> int:
+    if stage <= 5:
+        return 3
+    if stage <= 10:
+        return 7
+    if stage <= 20:
+        return 15
+    if stage <= 30:
+        return 23
+    if stage <= 40:
+        return 31
+    if stage <= 50:
+        return 39
+    if stage <= 60:
+        return 47
+    if stage <= 70:
+        return 55
+    if stage <= 80:
+        return 63
+    return 71
+
+
 func _expected_level(stage: int, enemy_count: int) -> int:
-    if EARLY_LEVELS.has(stage):
-        var stage_levels: Dictionary = EARLY_LEVELS[stage]
-        if stage_levels.has(enemy_count):
-            return int(stage_levels[enemy_count])
-    return maxi(1, stage + int(MODIFIERS[enemy_count]))
+    var base_level: int = _expected_base_level(stage)
+    if stage <= 5:
+        return maxi(1, base_level + int(ONBOARDING_MODIFIERS[enemy_count]))
+    return maxi(1, base_level + int(MODIFIERS[enemy_count]))
 
 
 func _check(condition: bool, message: String) -> void:
