@@ -1,8 +1,8 @@
 # Statuswert-Migration V1
 
-Dieses Dokument ist der verbindliche Entscheidungsschritt zwischen dem abgeschlossenen Attacken-Audit und der eigentlichen Daten-/Runtime-Migration.
+Dieses Dokument ist der verbindliche Vertrag fuer die abgeschlossene Statuswert-Migration der betroffenen Attacken in Daten und Runtime.
 
-**Wichtig:** Dieser Schritt schaltet noch keine neue Runtime-Logik frei. Die Formeln sind festgelegt; die 17 betroffenen Attacken werden erst im naechsten Schritt in den aktiven Attackendaten und anschliessend in der zentralen Runtime migriert.
+**Status: aktiv auf `main`.** Die 17 festgelegten Migrationen werden durch `scripts/battle_demo_status_effect_migration_v1.gd` ausgefuehrt. Die gemeinsamen Formeln liegen in `scripts/battle/status_effect_runtime.gd`; `main.tscn` laedt die Migrationsschicht als aktive Kampf-Runtime.
 
 ## Grundkurve
 
@@ -20,7 +20,7 @@ Status 75 ergibt `R = 0,5` und dient als Kalibrierungspunkt. Dadurch bleiben bis
 - ATB-Startfortschritt: `Startfortschritt = Gewicht × R`
 - ATB-Beschleunigung: `naechster Zyklus × (1 − R) ^ Gewicht`
 
-## Festgelegte Migrationen
+## Aktive Migrationen
 
 ### Drain
 
@@ -45,7 +45,7 @@ Status 75 ergibt `R = 0,5` und dient als Kalibrierungspunkt. Dadurch bleiben bis
 
 ### Drachenjubel
 
-Drachenjubel wird von diskreten attackenspezifischen Volltrefferstufen auf die bereits etablierte statuswertbasierte Volltreffer-Logik uebersetzt:
+Drachenjubel verwendet jetzt die statuswertbasierte Volltreffer-Logik:
 
 - Nicht-Drachen: `+50R` Prozentpunkte Volltrefferchance.
 - Drachen: `+100R` Prozentpunkte Volltrefferchance.
@@ -69,10 +69,17 @@ Weitere bewusste Schadens-/Regel-Ausnahmen bleiben ebenfalls erhalten:
 - Feuerwirbel, Sandgrab, Whirlpool und Wickel → zentrale Binding-Regel; periodischer Schaden bleibt fest und wird nicht Status-skaliert.
 - Feuer-, Pflanzen- und Wassersaeulen → zentrale Team-Kombomechanik bleibt fest und statusunabhaengig.
 
-## Ergebnis dieses Schrittes
+## Runtime-Absicherung
 
-- 17 Attacken sind mit konkreter Formel **bereit fuer die Datenmigration**.
-- 16 Faelle sind **bewusste Sonderregeln** und bleiben unveraendert.
-- 0 offene Konflikte.
+- `tests/status_effect_migration_test.gd` prueft die Referenzwerte der zentralen Kurve und die aktive Runtime-Verknuepfung.
+- Der Test prueft explizit, dass Psychoschock und Schleuder im Migrationsvertrag als bewusste Status-Schadensausnahmen erhalten bleiben.
+- Fuer Schleuder wird zusaetzlich die bestehende Live-Runtime-Regel geprueft, die den offensiven Wert auf `special`/Status umschaltet.
+- `.github/workflows/status-effect-migration-tests.yml` fuehrt Projekt-Parse und Regressionstest bei Pushes nach `main` aus.
+
+## Ergebnis
+
+- 17 Attacken sind in der Status-Migrationsruntime aktiv umgesetzt.
+- 16 Faelle sind bewusste Sonderregeln und bleiben unveraendert.
+- 0 offene Designkonflikte.
 
 Technischer maschinenlesbarer Vertrag: `data/rules/status_effect_migration_v1.json`.
