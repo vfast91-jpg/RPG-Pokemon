@@ -103,7 +103,10 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
         super._execute_move(actor, move_id)
         return
 
-    var outer_action: bool = _cleffa_indirect_call_depth <= 0
+    # This family no longer depends on the optional Cleffa runtime layer. Mimic
+    # replaces a move in the user's move list but does not recursively execute a
+    # second move, so every entry here is an outer action in this inheritance path.
+    var outer_action: bool = true
     var serial_before: int = int(actor.get("action_serial", 0))
     var had_heal_block: bool = outer_action and _iggly_heal_block_active(actor)
     var hp_before_all: Dictionary = _iggly_hp_snapshot()
@@ -115,7 +118,7 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
         var round_runtime: Dictionary = round_runtime_value if round_runtime_value is Dictionary else {}
         move["power"] = int(round_runtime.get("chained_power", 120))
 
-    if move_id == "expanding_force" and _iggly_psychic_terrain_is_active() and _cleffa_is_grounded(actor):
+    if move_id == "expanding_force" and _iggly_psychic_terrain_is_active() and _tf_is_grounded(actor):
         var force_runtime_value: Variant = move.get("runtime", {})
         var force_runtime: Dictionary = force_runtime_value if force_runtime_value is Dictionary else {}
         move["power"] = int(force_runtime.get("psychic_terrain_power", 120))
