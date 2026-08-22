@@ -111,14 +111,14 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
 
     var move: Dictionary = original_move.duplicate(true)
     if move_id == "round" and outer_action and str(actor.get("iggly_last_team_move", "")) == "round":
-        var runtime_value: Variant = move.get("runtime", {})
-        var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
-        move["power"] = int(runtime.get("chained_power", 120))
+        var round_runtime_value: Variant = move.get("runtime", {})
+        var round_runtime: Dictionary = round_runtime_value if round_runtime_value is Dictionary else {}
+        move["power"] = int(round_runtime.get("chained_power", 120))
 
     if move_id == "expanding_force" and _iggly_psychic_terrain_is_active() and _cleffa_is_grounded(actor):
-        var runtime_value: Variant = move.get("runtime", {})
-        var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
-        move["power"] = int(runtime.get("psychic_terrain_power", 120))
+        var force_runtime_value: Variant = move.get("runtime", {})
+        var force_runtime: Dictionary = force_runtime_value if force_runtime_value is Dictionary else {}
+        move["power"] = int(force_runtime.get("psychic_terrain_power", 120))
         move["target"] = "all_enemies"
         move["area"] = true
 
