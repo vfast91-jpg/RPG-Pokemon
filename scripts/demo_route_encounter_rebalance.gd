@@ -71,3 +71,24 @@ func _enemy_level_for_encounter(current_stage: int, enemy_count: int) -> int:
     var base_level: int = _route_base_level_for_stage(current_stage)
     var clamped_count: int = clampi(enemy_count, 1, 4)
     return maxi(1, base_level + int(ENCOUNTER_LEVEL_MODIFIERS[clamped_count]))
+
+
+func _show_stage_choices(message: String = "") -> void:
+    var level_notice: String = _route_level_notice_for_stage(stage)
+    if not level_notice.is_empty():
+        if message.is_empty():
+            message = level_notice
+        else:
+            message = level_notice + "\n\n" + message
+    super._show_stage_choices(message)
+
+
+func _route_level_notice_for_stage(current_stage: int) -> String:
+    var is_new_level_band: bool = current_stage == 6
+    if current_stage >= 11 and current_stage <= 90:
+        is_new_level_band = ((current_stage - 1) % 10) == 0
+
+    if not is_new_level_band:
+        return ""
+
+    return "[b]⬆ Neues Routenniveau[/b] · Gegner-Basisniveau: [b]Lv.%d[/b]" % _route_base_level_for_stage(current_stage)
