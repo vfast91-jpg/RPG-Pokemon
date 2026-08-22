@@ -26,7 +26,7 @@ func _initialize() -> void:
 
 func _assert_inventory(lab) -> void:
     var moves: Dictionary = lab.data.get("moves", {})
-    assert(moves.size() == 229, "Runtime muss mit dem Taubsi-Paket 229 Attacken enthalten.")
+    assert(moves.size() == 233, "Runtime muss mit dem Rattfratz-Paket 233 Attacken enthalten.")
     for move_id: String in NEW_MOVE_IDS + CORRECTED_MOVE_IDS:
         assert(moves.has(move_id), "Raupy-Familienattacke fehlt: " + move_id)
         var runtime: Dictionary = (moves[move_id] as Dictionary).get("runtime", {})
@@ -71,7 +71,7 @@ func _assert_healing(lab) -> void:
 
     var roost: Dictionary = lab.data.get("moves", {}).get("roost", {})
     var roost_mechanics: Array = roost.get("mechanics", [])
-    assert(is_equal_approx(float((roost_mechanics[0] as Dictionary).get("fraction_max_hp", 0.0)), 0.5), "Ruheort muss feste 50 % Max-KP verwenden.")
+    assert(is_equal_approx(float((roost_mechanics[0] as Dictionary).get("fraction_max_hp", 0.0)), 0.5), "Ruheort muss feste 50 % Max-KP heilen.")
     assert(not bool((roost.get("status_scaling", {}) as Dictionary).get("uses_statuswert", true)), "Ruheort darf nicht mit Statuswert skalieren.")
 
 func _assert_attract_curve(lab) -> void:
