@@ -31,6 +31,9 @@ jobs:
       - name: Parse project headless
         run: ./godot --headless --path . --editor --quit
 
+      - name: Fluffeluff starting moves regression test
+        run: ./godot --headless --path . --script tests/igglybuff_start_moves_regression_test.gd
+
       - name: Fluffeluff family runtime behavior test
         run: ./godot --headless --path . --script tests/igglybuff_family_runtime_test.gd
 
