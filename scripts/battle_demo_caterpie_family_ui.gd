@@ -1,6 +1,6 @@
 extends "res://scripts/battle_demo_caterpie_family.gd"
 
-const FlinchRules = preload("res://scripts/battle/flinch_rules.gd")
+const CaterpieFlinchRules = preload("res://scripts/battle/flinch_rules.gd")
 
 # Small presentation bridge for the first additional single-ally move after
 # Helping Hand. The older shared selector is mechanically generic but its label
@@ -51,7 +51,7 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
     if str(mechanic.get("kind", "")) != "atb_knockback":
         return super._effect(actor, target, mechanic)
 
-    if FlinchRules.apply(target, float(mechanic.get("chance", 1.0))):
+    if CaterpieFlinchRules.apply(target, float(mechanic.get("chance", 1.0))):
         # Flinch is a fixed control effect. Status/type scaling may affect other
         # support effects, but it never turns this reset into a partial knockback.
         return 3.0
@@ -103,7 +103,7 @@ func _collect_flinch_mechanics(value: Variant, inherited_chance: float = 1.0) ->
 func _replace_legacy_flinch_text(source: String, mechanic: Dictionary) -> String:
     var chance: float = float(mechanic.get("chance", 1.0))
     var chance_percent: int = int(round(chance * 100.0))
-    var canonical: String = FlinchRules.player_summary(chance)
+    var canonical: String = CaterpieFlinchRules.player_summary(chance)
     var text: String = source
 
     # Historical summaries looked like "30% Aktionsleiste −25%". Remove any
