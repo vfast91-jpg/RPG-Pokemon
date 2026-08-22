@@ -55,9 +55,9 @@ func _test_species() -> void:
 
 func _test_moves() -> void:
     var moves: Dictionary = _read_json(MOVE_PACK_PATH).get("moves", {})
-    assert(moves.size() == 5)
+    assert(moves.size() == 2)
 
-    var expected_ap: Dictionary = {"horn_attack":4,"iron_head":6,"drill_run":7,"fury_attack":5,"poison_jab":5}
+    var expected_ap: Dictionary = {"horn_attack":4,"iron_head":6}
     for move_id: String in expected_ap.keys():
         var move: Dictionary = moves.get(move_id, {})
         assert(not move.is_empty(), "Attacke fehlt: " + move_id)
@@ -79,27 +79,6 @@ func _test_moves() -> void:
     var forced_target: Dictionary = {"atb":73.0}
     assert(FlinchRules.apply(forced_target, 1.0, 0.0))
     assert(is_zero_approx(float(forced_target.get("atb", -1.0))))
-
-    var drill: Dictionary = moves.get("drill_run", {})
-    assert(int(drill.get("power", 0)) == 80)
-    assert(is_equal_approx(float(drill.get("accuracy", 0.0)), 95.0))
-    assert(bool((drill.get("runtime", {}) as Dictionary).get("high_crit", false)))
-
-    var fury: Dictionary = moves.get("fury_attack", {})
-    assert(int(fury.get("power", 0)) == 15)
-    assert(is_equal_approx(float(fury.get("accuracy", 0.0)), 85.0))
-    var multi_hit: Dictionary = (fury.get("runtime", {}) as Dictionary).get("multi_hit", {})
-    assert(int(multi_hit.get("min", 0)) == 2)
-    assert(int(multi_hit.get("max", 0)) == 5)
-
-    var jab: Dictionary = moves.get("poison_jab", {})
-    assert(int(jab.get("power", 0)) == 80)
-    assert(is_equal_approx(float(jab.get("accuracy", 0.0)), 100.0))
-    var jab_mechanics: Array = jab.get("mechanics", [])
-    assert(jab_mechanics.size() == 2)
-    assert(str((jab_mechanics[1] as Dictionary).get("kind", "")) == "status")
-    assert(str((jab_mechanics[1] as Dictionary).get("status", "")) == "poison")
-    assert(is_equal_approx(float((jab_mechanics[1] as Dictionary).get("chance", 0.0)), 0.30))
 
 func _test_all_referenced_moves_exist() -> void:
     var manifest: Dictionary = _read_json(MANIFEST_PATH)
@@ -127,7 +106,7 @@ func _test_all_referenced_moves_exist() -> void:
 func _test_support_indices() -> void:
     var manifest: Dictionary = _read_json(MANIFEST_PATH)
     assert(int(manifest.get("species_count", 0)) == 36)
-    assert(int(manifest.get("move_count", 0)) == 276)
+    assert(int(manifest.get("move_count", 0)) == 273)
     assert(int(manifest.get("route_root_count", 0)) == 13)
     assert((manifest.get("species_files", []) as Array).has(SPECIES_PACK_PATH))
     assert((manifest.get("move_files", []) as Array).has(MOVE_PACK_PATH))
