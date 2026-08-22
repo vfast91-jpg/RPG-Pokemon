@@ -84,7 +84,35 @@ Die technische Grundlage liegt in `scripts/meta_progression.gd` und wird als Aut
 
 ## Zentrale Status-Skalierung
 
-Der Kampfwert **Status** (intern aus Kompatibilitätsgründen teilweise noch `special`) bestimmt weiterhin die Stärke von Buffs, Debuffs, Kontrolle, Heilung und unterstützenden Effekten. Die alte lineare Regel `Status = Prozent` mit harten Caps ist für Status-basierte Attacken überholt.
+Der Kampfwert **Status** (intern aus Kompatibilitätsgründen teilweise noch `special`) ist der zentrale Wirkungswert für **quantitativ skalierbare taktische Wirkungskomponenten jenseits des direkten Attackenschadens**.
+
+### Verbindliche Zuständigkeit pro Wirkungskomponente
+
+Die Skalierung wird nicht nach der Kategorie der gesamten Attacke entschieden, sondern **für jede Wirkungskomponente einzeln**:
+
+- direkter KP-Schaden einer Attacke → **Angriff**
+- quantitativ skalierbare nicht-schädigende Wirkung → grundsätzlich **Statuswert**
+- feste, binäre oder zentral anderweitig geregelte Mechanik → keine automatische Status-Skalierung
+
+Damit kann eine Schadensattacke gleichzeitig Angriff und Status verwenden. Bei einer Drain-Attacke wie Absorber oder Gigasauger wird beispielsweise der verursachte Schaden über Angriff berechnet; die skalierbare Rückheilung ist eine eigene Statuswert-Komponente.
+
+Typische Statuswert-Komponenten sind Buffs, Debuffs, skalierbare Kontrolle, Heilung, Drain-Rückheilung, Schutz/Barrieren, Genauigkeitsmanipulation, ATB-Manipulation und andere quantitativ skalierbare Supportwirkungen.
+
+Nicht automatisch Statuswert-basiert sind insbesondere:
+
+- die bloße Anwendung eines standardisierten Hauptstatuszustands wie Paralyse, Schlaf, Gift oder Verbrennung;
+- feste Regelzustände wie Verhöhner, Zugabe oder Aussetzer;
+- Schutzschild als binärer Block der nächsten passenden Attacke;
+- Feldgefahren und andere feste Kampffeldregeln;
+- standardisierter periodischer Schaden eines bestehenden Hauptstatuszustands;
+- Zurückschrecken, weil dessen zentrale Wirkung fest definiert ist;
+- Wetteraktivierung, weil Wetterstärke und Wetterdauer ausschließlich im zentralen Wettersystem liegen.
+
+Eine ausdrücklich definierte zentrale Sonderregel hat immer Vorrang. Einzelne Attacken dürfen keine konkurrierenden Statusformeln hartkodieren.
+
+Für Drain-Attacken ist damit bereits verbindlich festgelegt: **Schaden = Angriff, Rückheilung = Statuswert**. Die gemeinsame numerische Drain-Heilungsformel wird vor der Bestandsmigration einmal zentral kalibriert; bis dahin wird keine Drain-Attacke mit einer willkürlichen Einzel-Formel umgestellt.
+
+Die alte lineare Regel `Status = Prozent` mit harten Caps ist für Status-basierte Attacken überholt.
 
 Die zentrale Kurve lautet:
 
