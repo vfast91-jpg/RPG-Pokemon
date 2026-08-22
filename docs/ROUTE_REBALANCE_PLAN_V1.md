@@ -6,17 +6,29 @@ Stand: 2026-08-22
 
 Ausschließlich `main`. Keine neuen Branches, kein Branch-Wechsel.
 
+## Umsetzungsstatus
+
+- Phase A: abgeschlossen – Sicherheitsbaseline und Regression-Sperrliste
+- Phase B: abgeschlossen – Speziesfamilien und Familien-Fangraten
+- Phase C: abgeschlossen – dynamisches Gegnerlevel ab Etappe 6
+- Phase D: abgeschlossen – normale Etappen-EP auf 50 % als Testwert
+- Phase E: abgeschlossen – Fangwiese mit drei Suchen und Seltenheitsgewichtung
+- Phase F: abgeschlossen – Fundstelle mit TM, Heilitem und Vitaminen
+- Phase G: abgeschlossen – finaler Fünfer-Ereignispool, Boss-Umbau und Familiengewichtung normaler Gegner
+- Phase H: abgeschlossen – alte Direct/Dangerous/+25%-Einstiegspunkte im aktiven Layer gesperrt; tiefe Altdateien bleiben nur als ungefährliche Vererbungsbasis erhalten, damit funktionierende UI-/Entwicklungslogik nicht unnötig beschädigt wird
+- Phase I: automatisierte Regressionen und Integrationstest sind im Workflow eingetragen; die abschließende visuelle Godot-Spielprüfung bleibt lokal auszuführen
+
+Aktive Szene nach dem Umbau:
+
+- `main.tscn`
+- Route: `scripts/demo_route_cleanup_v1.gd`
+- Kampf: `scripts/battle_demo_route_vitamins_v1.gd`
+
 ## Phase A – Sicherheitsbaseline
 
 Ausgangs-Commit vor diesem Plan: `df0aeba76265392dd121c6c15ca259289d1da3fe`.
 
-Aktive Szene auf `main`:
-
-- `main.tscn`
-- Route: `scripts/demo_route_levelup_evolution_order_fix.gd`
-- Kampf: `scripts/battle_demo_route_result_guard.gd`
-
-Der vorhandene GitHub-Actions-Workflow `Godot Headless Tests` läuft bei Pushes auf `main` und enthält unter anderem die vorhandenen Route-, Kampf-, Entwicklungs-, TM- und Datenbank-Regressionstests.
+Der vorhandene GitHub-Actions-Workflow `Godot Headless Tests` läuft bei Pushes auf `main` und enthält unter anderem die vorhandenen Route-, Kampf-, Entwicklungs-, TM- und Datenbank-Regressionstests sowie die neuen Rebalance-Regressionstests.
 
 ## Geschützte bestehende Systeme
 
@@ -73,13 +85,13 @@ Bei Etappe 6 erscheint einmal pro Run ein Hinweis, dass sich das Gegnerniveau ab
 
 Level 100 bleibt die Obergrenze.
 
-Die individuellen Pokémon-Wachstumskurven bleiben unverändert. Nur die normale Etappenkampf-EP-Menge wird zunächst als Balancing-Test auf 50 % des heutigen Werts gesetzt.
+Die individuellen Pokémon-Wachstumskurven bleiben unverändert. Nur die normale Etappenkampf-EP-Menge wird zunächst als Balancing-Test auf 50 % des bisherigen Werts gesetzt.
 
 Bosskämpfe verwenden dieselbe normale Etappenkampf-EP wie normale Etappenkämpfe. Kein 2×-Boss-EP-Bonus mehr.
 
 ## Wegereignisse
 
-Aktiver Pool nach dem Umbau:
+Aktiver Pool:
 
 1. Heilquelle
 2. Fangwiese
@@ -87,7 +99,7 @@ Aktiver Pool nach dem Umbau:
 4. Trainingsplatz
 5. Besondere Begegnung / Boss
 
-`Direkter Pfad` und `Gefährlicher Pfad` werden entfernt.
+`Direkter Pfad` und `Gefährlicher Pfad` werden nicht mehr angeboten oder ausgeführt.
 
 Pro Etappe werden drei verschiedene Ereignisse vollständig zufällig aus diesen fünf gezogen. Keine feste Position mehr und keine Sonderregel, dass Slot 1 Heilquelle oder Fangwiese sein muss.
 
@@ -115,13 +127,21 @@ Minimum immer Lv.1. Nach Suche 3 keine weitere Suche.
 
 Ein gefundenes Pokémon wird nicht mehr automatisch angenommen. Der Spieler darf es ansehen, aufnehmen bzw. bei vollem Team ersetzen oder weitersuchen. Nach der dritten Ablehnung endet die Fangwiese ohne Fang. Keine +25-%-EP-Trostbelohnung mehr.
 
+Solange andere gültige Familien vorhanden sind, wird innerhalb derselben Fangwiese keine bereits angebotene Speziesfamilie direkt erneut angeboten.
+
 ## Begegnungshäufigkeit nach Speziesfamilie
 
 Grundwert einer Familie:
 
 `Familien-Fangrate = Durchschnitt der Fangraten aller Mitglieder der Entwicklungsfamilie`
 
-Dieser vorberechnete Familienwert soll in der Pokémon-Datenbasis gespeichert werden; die originale Fangrate jeder einzelnen Spezies bleibt unverändert bestehen.
+Dieser vorberechnete Familienwert wird separat in den Runtime-Daten gehalten; die originale Fangrate jeder einzelnen Spezies bleibt unverändert bestehen.
+
+Die aktualisierte Tabellenquelle enthält außerdem `Speziesfamilien-ID` und `Familien-Fangrate`.
+
+Normale Gegner und Bosse verwenden als Grund-Begegnungsgewicht:
+
+`Gewicht = Familien-Fangrate`
 
 Gewichtung der Fangwiesen-Suchen:
 
@@ -141,11 +161,22 @@ Der Landschaftsfaktor wird in diesem Umbau noch nicht implementiert.
 
 Die bisherige `TM-Fundstelle` wird zur `Fundstelle`.
 
-Sie bietet sechs Alternativen; genau eine darf gewählt werden:
+Sie bietet grundsätzlich sechs Alternativen; genau eine darf gewählt werden:
 
-- Slots 1–3: drei zufällige, für das aktuelle Team tatsächlich nutzbare TMs
+- Slots 1–3: bis zu drei zufällige, für das aktuelle Team tatsächlich nutzbare TMs
 - Slot 4: ein zum Routenfortschritt passendes Heilitem, sofort einsetzbar, nicht einlagerbar
-- Slots 5–6: zwei verschiedene zufällige Vitamine
+- Slots 5–6: zwei verschiedene zufällige, noch sinnvoll nutzbare Vitamine
+
+Falls weniger als drei noch nutzbare TMs existieren, werden keine künstlich unbrauchbaren TMs erzeugt; die Fundstelle zeigt die tatsächlich vorhandenen kompatiblen TM-Angebote plus Heilitem/Vitamine.
+
+Heilitem-Teststaffel:
+
+- Etappe 1–20: Trank, +20 KP
+- Etappe 21–40: Supertrank, +50 KP
+- Etappe 41–60: Hypertrank, +120 KP
+- Etappe 61–90: Top-Trank, volle KP
+
+Heilitems können keine kampfunfähigen Pokémon wiederbeleben.
 
 Vitamine:
 
@@ -155,7 +186,7 @@ Vitamine:
 - Carbon → Initiative
 - Zink → KP
 
-Erster sicherer Balancingwert für Vitamine: **+1 permanenter Endwertpunkt** im jeweiligen Attribut pro Anwendung. Um unendliches Stapeln über 90 Etappen zu verhindern, gilt zunächst ein Cap von **+10 Vitaminpunkten pro Attribut und individuellem Pokémon**. Der Bonus wird individuell am Pokémon gespeichert und darf bei Level-Up oder Entwicklung nicht verloren gehen. Dieser Wert ist ausdrücklich ein Testwert und darf nur auf Basis von Balancingtests angepasst werden.
+Balancing-Testwert: **+1 permanenter Endwertpunkt** im jeweiligen Attribut pro Anwendung. Pro individuellem Pokémon und Attribut gilt ein Cap von **+10 Vitaminpunkten**. Der Bonus wird individuell am Pokémon gespeichert, im Kampf und in der Team-/Radaransicht berücksichtigt und bleibt bei Level-Up oder Entwicklung erhalten. Zink erhöht Max-KP; bei einem lebenden Pokémon steigt beim Einnehmen auch der aktuelle KP-Wert um denselben Punkt, bei einem K.-o.-Pokémon erfolgt keine Wiederbelebung.
 
 Die bisherige Alternative `keine TM → +25 % EP` entfällt.
 
@@ -164,12 +195,13 @@ Die bisherige Alternative `keine TM → +25 % EP` entfällt.
 - Bosslevel = höchstes eigenes Pokémon-Level +5, maximal Lv.100
 - echter doppelter KP-Pool bleibt
 - normale Etappenkampf-EP, kein Bonusmultiplikator
+- Boss-Spezies nutzt dieselbe Familien-Fangraten-Grundgewichtung wie normale Gegner
 - nach vollständiger Abwicklung von EP, Level-Ups und Entwicklungen folgt eine vollständige Fundstelle als Zusatzbelohnung
-- nach der Boss-Fundstelle ist die Etappe beendet; es darf kein zweiter Etappenkampf starten
+- nach der Boss-Fundstelle ist die Etappe beendet; es startet kein zweiter Etappenkampf
 
-Die bestehende gute Sequenzlogik des bisherigen Gefährlichen Pfads – erst Kampf, dann EP/Level-Up/Entwicklung, danach Belohnung – soll für den Boss wiederverwendet werden, bevor der Gefährliche Pfad endgültig entfernt wird.
+Die bestehende sichere Sequenzidee wird weiterverwendet: erst Kampf, dann EP/Level-Up/Entwicklung, danach Belohnung.
 
-## Geplante Umsetzungsphasen
+## Umsetzungsphasen
 
 A. Sicherheitsbaseline und Regression-Sperrliste
 B. Datenbasis für Speziesfamilie und Familien-Fangrate
@@ -178,7 +210,7 @@ D. EP-Tempo und zentrale Etappen-EP-Quelle
 E. Fangwiese mit drei Suchen und Seltenheitsgewichtung
 F. Fundstelle mit TM, Heilitem und Vitaminen
 G. Spezialereignisse: Direkter/Gefährlicher Pfad entfernen, Boss umbauen
-H. Verwaiste Altlogik kontrolliert aufräumen
+H. Verwaiste Altlogik kontrolliert absichern
 I. Gesamttests und visuelle Godot-Prüfung
 
 Nach jeder Phase muss der Stand wieder funktionsfähig sein. Wenn eine Regression außerhalb des gerade geänderten Systems auftaucht, wird sie zuerst behoben, bevor die nächste Phase beginnt.
