@@ -4,6 +4,14 @@ extends "res://scripts/battle_demo_endgame_v1.gd"
 # level-100 combatant first and then apply Timeflow's uncapped continuation.
 # This prevents any older layer from preserving a >100 level label while still
 # silently calculating level-100 stats.
+#
+# This top battle layer also owns the CENTRAL spread-damage reduction. Keeping
+# it here means the multiplier is applied after all inherited damage modifiers,
+# exactly as required by the Timeflow rule: it scales the final damage per
+# actually targeted/hit Pokemon and therefore cannot be forgotten by a family
+# implementation.
+
+const AreaDamageRules = preload("res://scripts/battle/area_damage_rules.gd")
 
 
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
@@ -37,3 +45,51 @@ func route_new_member(species_id: String, level: int) -> Dictionary:
     member["hp"] = int(member["max_hp"])
     member["known_moves"] = route_moves_for_level(resolved_species, requested_level)
     return member
+
+
+func _damage(
+    actor: Dictionary,
+    target: Dictionary,
+    power: int,
+    move_type: String,
+    category: String
+) -> int:
+    var damage: int = super._damage(actor, target, power, move_type, category)
+    if damage <= 0:
+        return damage
+
+    var move: Dictionary = _area_damage_active_move()
+    if move.is_empty() or not AreaDamageRules.move_uses_central_scaling(move):
+        return damage
+
+    var multiplier: float = _area_damage_multiplier_for_move(actor, move)
+    if multiplier >= 0.9999:
+        return damage
+
+    return maxi(1, int(round(float(damage) * multiplier)))
+
+
+func _area_damage_active_move() -> Dictionary:
+    if not _database_active_move.is_empty():
+        return _database_active_move
+
+    var move_id: String = str(_database_move_id)
+    if move_id.is_empty():
+        return {}
+    return _move_data(move_id)
+
+
+func _area_damage_multiplier_for_move(actor: Dictionary, move: Dictionary) -> float:
+    if not AreaDamageRules.move_uses_central_scaling(move):
+        return 1.0
+    return AreaDamageRules.damage_multiplier(_area_damage_target_count(actor, move))
+
+
+func _area_damage_target_count(actor: Dictionary, move: Dictionary) -> int:
+    var rule: String = str(move.get("target", "enemy_highest_aggro"))
+    var targets: Array = _targets(actor, rule)
+    var count: int = 0
+    for target_value: Variant in targets:
+        if target_value is Dictionary and bool((target_value as Dictionary).get("alive", false)):
+            count += 1
+    return count
