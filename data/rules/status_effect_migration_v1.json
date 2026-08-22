@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "rule_id": "status_effect_migration_v1",
-  "runtime_consumed": false,
-  "purpose": "Verbindlicher Designvertrag fuer die naechste Attackendaten-Migration. Noch keine Runtime-Umschaltung.",
+  "runtime_consumed": true,
+  "purpose": "Verbindlicher Design- und Runtimevertrag fuer die aktive Statuswert-Migration.",
   "status_curve": {
     "formula": "R = Status / (75 + Status)",
     "calibration_point": {
