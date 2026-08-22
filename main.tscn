@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/main_logo.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/battle_demo_route_result_guard.gd" id="2_battle"]
-[ext_resource type="Script" path="res://scripts/demo_route_pacing_balance.gd" id="3_route"]
+[ext_resource type="Script" path="res://scripts/demo_route_levelup_evolution_order_fix.gd" id="3_route"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
