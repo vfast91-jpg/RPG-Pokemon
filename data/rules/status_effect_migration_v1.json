@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "rule_id": "status_effect_migration_v1",
+  "runtime_consumed": false,
+  "purpose": "Verbindlicher Designvertrag fuer die naechste Attackendaten-Migration. Noch keine Runtime-Umschaltung.",
+  "status_curve": {
+    "formula": "R = Status / (75 + Status)",
+    "calibration_point": {
+      "status": 75,
+      "R": 0.5,
+      "principle": "Bisherige Referenzwirkungen werden bei Status 75 ungefaehr erhalten; niedrigere und hoehere Statuswerte unterscheiden die Wirkungsstaerke weich."
+    }
+  },
+  "component_rules": {
+    "max_hp_heal": {
+      "formula": "heal = max_hp * min(1, weight * R)",
+      "standard_weight": 1.0
+    },
+    "damage_linked_drain": {
+      "formula": "heal = actual_hp_damage * min(1, weight * R)",
+      "standard_weight": 1.0,
+      "cap": "actual_hp_damage"
+    },
+    "damage_reduction": {
+      "formula": "incoming_multiplier = (1 - R) ^ weight",
+      "standard_weight": 1.0
+    },
+    "additive_damage_bonus": {
+      "formula": "damage_multiplier = 1 + weight * R"
+    },
+    "critical_chance_bonus": {
+      "formula": "bonus_percentage_points = 100 * weight * R",
+      "final_crit_chance_cap_percent": 100
+    },
+    "atb_start_progress": {
+      "formula": "start_progress = weight * R"
+    },
+    "atb_cycle_speedup": {
+      "formula": "next_cycle_multiplier = (1 - R) ^ weight"
+    }
+  },
+  "migrations": {
+    "drain_punch": {"component": "damage_linked_drain", "weight": 1.0},
+    "covet": {"component": "damage_linked_drain", "weight": 1.0},
+    "leech_life": {"component": "damage_linked_drain", "weight": 1.0},
+    "draining_kiss": {"component": "damage_linked_drain", "weight": 1.5},
+    "giga_drain": {"component": "damage_linked_drain", "weight": 1.0},
+    "thief": {"component": "damage_linked_drain", "weight": 1.0},
+    "leech_seed": {
+      "damage": "fixed 1/8 target max HP per tick",
+      "healing_component": "damage_linked_drain",
+      "weight": 2.0,
+      "status_snapshot": "source R at successful application"
+    },
+    "synthesis": {"component": "max_hp_heal", "weight": 1.0},
+    "roost": {"component": "max_hp_heal", "weight": 1.0, "keep": "temporary flying-type removal"},
+    "pollen_puff": {"ally_mode_component": "max_hp_heal", "weight": 1.0, "enemy_mode": "normal attack damage"},
+    "swallow": {
+      "component": "max_hp_heal",
+      "weights_by_stockpile": {"1": 0.5, "2": 1.0, "3": 2.0}
+    },
+    "reflect": {"component": "damage_reduction", "weight": 1.0, "category": "physical"},
+    "electric_terrain": {
+      "damage_bonus_component": "additive_damage_bonus",
+      "weight": 0.6,
+      "keep_binary": "prevent new sleep on grounded Pokemon",
+      "status_snapshot": "source R at terrain activation"
+    },
+    "grassy_terrain": {
+      "damage_bonus_component": "additive_damage_bonus",
+      "damage_bonus_weight": 0.6,
+      "heal_pulse_formula": "heal = max_hp * 0.125 * R",
+      "pulse_count": 3,
+      "status_snapshot": "source R at terrain activation"
+    },
+    "grassy_glide": {
+      "damage": "normal attack damage",
+      "atb_component": "atb_start_progress",
+      "weight": 0.5,
+      "condition": "successful hit while user is grounded and grassy terrain is active"
+    },
+    "volt_switch": {
+      "damage": "normal attack damage",
+      "atb_component": "atb_cycle_speedup",
+      "weight": 0.5,
+      "keep_fixed": "self aggro multiplier 0.55 after successful hit"
+    },
+    "dragon_cheer": {
+      "component": "critical_chance_bonus",
+      "non_dragon_weight": 0.5,
+      "dragon_weight": 1.0,
+      "duration": "3 target own actions",
+      "stacking": "no stack/refresh with Dragon Cheer or Focus Energy"
+    }
+  },
+  "explicit_non_migrations": {
+    "psyshock": "Intentional damage_stat_override=status.",
+    "fling": "Intentional damage_stat_override=status.",
+    "body_press": "Intentional damage_stat_override=user_current_defense.",
+    "foul_play": "Intentional damage_stat_override=target_current_attack.",
+    "rest": "Fixed full heal remains a tradeoff mechanic because it forces sleep.",
+    "pain_split": "HP averaging is a rule operation, not normal healing.",
+    "night_shade": "Fixed damage equal to user level.",
+    "endeavor": "Fixed HP equalization.",
+    "super_fang": "Fixed fraction of current target HP.",
+    "fire_spin": "Central binding rule remains fixed; periodic damage is not Status-scaled.",
+    "sand_tomb": "Central binding rule remains fixed; periodic damage is not Status-scaled.",
+    "whirlpool": "Central binding rule remains fixed; periodic damage is not Status-scaled.",
+    "wrap": "Central binding rule remains fixed; periodic damage is not Status-scaled.",
+    "fire_pledge": "Central team-combo field rule remains fixed.",
+    "grass_pledge": "Central team-combo field rule remains fixed.",
+    "water_pledge": "Central team-combo field rule remains fixed."
+  },
+  "counts": {
+    "ready_for_data_migration": 17,
+    "intentional_special_cases": 16,
+    "unresolved_conflicts": 0,
+    "reviewed_cases": 33
+  }
+}
