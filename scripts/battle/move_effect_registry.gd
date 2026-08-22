@@ -48,6 +48,7 @@ const EFFECTS: Dictionary = {
     "db_spit_up": {"player_label":"Horter-Angriff","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_cleanse_positive_modifiers": {"player_label":"Positive Effekte entfernen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_block_positive_modifiers": {"player_label":"Positive Effekte blockieren","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
+    "db_block_move_category": {"player_label":"Attackenart-Sperre","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["category","duration_actions"]},
     "db_clear_all_temporary_modifiers": {"player_label":"Temporäre Attributänderungen entfernen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_break_protect": {"player_label":"Schutzschild durchbrechen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_light_screen": {"player_label":"Lichtschild","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
