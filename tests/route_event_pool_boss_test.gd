@@ -47,6 +47,16 @@ func _initialize() -> void:
     for kind: String in expected_events:
         _check(bool(seen.get(kind, false)), "Wegereignis wurde in der Zufallsauswahl nie erreicht: %s" % kind)
 
+    # Normal enemy species selection uses the same family catch-rate foundation
+    # as Fangwiese search 1: higher catch rate = more encounter weight.
+    _check_close(route._encounter_species_weight("bulbasaur"), 45.0, 0.000001, "Bisasam-Gegnergewicht")
+    _check_close(route._encounter_species_weight("caterpie"), 140.0, 0.000001, "Raupy-Gegnergewicht")
+    _check_close(route._encounter_species_weight("rattata"), 191.0, 0.000001, "Rattfratz-Gegnergewicht")
+    _check(
+        route._encounter_species_weight("rattata") > route._encounter_species_weight("bulbasaur"),
+        "Leichter fangbare Familien müssen auch als normale Gegner häufiger gewichtet sein."
+    )
+
     _check(route._boss_level() == 23, "Boss bei höchstem eigenen Pokémon Lv.18 muss Lv.23 sein.")
     _check(is_equal_approx(route.BOSS_HP_MULTIPLIER, 2.0), "Boss muss weiterhin den doppelten KP-Pool besitzen.")
     _check(route._route_stage_xp(10) == 316, "Boss und normale Kämpfe müssen dieselbe halbierte Etappen-EP-Quelle verwenden.")
@@ -71,6 +81,10 @@ func _initialize() -> void:
     else:
         push_error("Route event pool and boss test: %d Fehler" % failures)
         quit(1)
+
+
+func _check_close(actual: float, expected: float, tolerance: float, label: String) -> void:
+    _check(absf(actual - expected) <= tolerance, "%s: erwartet %.6f, erhalten %.6f." % [label, expected, actual])
 
 
 func _check(condition: bool, message: String) -> void:
