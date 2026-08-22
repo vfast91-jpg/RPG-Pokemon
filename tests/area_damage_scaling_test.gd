@@ -32,6 +32,10 @@ const EXPECTED_FULL_POWER_EXCEPTIONS: Array[String] = [
     "disarming_voice"
 ]
 
+const EXPECTED_CONDITIONAL_AREA_DAMAGE_MOVES: Array[String] = [
+    "expanding_force"
+]
+
 
 func _initialize() -> void:
     var lab = CombatLab.new()
@@ -72,6 +76,14 @@ func _assert_current_area_damage_registry(lab) -> void:
         assert(_is_runtime_area_damage(move), move_id + " muss eine aktive Flaechenschadensattacke sein.")
         assert(not AreaDamageRules.move_uses_central_scaling(move), move_id + " muss als explizite Vollschaden-Ausnahme markiert bleiben.")
 
+    for move_id: String in EXPECTED_CONDITIONAL_AREA_DAMAGE_MOVES:
+        assert(moves.has(move_id), "Erwartete bedingte Flaechenschadensattacke fehlt: " + move_id)
+        var move: Dictionary = moves[move_id]
+        var runtime_value: Variant = move.get("runtime", {})
+        assert(runtime_value is Dictionary, move_id + " braucht einen Runtime-Vertrag.")
+        assert(bool((runtime_value as Dictionary).get(AreaDamageRules.CENTRAL_SCALING_RUNTIME_FLAG, false)), move_id + " muss den zentralen Flaechenschadensvertrag tragen.")
+        assert(AreaDamageRules.move_uses_central_scaling(move), move_id + " muss auch im Einzelziel-Grundzustand an die zentrale Formel angebunden bleiben.")
+
     var audited_count: int = 0
     for move_id_value: Variant in moves.keys():
         var move_id: String = str(move_id_value)
@@ -92,6 +104,20 @@ func _assert_current_area_damage_registry(lab) -> void:
             assert(EXPECTED_FULL_POWER_EXCEPTIONS.has(move_id), "Ungepruefte Vollschaden-Ausnahme gefunden: " + move_id)
         else:
             assert(AreaDamageRules.move_uses_central_scaling(move), "Flaechenschadensattacke umgeht die zentrale Formel: " + move_id)
+
+    # Also audit conditional contracts whose base data is still single-target.
+    for move_id_value: Variant in moves.keys():
+        var move_value: Variant = moves.get(move_id_value, {})
+        if not (move_value is Dictionary):
+            continue
+        var move: Dictionary = move_value
+        var runtime_value: Variant = move.get("runtime", {})
+        if not (runtime_value is Dictionary):
+            continue
+        var runtime: Dictionary = runtime_value
+        if not bool(runtime.get(AreaDamageRules.CENTRAL_SCALING_RUNTIME_FLAG, false)):
+            continue
+        assert(AreaDamageRules.move_uses_central_scaling(move), "Zentraler Flaechenschadensvertrag ist wirkungslos: " + str(move_id_value))
 
     assert(audited_count >= 23, "Der Flaechenschadens-Audit hat unerwartet wenige aktive Attacken gefunden: " + str(audited_count))
 
@@ -132,6 +158,14 @@ func _assert_runtime_target_counting(lab) -> void:
     enemy_d["alive"] = true
     var swift: Dictionary = moves.get("swift", {})
     assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, swift), 1.0), "Sternschauer muss seine explizite Vollschaden-Ausnahme behalten.")
+
+    # Flächenmacht starts as single-target but becomes spread damage on Psychic
+    # Terrain. Its data contract must still produce the same central multiplier
+    # once the runtime changes the target rule.
+    var expanding_force: Dictionary = (moves.get("expanding_force", {}) as Dictionary).duplicate(true)
+    expanding_force["target"] = "all_enemies"
+    expanding_force["area"] = true
+    assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, expanding_force), 0.50), "Bedingte Flächenmacht muss gegen 4 Gegner auf 50 % skalieren.")
 
 
 func _is_runtime_area_damage(move: Dictionary) -> bool:
