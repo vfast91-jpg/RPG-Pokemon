@@ -100,7 +100,6 @@ func _apply_healing_item(team_index: int, item: Dictionary) -> void:
     super._apply_healing_item(team_index, item)
     if reward_active and not _fundstelle_active:
         AudioManager.play_heal_sfx()
-        AudioManager.play_item_obtained()
 
 
 func _apply_vitamin(team_index: int, vitamin: Dictionary) -> void:
@@ -216,7 +215,6 @@ func _apply_revive(team_index: int) -> void:
     )
     _refresh_team_panel()
     AudioManager.play_heal_sfx()
-    AudioManager.play_item_obtained()
 
 
 func _revive_hp_amount(max_hp: int) -> int:
