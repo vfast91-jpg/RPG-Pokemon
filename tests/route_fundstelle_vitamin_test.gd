@@ -1,6 +1,6 @@
 extends SceneTree
 
-const RouteScript = preload("res://scripts/demo_route_fundstelle_v1.gd")
+const RouteScript = preload("res://scripts/demo_route_fundstelle_rewards_v2.gd")
 const BattleScript = preload("res://scripts/battle_demo_route_vitamins_v1.gd")
 
 class FakeBattleDemo:
@@ -36,6 +36,8 @@ func _initialize() -> void:
     _check(str(mid_a.get("name", "")) == "Supertrank" and int(mid_a.get("amount", 0)) == 50, "Etappe 21-40 muss Supertrank +50 KP anbieten.")
     _check(str(mid_b.get("name", "")) == "Hypertrank" and int(mid_b.get("amount", 0)) == 120, "Etappe 41-60 muss Hypertrank +120 KP anbieten.")
     _check(str(late.get("name", "")) == "Top-Trank" and int(late.get("amount", 0)) < 0, "Ab Etappe 61 muss Top-Trank volle KP herstellen.")
+    _check(route._revive_hp_amount(40) == 20, "Beleber muss 50 % der maximalen KP wiederherstellen.")
+    _check(route._revive_hp_amount(41) == 20, "Beleber muss bei ungeraden Max-KP auf ganze KP abrunden.")
 
     var member: Dictionary = {
         "species_id": "test",
