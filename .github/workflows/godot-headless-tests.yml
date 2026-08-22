@@ -41,6 +41,8 @@ jobs:
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
       - name: Combat lab config regression test
         run: ./godot --headless --path . --script tests/combat_lab_config_test.gd
+      - name: Start aggro regression test
+        run: ./godot --headless --path . --script tests/start_aggro_rules_test.gd
       - name: Local PvP flow regression test
         run: ./godot --headless --path . --script tests/pvp_flow_test.gd
       - name: Bisasam family TM inventory/runtime test
