@@ -82,7 +82,7 @@
     "roost": {
       "id": "roost",
       "name": "Ruheort",
-      "description": "Heilt den Anwender abhängig von seinem Statuswert und entfernt kurzzeitig seinen Flug-Typ.",
+      "description": "Heilt den Anwender um 50 % seiner Max-KP und entfernt kurzzeitig seinen Flug-Typ.",
       "type": "flying",
       "category": "status",
       "power": null,
@@ -94,16 +94,19 @@
       "opening": false,
       "contact": false,
       "emoji": "🪺",
-      "effect_source": "[heal_self(percent_max_hp=100*special/(75+special)), temporary_remove_type(flying,until=next_own_action_start)]",
-      "special_rules": "Gemeinsame Statuskurve R=special/(75+special); Heilung = 100R% Max-KP. Bei vollen KP Fehlschlag; tatsächliche Heilung erzeugt Aggro.",
+      "effect_source": "[heal_self(fraction_max_hp=0.5), temporary_remove_type(flying,until=next_own_action_start)]",
+      "special_rules": "Heilt fest 50 % der Max-KP ohne Statuswert-Skalierung. Bei vollen KP Fehlschlag; tatsächliche Heilung erzeugt Aggro. Der Flug-Typ bleibt bis zum Beginn der nächsten eigenen Aktion entfernt.",
       "mechanics": [
-        {"kind": "db_heal_self"},
+        {"kind": "db_heal_self", "fraction_max_hp": 0.5},
         {"kind": "db_remove_type_until_next_action", "type": "flying"}
       ],
+      "status_scaling": {
+        "uses_statuswert": false
+      },
       "runtime": {
         "runtime_supported": true,
         "fails_at_full_hp": true,
-        "balance_override_reason": "Wie Synthese ohne harten Status-Endpunkt."
+        "balance_override_reason": "FINALSYNC: feste 50-%-Max-KP-Heilung ohne Statuswert-Skalierung; temporärer Flugtyp-Verlust bleibt erhalten."
       }
     },
     "wing_attack": {
