@@ -83,9 +83,12 @@ func _initialize() -> void:
 
     _check(FileAccess.file_exists("res://assets/monsters/Vulpix.png"), "Vulpix-Sprite fehlt.")
     _check(FileAccess.file_exists("res://assets/monsters/Vulnona.png"), "Vulnona-Sprite fehlt.")
+    var main_scene_text: String = FileAccess.get_file_as_string("res://main.tscn")
+    var active_layer_text: String = FileAccess.get_file_as_string("res://scripts/battle_demo_igglybuff_family.gd")
     _check(
-        FileAccess.get_file_as_string("res://main.tscn").contains("battle_demo_vulpix_family.gd"),
-        "main.tscn verwendet den Vulpix-Runtime-Layer nicht."
+        main_scene_text.contains("battle_demo_igglybuff_family.gd")
+        and active_layer_text.contains("battle_demo_vulpix_family.gd"),
+        "Der aktive Hauptspiel-Layer muss weiterhin über den Vulpix-Runtime-Layer erben."
     )
 
     var battle = CurrentBattleScript.new()
