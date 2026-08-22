@@ -264,6 +264,10 @@ func _bfam_resolve_payback_retaliation(defender: Dictionary, attacker: Dictionar
 
 
 func _bfam_apply_defog_cleanup(actor: Dictionary) -> void:
+    # Preserve the earlier Sandshrew-family hazard cleanup (Spikes / Stealth
+    # Rock) before adding Bibor's Toxic Spikes, barrier and terrain cleanup.
+    super._bfam_apply_defog_cleanup(actor)
+
     # Current entry-hazard runtime: Toxic Spikes. Clear both sides, matching
     # Defog's approved Timeflow contract.
     set_meta("db_toxic_spikes_player", 0)
