@@ -266,11 +266,73 @@ func _prepare_boss_reward_finish(reward_text: String) -> void:
         combined += "\n\n" + reward_text
     event_label.text = combined
 
-    var finish_button := Button.new()
-    finish_button.text = "WEITER ZUR NÄCHSTEN ETAPPE"
-    finish_button.custom_minimum_size = Vector2(0, 30)
-    finish_button.pressed.connect(_finish_boss_reward.bind(combined))
-    capture_actions.add_child(finish_button)
+    var finish_card := PanelContainer.new()
+    finish_card.name = "NextStageCTA"
+    finish_card.custom_minimum_size = Vector2(420.0, 66.0)
+    finish_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    finish_card.add_theme_stylebox_override(
+        "panel",
+        _boss_reward_finish_style(Color("182822"), Color("bda95b"), 1)
+    )
+
+    var labels := VBoxContainer.new()
+    labels.alignment = BoxContainer.ALIGNMENT_CENTER
+    labels.add_theme_constant_override("separation", 1)
+    finish_card.add_child(labels)
+
+    var completed_label := Label.new()
+    completed_label.text = "ETAPPE %d ABGESCHLOSSEN" % stage
+    completed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    completed_label.add_theme_font_size_override("font_size", 9)
+    completed_label.add_theme_color_override("font_color", Color("a9c9ba"))
+    labels.add_child(completed_label)
+
+    var action_label := Label.new()
+    action_label.text = "WEITER ZU ETAPPE %d  →" % (stage + 1)
+    action_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    action_label.add_theme_font_size_override("font_size", 16)
+    action_label.add_theme_color_override("font_color", Color("f6e7a3"))
+    labels.add_child(action_label)
+
+    var click_area := Button.new()
+    click_area.text = ""
+    click_area.focus_mode = Control.FOCUS_NONE
+    click_area.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    click_area.tooltip_text = "Weiter zu Etappe %d." % (stage + 1)
+    click_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    click_area.add_theme_stylebox_override(
+        "normal",
+        _boss_reward_finish_style(Color("00000000"), Color("00000000"), 0)
+    )
+    click_area.add_theme_stylebox_override(
+        "hover",
+        _boss_reward_finish_style(Color("d7f5e60d"), Color("e0c968"), 2)
+    )
+    click_area.add_theme_stylebox_override(
+        "pressed",
+        _boss_reward_finish_style(Color("00000018"), Color("c6b461"), 2)
+    )
+    click_area.add_theme_stylebox_override(
+        "focus",
+        _boss_reward_finish_style(Color("d7f5e60d"), Color("e0c968"), 2)
+    )
+    click_area.pressed.connect(_finish_boss_reward.bind(combined))
+    finish_card.add_child(click_area)
+
+    capture_actions.add_child(finish_card)
+
+
+func _boss_reward_finish_style(bg: Color, border: Color, border_width: int) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = bg
+    style.border_color = border
+    style.set_border_width_all(border_width)
+    style.set_corner_radius_all(10)
+    style.content_margin_left = 18.0
+    style.content_margin_right = 18.0
+    style.content_margin_top = 8.0
+    style.content_margin_bottom = 8.0
+    return style
 
 
 func _finish_boss_reward(combined_summary: String) -> void:
