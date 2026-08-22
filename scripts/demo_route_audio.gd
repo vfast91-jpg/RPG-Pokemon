@@ -78,7 +78,7 @@ func _replace_team_member(index: int) -> void:
 func _assign_tm(entry: Dictionary, team_index: int) -> void:
     var reward_active: bool = _fundstelle_active or _boss_fundstelle_pending
     super._assign_tm(entry, team_index)
-    if reward_active and continue_button != null and continue_button.visible:
+    if reward_active and not _fundstelle_active:
         AudioManager.play_item_obtained()
 
 
