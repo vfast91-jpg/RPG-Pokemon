@@ -35,6 +35,8 @@ jobs:
         run: ./godot --headless --path . --script tests/type_system_smoke_test.gd
       - name: Special mechanics audit
         run: ./godot --headless --path . --script tests/special_mechanics_audit_test.gd
+      - name: Central spread damage regression audit
+        run: ./godot --headless --path . --script tests/area_damage_scaling_test.gd
       - name: Move contract and presentation audit
         run: ./godot --headless --path . --script tests/move_contract_test.gd
       - name: Evolution resolver test
