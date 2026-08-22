@@ -11,6 +11,43 @@ extends "res://scripts/battle_demo_attribute_wording.gd"
 # runtime multipliers remain untouched.
 
 
+# Shared compatibility hooks for database-family layers that appear before the
+# final Timeflow mechanics in the historical inheritance chain. Later battle
+# layers override these functions with their full implementations; defining the
+# contracts here prevents earlier family scripts from referring to methods that
+# GDScript cannot yet resolve statically.
+func _timeflow_spread_damage_scale(target_count: int) -> float:
+    match target_count:
+        0, 1:
+            return 1.0
+        2:
+            return 0.75
+        3:
+            return 0.60
+        _:
+            return 0.50
+
+
+func _tf_is_grounded(combatant: Dictionary) -> bool:
+    return not _type_array(combatant.get("types", [])).has("flying")
+
+
+func _tf_find_combatant(combatant_id: String) -> Dictionary:
+    if combatant_id.is_empty():
+        return {}
+    for combatant_value: Variant in combatants:
+        if (
+            combatant_value is Dictionary
+            and str((combatant_value as Dictionary).get("id", "")) == combatant_id
+        ):
+            return combatant_value as Dictionary
+    return {}
+
+
+func _bfam_apply_defog_cleanup(_actor: Dictionary) -> void:
+    pass
+
+
 func _target_name(rule: String) -> String:
     match rule:
         "all_other_active_pokemon":
