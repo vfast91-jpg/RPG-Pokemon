@@ -23,6 +23,7 @@ const STINGER_POKEMON: String = "res://assets/audio/music/stingers/201. Obtained
 
 const SFX_ATTACK: String = "res://assets/audio/sfx/freesound_community-whoosh-6316.mp3"
 const SFX_FAINT: String = "res://assets/audio/sfx/freesound_community-retro-video-game-death-95730.mp3"
+const SFX_HEAL: String = "res://assets/audio/sfx/yodguard-healing-magic-6-378666.mp3"
 
 # One central reduction for the complete game mix. Individual channel values
 # below keep their relative balance; this only lowers Pokemon Timeflow as a whole.
@@ -52,6 +53,7 @@ const EVENT_RELEASE_SECONDS: float = 0.35
 const EVENT_VOLUME_DB: float = -4.0
 const SFX_VOLUME_DB: float = -5.0
 const SFX_FAINT_VOLUME_DB: float = -11.0
+const SFX_HEAL_VOLUME_DB: float = -10.0
 const SFX_POOL_SIZE: int = 4
 
 var current_battle_kind: String = "normal"
@@ -181,6 +183,10 @@ func play_attack_sfx() -> void:
 
 func play_faint_sfx() -> void:
     _play_sfx(SFX_FAINT, SFX_FAINT_VOLUME_DB)
+
+
+func play_heal_sfx() -> void:
+    _play_sfx(SFX_HEAL, SFX_HEAL_VOLUME_DB)
 
 
 func _play_sfx(path: String, volume_db: float) -> void:
