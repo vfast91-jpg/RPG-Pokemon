@@ -176,9 +176,13 @@ func _show_boss_fundstelle_after_progression(sequence_id: int) -> void:
     if sequence_id != _boss_reward_sequence_id or not _boss_fundstelle_pending:
         return
 
-    var summary: String = _boss_reward_summary
     _begin_fundstelle()
-    event_label.text = summary + "\n\n" + event_label.text
+
+
+func _show_fundstelle_options() -> void:
+    super._show_fundstelle_options()
+    if _boss_fundstelle_pending and not _boss_reward_summary.is_empty():
+        event_label.text = _boss_reward_summary + "\n\n" + event_label.text
 
 
 func _route_progression_presentation_pending() -> bool:
