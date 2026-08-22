@@ -272,6 +272,12 @@ func _show_replace_choices() -> void:
     _refresh_team_panel()
 
 
+func _begin_capture_event_again() -> void:
+    if pending_capture.is_empty():
+        return
+    _show_current_capture_offer()
+
+
 func _make_route_team_card(member: Dictionary, index: int) -> Control:
     var card: Control = super._make_route_team_card(member, index)
     if not _capture_replacement_selection_active:
