@@ -1,5 +1,9 @@
 [gd_scene load_steps=4 format=3]
 
+# Active inheritance anchors retained below the endgame wrappers:
+# res://scripts/battle_demo_endgame_v2.gd -> res://scripts/battle_demo_endgame_v1.gd -> res://scripts/battle_demo_status_effect_migration_v1.gd -> res://scripts/battle_demo_igglybuff_family.gd -> ... -> res://scripts/battle_demo_route_vitamins_v1.gd
+# res://scripts/demo_route_endgame_v1.gd -> res://scripts/demo_route_fundstelle_rewards_v2.gd -> res://scripts/demo_route_cleanup_v1.gd -> res://scripts/demo_route_events_v1.gd
+
 [ext_resource type="Script" path="res://scripts/main_endgame_v1.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/battle_demo_endgame_v2.gd" id="2_battle"]
 [ext_resource type="Script" path="res://scripts/demo_route_endgame_v1.gd" id="3_route"]
