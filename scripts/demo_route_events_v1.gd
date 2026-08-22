@@ -3,6 +3,10 @@ extends "res://scripts/demo_route_fundstelle_v1.gd"
 # Phase G: final five-event route pool, encounter-family weighting and boss
 # reward flow. Direct Path and Dangerous Path remain only as unreachable
 # inherited legacy code until Phase H removes dead compatibility entry points.
+#
+# Stages 1-10 are the protected onboarding window. During that window the Boss
+# event is deliberately excluded so the gentler fixed encounter curve cannot be
+# bypassed by a highest-team-level +5 battle with double HP.
 
 const ACTIVE_ROUTE_EVENTS: Array[String] = [
     EVENT_HEAL,
@@ -35,12 +39,19 @@ func _reset_boss_reward_state() -> void:
     _boss_reward_summary = ""
 
 
-func _choices_for_stage(current_stage: int) -> Array[Dictionary]:
+func _route_event_pool_for_stage(current_stage: int) -> Array[String]:
     var pool: Array[String] = ACTIVE_ROUTE_EVENTS.duplicate()
+    if current_stage <= 10:
+        pool.erase(EVENT_RARE)
+    return pool
+
+
+func _choices_for_stage(current_stage: int) -> Array[Dictionary]:
+    var pool: Array[String] = _route_event_pool_for_stage(current_stage)
     pool.shuffle()
 
     var choices: Array[Dictionary] = []
-    for index: int in range(3):
+    for index: int in range(mini(3, pool.size())):
         choices.append(_active_event_choice(pool[index], current_stage))
     return choices
 
