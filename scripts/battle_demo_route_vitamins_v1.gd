@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_route_result_guard.gd"
+extends "res://scripts/battle_demo_cleffa_family.gd"
 
 # Route-only permanent vitamin bonuses.
 # Species base stats remain canonical. Individual route members may carry a
