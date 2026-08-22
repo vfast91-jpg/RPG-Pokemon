@@ -1,19 +1,21 @@
 extends "res://scripts/demo_route_user_polish.gd"
 
-# Route level plateaus.
-# Capture level and the neutral encounter baseline intentionally use the same
-# table so route progression is easy to understand and balance:
-# 1-5 -> 3, 6-10 -> 7, then +8 levels per ten-stage block through stage 90.
+# Dynamic route encounter level scaling.
 #
-# Stages 1-5 are a fixed onboarding sequence without positive action-economy
-# corrections. From stage 6 onward encounters are random again and use the
-# established +5 / +1 / -1 / -3 modifiers.
+# Stages 1-5 remain the protected, hand-tuned onboarding sequence. From stage 6
+# onward the highest level in the player's CURRENT team is the neutral
+# reference. Enemy group size then compensates for action economy:
+# 1 enemy +5, 2 enemies +2, 3 enemies +/-0, 4 enemies -2.
+#
+# Capture levels deliberately remain on the legacy table in this isolated phase
+# so Phase C changes only opponent scaling and its player-facing notice. The
+# Fangwiese gets its own highest-team-level -3 rule in Phase E.
 
 const ENCOUNTER_LEVEL_MODIFIERS := {
     1: 5,
-    2: 1,
-    3: -1,
-    4: -3
+    2: 2,
+    3: 0,
+    4: -2
 }
 
 const ONBOARDING_ENCOUNTERS := {
@@ -24,8 +26,30 @@ const ONBOARDING_ENCOUNTERS := {
     5: {"count": 3, "level": 4}
 }
 
+var _dynamic_scaling_notice_shown: bool = false
+
+
+func start_route() -> void:
+    _dynamic_scaling_notice_shown = false
+    super.start_route()
+
+
+func _highest_team_level() -> int:
+    var highest: int = 1
+    for member_value: Variant in team:
+        if not (member_value is Dictionary):
+            continue
+        highest = maxi(highest, int((member_value as Dictionary).get("level", 1)))
+    return clampi(highest, 1, 100)
+
 
 func _route_base_level_for_stage(current_stage: int) -> int:
+    if current_stage <= 5:
+        return 3
+    return _highest_team_level()
+
+
+func _legacy_capture_level_for_stage(current_stage: int) -> int:
     var clamped_stage: int = clampi(current_stage, 1, 90)
     if clamped_stage <= 5:
         return 3
@@ -49,7 +73,7 @@ func _route_base_level_for_stage(current_stage: int) -> int:
 
 
 func _capture_level_for_stage(current_stage: int) -> int:
-    return _route_base_level_for_stage(current_stage)
+    return _legacy_capture_level_for_stage(current_stage)
 
 
 func _enemy_level_for_stage(current_stage: int) -> int:
@@ -66,33 +90,36 @@ func _roll_enemy_count(current_stage: int) -> int:
 func _enemy_level_for_encounter(current_stage: int, enemy_count: int) -> int:
     var onboarding_value: Variant = ONBOARDING_ENCOUNTERS.get(current_stage, {})
     if onboarding_value is Dictionary and not (onboarding_value as Dictionary).is_empty():
-        return maxi(1, int((onboarding_value as Dictionary).get("level", 1)))
+        return clampi(int((onboarding_value as Dictionary).get("level", 1)), 1, 100)
 
-    var base_level: int = _route_base_level_for_stage(current_stage)
+    var reference_level: int = _highest_team_level()
     var clamped_count: int = clampi(enemy_count, 1, 4)
-    return maxi(1, base_level + int(ENCOUNTER_LEVEL_MODIFIERS[clamped_count]))
+    return clampi(
+        reference_level + int(ENCOUNTER_LEVEL_MODIFIERS[clamped_count]),
+        1,
+        100
+    )
 
 
 func _show_stage_choices(message: String = "") -> void:
-    var level_notice: String = _route_level_notice_for_stage(stage)
-    if not level_notice.is_empty():
-        if message.is_empty():
-            message = level_notice
-        else:
-            message = level_notice + "\n\n" + message
+    if stage == 6 and not _dynamic_scaling_notice_shown:
+        var level_notice: String = _route_level_notice_for_stage(stage)
+        if not level_notice.is_empty():
+            if message.is_empty():
+                message = level_notice
+            else:
+                message = level_notice + "\n\n" + message
+        _dynamic_scaling_notice_shown = true
     super._show_stage_choices(message)
 
 
 func _route_level_notice_for_stage(current_stage: int) -> String:
-    var is_new_level_band: bool = current_stage == 6
-    if current_stage >= 11 and current_stage <= 90:
-        is_new_level_band = ((current_stage - 1) % 10) == 0
-
-    if not is_new_level_band:
+    if current_stage != 6:
         return ""
 
     return (
-        "[b]⬆ Neues Levelniveau[/b]\n"
-        + "Die Gegnerstärke orientiert sich jetzt an [b]Lv.%d[/b]. "
-        + "Kleine Gruppen liegen darüber, große Gruppen darunter."
-    ) % _route_base_level_for_stage(current_stage)
+        "[b]⚖ Dynamisches Gegnerniveau[/b]\n"
+        + "Ab jetzt richtet sich das Levelniveau der Gegner nach deinem "
+        + "[b]höchstleveligen Pokémon[/b]. Kleine Gegnergruppen liegen darüber, "
+        + "große Gruppen etwas darunter."
+    )
