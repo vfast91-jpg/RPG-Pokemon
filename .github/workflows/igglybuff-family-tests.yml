@@ -1,0 +1,38 @@
+name: Fluffeluff Family Integration
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  igglybuff-family:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output godot.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.7.2-stable_linux.x86_64 godot
+          chmod +x godot
+
+      - name: Parse project headless
+        run: ./godot --headless --path . --editor --quit
+
+      - name: Fluffeluff family runtime behavior test
+        run: ./godot --headless --path . --script tests/igglybuff_family_runtime_test.gd
+
+      - name: Fluffeluff family data registry test
+        run: ./godot --headless --path . --script tests/igglybuff_family_data_registry_test.gd
