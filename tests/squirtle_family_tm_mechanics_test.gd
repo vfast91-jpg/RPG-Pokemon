@@ -18,6 +18,7 @@ func _initialize() -> void:
     _assert_gyro_ball(lab)
     _assert_body_press(lab)
     _assert_grounded(lab)
+    _assert_underwater_targeting(lab)
     _assert_pledges(lab)
     print("Schiggy-Familie TM mechanics test: PASS")
     lab.queue_free()
@@ -84,6 +85,26 @@ func _assert_grounded(lab) -> void:
     assert(lab._tf_is_grounded(target), "Katapult muss Flugziele während der Dauer als am Boden behandeln.")
     target["action_serial"] = 7
     assert(not lab._sf_force_grounded_active(target), "Katapult-Bodenzwang muss nach drei Zielaktionen enden.")
+
+func _assert_underwater_targeting(lab) -> void:
+    var actor: Dictionary = lab._make_combatant("player",0,{"species_id":"squirtle","level":35})
+    var submerged: Dictionary = lab._make_combatant("enemy",0,{"species_id":"pikachu","level":35})
+    var visible: Dictionary = lab._make_combatant("enemy",1,{"species_id":"pikachu","level":35})
+    submerged["aggro"] = 90.0
+    visible["aggro"] = 10.0
+    lab.player_team = [actor]
+    lab.enemy_team = [submerged,visible]
+    lab.combatants = [actor,submerged,visible]
+    lab._tf_set_state(submerged,"underwater",true)
+
+    lab._semi_targeting_move_id = "tackle"
+    var normal_targets: Array = lab._targets(actor,"enemy_highest_aggro")
+    assert(normal_targets.size() == 1 and str((normal_targets[0] as Dictionary).get("id", "")) == str(visible.get("id", "")), "Normale Attacken müssen ein Unterwasserziel überspringen.")
+
+    lab._semi_targeting_move_id = "whirlpool"
+    var whirlpool_targets: Array = lab._targets(actor,"enemy_highest_aggro")
+    assert(whirlpool_targets.size() == 1 and str((whirlpool_targets[0] as Dictionary).get("id", "")) == str(submerged.get("id", "")), "Whirlpool muss ein Unterwasserziel weiterhin auswählen dürfen.")
+    lab._semi_targeting_move_id = ""
 
 func _assert_pledges(lab) -> void:
     assert(lab._cf_pledge_combo_kind("grass","water") == "swamp", "Pflanze+Wasser muss Sumpf ergeben.")
