@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scripts/main_audio.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/battle_demo_status_effect_migration_v1.gd" id="2_battle"]
-[ext_resource type="Script" path="res://scripts/demo_route_fundstelle_rewards_v2.gd" id="3_route"]
+[ext_resource type="Script" path="res://scripts/main_endgame_v1.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/battle_demo_endgame_v1.gd" id="2_battle"]
+[ext_resource type="Script" path="res://scripts/demo_route_endgame_v1.gd" id="3_route"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
