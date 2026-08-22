@@ -28,23 +28,23 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     # Triggered moves first consume the AP of the caller, then execute the called
     # move immediately. Their called move never replaces the caller's recovery.
     if move_id == "copycat":
-        var called_id: String = _cleffa_last_resolved_move_id
+        var copycat_called_id: String = _cleffa_last_resolved_move_id
         _cleffa_active_move_id = move_id
         super._execute_move(actor, move_id)
         _cleffa_active_move_id = ""
-        var caller_cycle: float = float(actor.get("cycle", 1.0))
-        if _cleffa_call_move_is_eligible(called_id, false):
-            _cleffa_execute_called_move(actor, called_id, caller_cycle)
+        var copycat_caller_cycle: float = float(actor.get("cycle", 1.0))
+        if _cleffa_call_move_is_eligible(copycat_called_id, false):
+            _cleffa_execute_called_move(actor, copycat_called_id, copycat_caller_cycle)
         return
 
     if move_id == "metronome":
         _cleffa_active_move_id = move_id
         super._execute_move(actor, move_id)
         _cleffa_active_move_id = ""
-        var caller_cycle: float = float(actor.get("cycle", 1.0))
-        var called_id: String = _cleffa_random_metronome_move()
-        if not called_id.is_empty():
-            _cleffa_execute_called_move(actor, called_id, caller_cycle)
+        var metronome_caller_cycle: float = float(actor.get("cycle", 1.0))
+        var metronome_called_id: String = _cleffa_random_metronome_move()
+        if not metronome_called_id.is_empty():
+            _cleffa_execute_called_move(actor, metronome_called_id, metronome_caller_cycle)
         return
 
     var move: Dictionary = original_move.duplicate(true)
