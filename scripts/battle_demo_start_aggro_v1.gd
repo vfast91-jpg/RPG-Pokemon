@@ -8,48 +8,9 @@ const StartAggroRules = preload("res://scripts/battle/start_aggro_rules.gd")
 # Individual runtime stat changes, vitamins and temporary modifiers deliberately
 # do not alter this initial species-strength contribution.
 #
-# Audio hooks also live here instead of in another child script. The battle
-# inheritance chain is already very deep; keeping audio in this established
-# layer avoids adding another superclass hop just for presentation.
-
-var _audio_result_announced: bool = false
-
-
-func _start_battle() -> void:
-    _audio_result_announced = false
-    AudioManager.play_prepared_battle()
-    super._start_battle()
-
-
-func _execute_move(actor: Dictionary, move_id: String) -> void:
-    # Only real move executions get the shared attack cue. Invalid move ids stay
-    # silent; species-specific blockers may return before reaching this layer.
-    if not _move_data(move_id).is_empty():
-        AudioManager.play_attack_sfx()
-    super._execute_move(actor, move_id)
-
-
-func _check_end() -> void:
-    if battle_active and not _audio_result_announced:
-        var own_alive: bool = _audio_team_has_living_member(player_team)
-        var enemy_alive: bool = _audio_team_has_living_member(enemy_team)
-        if not own_alive or not enemy_alive:
-            _audio_result_announced = true
-            if own_alive and not enemy_alive:
-                AudioManager.play_victory(AudioManager.current_battle_kind)
-            else:
-                AudioManager.stop_music()
-    super._check_end()
-
-
-func _audio_team_has_living_member(team_value: Array) -> bool:
-    for combatant_value: Variant in team_value:
-        if not (combatant_value is Dictionary):
-            continue
-        var combatant: Dictionary = combatant_value
-        if bool(combatant.get("alive", false)) and int(combatant.get("hp", 0)) > 0:
-            return true
-    return false
+# Audio is intentionally NOT implemented in this inheritance chain anymore.
+# The top-level main_audio.gd observes BattleDemo and handles music/SFX without
+# adding dependencies between presentation and Pokemon family scripts.
 
 
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
