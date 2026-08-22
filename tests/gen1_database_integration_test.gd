@@ -6,6 +6,10 @@ const SQUIRTLE_NEW_MOVES: Array[String] = [
     "chilling_water","icy_wind","mud_shot","zen_headbutt","ice_punch","liquidation","surf","ice_spinner","ice_beam","blizzard",
     "water_pledge","gyro_ball","flip_turn","whirlpool","muddy_water","avalanche","body_press","dark_pulse","aura_sphere","hydro_cannon","smack_down"
 ]
+const CATERPIE_NEW_MOVES: Array[String] = [
+    "thief","snore","attract","u_turn","echoed_voice","draining_kiss",
+    "psychic","baton_pass","shadow_ball","skill_swap","pollen_puff"
+]
 
 func _initialize() -> void:
     var manifest: Dictionary = _read_json(MANIFEST_PATH)
@@ -28,25 +32,37 @@ func _initialize() -> void:
             moves[str(move_id_value)] = entries[move_id_value]
 
     assert(species.size() == int(manifest.get("species_count", -1)) and species.size() == 27, "Manifest/Spezieszahl muss 27 sein.")
-    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 210, "Manifest/Attackenzahl muss 210 sein.")
+    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 221, "Manifest/Attackenzahl muss 221 sein.")
     assert((meta.get("route_roots", []) as Array).size() == 10, "Die Demo braucht zehn Basislinien.")
 
     _assert_evolution(species,"bulbasaur","ivysaur",16)
     _assert_evolution(species,"ivysaur","venusaur",32)
     _assert_evolution(species,"squirtle","wartortle",16)
     _assert_evolution(species,"wartortle","blastoise",36)
+    _assert_evolution(species,"caterpie","metapod",7)
+    _assert_evolution(species,"metapod","butterfree",10)
     _assert_evolution(species,"pichu","pikachu",15)
     _assert_evolution(species,"pikachu","raichu",30)
 
     _assert_tm_count(species,"squirtle",35)
     _assert_tm_count(species,"wartortle",35)
     _assert_tm_count(species,"blastoise",52)
+    _assert_tm_count(species,"caterpie",1)
+    _assert_tm_count(species,"metapod",2)
+    _assert_tm_count(species,"butterfree",33)
     var blastoise_tms: Dictionary = (((species.get("blastoise", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     for tm_id: String in ["TM046","TM149","TM154","TM158","TM172","TM179"]:
         assert(blastoise_tms.has(tm_id), "Turtok-Korrektur fehlt: " + tm_id)
+    var butterfree_tms: Dictionary = (((species.get("butterfree", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
+    for tm_id: String in ["TM034","TM039","TM040","TM056","TM074","TM076","TM078","TM082","TM087","TM095"]:
+        assert(butterfree_tms.has(tm_id), "Smettbo-Korrektur fehlt: " + tm_id)
 
     for move_id: String in SQUIRTLE_NEW_MOVES:
         assert(moves.has(move_id), "Neue Schiggy-Familien-TM fehlt: " + move_id)
+        var runtime: Dictionary = (moves[move_id] as Dictionary).get("runtime", {})
+        assert(bool(runtime.get("runtime_supported", false)), move_id + " muss aktiv sein.")
+    for move_id: String in CATERPIE_NEW_MOVES:
+        assert(moves.has(move_id), "Neue Raupy-Familien-TM fehlt: " + move_id)
         var runtime: Dictionary = (moves[move_id] as Dictionary).get("runtime", {})
         assert(bool(runtime.get("runtime_supported", false)), move_id + " muss aktiv sein.")
 
@@ -59,6 +75,8 @@ func _initialize() -> void:
     assert(not missing_tm.has("tera_blast"), "Tera-Ausbruch darf nicht als offene Timeflow-TM geführt werden.")
     for move_id: String in SQUIRTLE_NEW_MOVES:
         assert(not missing_tm.has(move_id), "Implementierte Schiggy-TM darf nicht mehr als Datenlücke geführt werden: " + move_id)
+    for move_id: String in CATERPIE_NEW_MOVES:
+        assert(not missing_tm.has(move_id), "Implementierte Raupy-TM darf nicht mehr als Datenlücke geführt werden: " + move_id)
 
     _assert_rettan_stat_profiles()
     for species_value: Variant in species.values():
@@ -68,8 +86,8 @@ func _initialize() -> void:
         assert(ResourceLoader.exists("res://assets/monsters/" + display_name + ".png"), "Fehlendes Pokémon-Bild: " + display_name)
 
     var scene_text: String = FileAccess.get_file_as_string("res://main.tscn")
-    assert(scene_text.contains("res://scripts/battle_demo_squirtle_family.gd"), "main.tscn muss die Schiggy-Familien-Runtime laden.")
-    assert(scene_text.contains("res://scripts/demo_route_training_hp_cost.gd"), "main.tscn muss den aktuellen Demo-Routen-Einstieg laden.")
+    assert(scene_text.contains("res://scripts/battle_demo_caterpie_family.gd"), "main.tscn muss die Raupy-Familien-Runtime laden.")
+    assert(scene_text.contains("res://scripts/demo_route_levelup_evolution_order_fix.gd"), "main.tscn muss den aktuellen Demo-Routen-Einstieg laden.")
     print("Gen1 database integration tests: OK")
     quit(0)
 
