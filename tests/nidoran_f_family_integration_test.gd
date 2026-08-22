@@ -29,7 +29,7 @@ func _initialize() -> void:
 
     var manifest: Dictionary = _read_json(MANIFEST_PATH)
     assert(int(manifest.get("species_count", 0)) == 36)
-    assert(int(manifest.get("move_count", 0)) == 274)
+    assert(int(manifest.get("move_count", 0)) == 276)
     assert(int(manifest.get("route_root_count", 0)) == 13)
     assert((manifest.get("species_files", []) as Array).has(SPECIES_PACK_PATH))
     assert((manifest.get("move_files", []) as Array).has(MOVE_PACK_PATH))
