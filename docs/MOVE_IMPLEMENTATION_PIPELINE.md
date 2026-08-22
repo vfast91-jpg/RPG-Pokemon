@@ -29,6 +29,23 @@ Nicht automatisch Statuswert-basiert sind insbesondere die bloße Anwendung stan
 
 Die aktive Statuskurve bleibt zentral in `data/rules/status_scaling.json` definiert (`R = Status / (75 + Status)`). Einzelne Attacken dürfen keine konkurrierende Statusformel hartkodieren. Für Drain-Rückheilung ist die Zuständigkeit Statuswert bereits verbindlich; die gemeinsame numerische Drain-Kalibrierung wird vor der Bestandsmigration einmal zentral festgelegt.
 
+## Zentrale Flächenschadensregel
+
+Jede **schadende Flächen-/Mehrzielattacke** verwendet die zentrale Timeflow-Flächenschadensformel auf den **final berechneten Schaden pro Ziel**:
+
+- 1 tatsächlich betroffenes Ziel → **100 %**
+- 2 tatsächlich betroffene Ziele → **75 %** je Ziel
+- 3 tatsächlich betroffene Ziele → **60 %** je Ziel
+- 4 oder mehr tatsächlich betroffene Ziele → **50 %** je Ziel
+
+Die Zielzahl wird für eine Attackenauflösung beim ersten Schadentreffer festgeschrieben. Ein frühes K. o. innerhalb derselben Attacke darf den Multiplikator für spätere Ziele derselben Attacke nicht erhöhen. Trefferprüfung, Volltreffer, Typenwirkung, Immunität und Zusatzeffekte bleiben weiterhin pro Ziel getrennt.
+
+Technische Quelle ist ausschließlich `scripts/battle/area_damage_rules.gd`; der finale Schadens-Hook sitzt in `scripts/battle_demo_endgame_v2.gd`. Einzelne Familien- oder Attacken-Layer dürfen **keine eigene konkurrierende Flächenschadensformel** einbauen.
+
+Eine absichtliche Vollschaden-Ausnahme muss im Attackenvertrag ausdrücklich `runtime.timeflow_full_spread_power = true` tragen und durch einen Verhaltenstest abgesichert sein. Bedingte Flächenattacken, die im Grundzustand Einzelziel sind, können zusätzlich `runtime.central_area_damage_scaling = true` tragen; sobald sie zur Mehrzielattacke werden, greift dieselbe zentrale Formel.
+
+`tests/area_damage_scaling_test.gd` auditiert bei jedem Push nach `main` alle aktuell geladenen schadenden Flächenattacken, bekannte Vollschaden-Ausnahmen, bedingte Flächenverträge und die Multiplikator-Tabelle.
+
 ## Wann eine Attacke strikt geprüft wird
 
 Die aktive Integration schaltet den strikten Vertrag automatisch ein, sobald mindestens eines davon vorhanden ist:
