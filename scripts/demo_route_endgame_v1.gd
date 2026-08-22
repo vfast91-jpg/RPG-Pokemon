@@ -8,7 +8,10 @@ extends "res://scripts/demo_route_fundstelle_rewards_v2.gd"
 
 const EndgameBossRules = preload("res://scripts/route_boss_rules.gd")
 
-const ROUTE_STAGE_COUNT: int = 100
+# Do not reuse ROUTE_STAGE_COUNT here: an older inherited route layer already
+# owns that member name for its historical 20-stage implementation. GDScript
+# rejects inherited member redefinitions at parse time.
+const ENDGAME_ROUTE_STAGE_COUNT: int = 100
 const ENDGAME_STAGE_START: int = 91
 const ENDGAME_STAGE_END: int = 100
 const ENDGAME_POST_BATTLE_SETTLE_SECONDS: float = 0.65
@@ -17,7 +20,7 @@ const ENDGAME_POST_BATTLE_SETTLE_SECONDS: float = 0.65
 func _show_stage_choices(message: String = "") -> void:
     super._show_stage_choices(message)
 
-    title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ROUTE_STAGE_COUNT]
+    title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
     progress_label.text = _progress_text()
 
     if stage < ENDGAME_STAGE_START:
@@ -39,7 +42,7 @@ func _show_stage_choices(message: String = "") -> void:
         + "Der Spießrutenlauf hat begonnen. Kein normaler Weg, kein Ausweichen: "
         + "Du musst diesen Boss besiegen.\n\n"
         + "Boss-Regel: höchstes eigenes Pokémon [b]+%d Level[/b] · [b]%d vollständige KP-Leisten[/b]."
-    ) % [stage, ROUTE_STAGE_COUNT, level_offset, hp_bars]
+    ) % [stage, ENDGAME_ROUTE_STAGE_COUNT, level_offset, hp_bars]
 
     var boss_button := Button.new()
     boss_button.text = "🔥 SUPERBOSS HERAUSFORDERN  →"
@@ -53,13 +56,25 @@ func _show_stage_choices(message: String = "") -> void:
 
 
 func _progress_text() -> String:
-    var completed: int = clampi(stage - 1, 0, ROUTE_STAGE_COUNT)
-    var percent: int = int(round(float(completed) / float(ROUTE_STAGE_COUNT) * 100.0))
+    var completed: int = clampi(stage - 1, 0, ENDGAME_ROUTE_STAGE_COUNT)
+    var percent: int = int(round(float(completed) / float(ENDGAME_ROUTE_STAGE_COUNT) * 100.0))
     return "Fortschritt: %d%% · Etappe %d von %d" % [
         percent,
-        clampi(stage, 1, ROUTE_STAGE_COUNT),
-        ROUTE_STAGE_COUNT
+        clampi(stage, 1, ENDGAME_ROUTE_STAGE_COUNT),
+        ENDGAME_ROUTE_STAGE_COUNT
     ]
+
+
+func _highest_team_level() -> int:
+    # The inherited dynamic-encounter layer intentionally clamps at Lv.100.
+    # Endgame bosses must continue scaling above 100, so the active top layer
+    # resolves the real current team maximum without a legacy cap.
+    var highest: int = 1
+    for member_value: Variant in team:
+        if not (member_value is Dictionary):
+            continue
+        highest = maxi(highest, int((member_value as Dictionary).get("level", 1)))
+    return maxi(1, highest)
 
 
 func _boss_level() -> int:
@@ -116,7 +131,7 @@ func _complete_special_stage(summary: String) -> void:
     _clear_container(capture_actions)
     last_route_message = summary
 
-    if stage >= ROUTE_STAGE_COUNT:
+    if stage >= ENDGAME_ROUTE_STAGE_COUNT:
         _finish_run(
             true,
             summary + "\n\n[b]Du hast alle 100 Etappen von Pokémon Timeflow geschafft![/b]"
@@ -276,8 +291,8 @@ func _show_leaderboard_entry_overlay() -> void:
         return
 
     _leaderboard_entry_summary.text = "Etappe %d von %d · %s\nTeam: %s" % [
-        clampi(stage, 1, ROUTE_STAGE_COUNT),
-        ROUTE_STAGE_COUNT,
+        clampi(stage, 1, ENDGAME_ROUTE_STAGE_COUNT),
+        ENDGAME_ROUTE_STAGE_COUNT,
         _leaderboard_pending_outcome,
         LeaderboardStore.team_text({"team": _leaderboard_team_snapshot()})
     ]
