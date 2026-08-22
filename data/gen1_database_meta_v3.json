@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
   "generated_from": {
-    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_FINALSYNC.xlsx",
-    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-22_SCHIGGY_FAMILIE_V4_FINALSYNC.xlsx",
+    "pokemon_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_RAUPY_FAMILIE_V4_DESIGNSYNC.xlsx",
+    "move_workbook": "Attacken_Datenbank_AKTUALISIERT_2026-08-22_RAUPY_FAMILIE_V4_DESIGNSYNC.xlsx",
     "generated_date": "2026-08-22",
-    "policy": "Spreadsheet Gate-1 values are the implementation input; the Schiggy-family Gate-2 FINALSYNC workbooks are the audited post-implementation knowledge state. Bisasam, Glumanda and Schiggy-family TM packages are canonical in the manifest; Tera Blast is intentionally excluded from Timeflow. Special Timeflow translations are implemented centrally in final battle layers and covered by regression tests."
+    "policy": "Spreadsheet Gate-1 values are the implementation input. Bisasam, Glumanda and Schiggy are Gate-2 audited; the Raupy-family Gate-1 DESIGN-SYNC is implemented on main and awaits the post-runtime Excel FINAL-SYNC. Tera Blast is intentionally excluded from Timeflow. Special Timeflow translations are implemented centrally and covered by regression tests."
   },
   "route_roots": [
     "bulbasaur",
@@ -22,14 +22,11 @@
     "missing_move_definitions": [],
     "missing_tm_move_definitions": [
       "alluring_voice",
-      "attract",
-      "baton_pass",
       "charge",
       "charge_beam",
       "cut",
       "defog",
       "disarming_voice",
-      "draining_kiss",
       "eerie_impulse",
       "electric_terrain",
       "encore",
@@ -40,28 +37,21 @@
       "payback",
       "play_rough",
       "poison_tail",
-      "pollen_puff",
-      "psychic",
       "psychic_fangs",
       "reflect",
       "reversal",
       "rock_smash",
       "scale_shot",
-      "shadow_ball",
       "shock_wave",
-      "skill_swap",
       "skitter_smack",
       "sludge_wave",
       "snarl",
-      "snore",
       "spite",
       "steel_wing",
       "strength",
       "swagger",
       "taunt",
-      "thief",
       "throat_chop",
-      "u_turn",
       "upper_hand",
       "volt_switch",
       "wild_charge",
@@ -107,7 +97,11 @@
       "res://data/gen1_moves_runtime_v3_12_5_squirtle_family_tms.json"
     ],
     "squirtle_tm_species_override": "res://data/gen1_species_v3_squirtle_tm_override.json",
+    "caterpie_family_move_pack": "res://data/gen1_moves_runtime_v3_13_caterpie_family_tms.json",
+    "caterpie_family_species_override": "res://data/gen1_species_v3_caterpie_tm_override.json",
+    "caterpie_family_design_source": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_RAUPY_FAMILIE_V4_DESIGNSYNC.xlsx + Attacken_Datenbank_AKTUALISIERT_2026-08-22_RAUPY_FAMILIE_V4_DESIGNSYNC.xlsx",
     "global_flinch_rule": "Zurückschrecken setzt die aktuelle ATB-Leiste des Ziels zentral auf 0 %.",
-    "freeze_rule": "Gefroren ist ein zentraler Hauptstatus und verhindert 1–3 eigene Aktionsmöglichkeiten."
+    "freeze_rule": "Gefroren ist ein zentraler Hauptstatus und verhindert 1–3 eigene Aktionsmöglichkeiten.",
+    "healing_rule": "KP-Heilmengen verwenden keine Status-Softcap-Kurve. Synthese und Ruheort heilen je 50 % Max-KP; Pollenknödel heilt Verbündete um 50 % Max-KP; Drain-Attacken heilen aus tatsächlich verursachtem KP-Schaden."
   }
 }
