@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_rattata_family.gd"
+extends "res://scripts/battle_demo_route_result_guard.gd"
 
 # Pii / Piepi / Pixi integration (Pokemon Timeflow).
 # This layer is intentionally inserted into the active BattleDemo chain.
