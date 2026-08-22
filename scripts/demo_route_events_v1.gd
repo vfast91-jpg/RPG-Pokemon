@@ -8,6 +8,8 @@ extends "res://scripts/demo_route_fundstelle_v1.gd"
 # event is deliberately excluded so the gentler fixed encounter curve cannot be
 # bypassed by a highest-team-level +5 battle with double HP.
 
+const RouteBossRules = preload("res://scripts/route_boss_rules.gd")
+
 const ACTIVE_ROUTE_EVENTS: Array[String] = [
     EVENT_HEAL,
     EVENT_CATCH,
@@ -102,16 +104,24 @@ func _weighted_encounter_species(candidates: Array) -> String:
     return str(candidates[candidates.size() - 1])
 
 
+func _standard_combat_candidates(candidates: Array) -> Array:
+    # Legendary Pokémon are deliberately absent from normal route battles and
+    # ordinary Besondere Begegnungen. This does NOT filter the Fangwiese.
+    return RouteBossRules.filter_standard_combat_candidates(candidates)
+
+
 func _enemy_party_for_stage(current_stage: int) -> Array:
     if battle_demo == null:
         return []
 
     var enemy_count: int = _roll_enemy_count(current_stage)
     var enemy_level: int = _enemy_level_for_encounter(current_stage, enemy_count)
-    var candidates: Array = battle_demo.route_species_ids_for_level(enemy_level)
+    var candidates: Array = _standard_combat_candidates(
+        battle_demo.route_species_ids_for_level(enemy_level)
+    )
     if candidates.is_empty():
         push_error(
-            "Demo-Route: Keine vollständig spielbare Spezies für Gegnerlevel %d verfügbar."
+            "Demo-Route: Keine vollständig spielbare nicht-legendäre Spezies für Gegnerlevel %d verfügbar."
             % enemy_level
         )
         return []
@@ -126,22 +136,28 @@ func _enemy_party_for_stage(current_stage: int) -> Array:
 
 
 func _boss_level() -> int:
-    return clampi(_highest_team_level() + 5, 1, 100)
+    var profile: Dictionary = RouteBossRules.standard_boss_profile()
+    var level_offset: int = int(profile.get("level_offset", 5))
+    return clampi(_highest_team_level() + level_offset, 1, 100)
 
 
 func _begin_rare_encounter() -> void:
     var boss_level: int = _boss_level()
-    var candidates: Array = battle_demo.route_species_ids_for_level(boss_level)
+    var candidates: Array = _standard_combat_candidates(
+        battle_demo.route_species_ids_for_level(boss_level)
+    )
     if candidates.is_empty():
-        event_label.text = "Für die Besondere Begegnung ist auf Level %d noch keine vollständig spielbare Spezies verfügbar." % boss_level
+        event_label.text = "Für die Besondere Begegnung ist auf Level %d noch keine vollständig spielbare nicht-legendäre Spezies verfügbar." % boss_level
         _add_cancel_special_event_button()
         return
 
+    var profile: Dictionary = RouteBossRules.standard_boss_profile()
     var party: Array = [{
         "species_id": _weighted_encounter_species(candidates),
         "level": boss_level,
         "boss": true,
-        "hp_multiplier": BOSS_HP_MULTIPLIER
+        "hp_multiplier": float(profile.get("hp_multiplier", BOSS_HP_MULTIPLIER)),
+        "hp_bars": maxi(1, int(profile.get("hp_bars", 2)))
     }]
     _start_special_battle(EVENT_RARE, party, "👑 Besondere Begegnung")
 
