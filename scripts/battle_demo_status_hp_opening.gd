@@ -7,6 +7,8 @@ extends "res://scripts/battle_demo_layout_mobile.gd"
 # - Player opening choices are collected first; enemy choices remain hidden.
 # - Opening actions are resolved by Speed before normal ATB begins.
 
+const OPENING_BATTLE_SETTLE_SECONDS: float = 0.75
+
 var opening_phase_active: bool = false
 var _opening_player_candidates: Array = []
 var _opening_enemy_candidates: Array = []
@@ -276,6 +278,15 @@ func _resolve_opening_phase() -> void:
 func _resolve_opening_actions_async() -> void:
     if _opening_choices.is_empty():
         _finish_opening_phase()
+        return
+
+    # Runde 0 used to fire on the same frame in which the battle appeared.
+    # Keep the combat paused briefly so the battle scene and battle music have a
+    # perceptible entrance before the first priority/opening move resolves.
+    paused = true
+    _set_log("[b]Kampf beginnt![/b] Runde 0 wird vorbereitet.")
+    await get_tree().create_timer(OPENING_BATTLE_SETTLE_SECONDS).timeout
+    if not battle_active:
         return
 
     for choice_value: Variant in _opening_choices:
