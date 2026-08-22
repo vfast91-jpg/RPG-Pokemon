@@ -92,7 +92,7 @@ func _route_level_notice_for_stage(current_stage: int) -> String:
         return ""
 
     return (
-        "[b]⬆ Neues Routenniveau[/b]\n"
+        "[b]⬆ Neues Levelniveau[/b]\n"
         + "Die Gegnerstärke orientiert sich jetzt an [b]Lv.%d[/b]. "
         + "Kleine Gruppen liegen darüber, große Gruppen darunter."
     ) % _route_base_level_for_stage(current_stage)
