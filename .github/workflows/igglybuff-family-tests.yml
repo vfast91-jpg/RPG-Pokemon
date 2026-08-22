@@ -31,6 +31,9 @@ jobs:
       - name: Parse project headless
         run: ./godot --headless --path . --editor --quit
 
+      - name: Combat lab family registry regression test
+        run: ./godot --headless --path . --script tests/combat_lab_family_registry_regression_test.gd
+
       - name: Fluffeluff starting moves regression test
         run: ./godot --headless --path . --script tests/igglybuff_start_moves_regression_test.gd
 
