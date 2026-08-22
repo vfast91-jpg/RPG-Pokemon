@@ -58,6 +58,13 @@ func _assert_multiplier_table() -> void:
     assert(is_equal_approx(AreaDamageRules.damage_multiplier(4), 0.50), "4 Ziele muessen je 50 % Schaden erhalten.")
     assert(is_equal_approx(AreaDamageRules.damage_multiplier(8), 0.50), "4+ Ziele muessen bei 50 % gedeckelt bleiben.")
 
+    var mislabeled_spread_move: Dictionary = {
+        "area": false,
+        "target": "all_enemies",
+        "runtime": {}
+    }
+    assert(AreaDamageRules.move_uses_central_scaling(mislabeled_spread_move), "Eine all_*-Mehrzielregel darf die zentrale Formel auch bei fehlerhaftem area-Flag nicht umgehen.")
+
 
 func _assert_current_area_damage_registry(lab) -> void:
     var moves_value: Variant = lab.data.get("moves", {})
@@ -159,17 +166,18 @@ func _assert_runtime_target_counting(lab) -> void:
     var swift: Dictionary = moves.get("swift", {})
     assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, swift), 1.0), "Sternschauer muss seine explizite Vollschaden-Ausnahme behalten.")
 
-    # Flächenmacht starts as single-target but becomes spread damage on Psychic
+    # Flaechenmacht starts as single-target but becomes spread damage on Psychic
     # Terrain. Its data contract must still produce the same central multiplier
     # once the runtime changes the target rule.
     var expanding_force: Dictionary = (moves.get("expanding_force", {}) as Dictionary).duplicate(true)
     expanding_force["target"] = "all_enemies"
     expanding_force["area"] = true
-    assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, expanding_force), 0.50), "Bedingte Flächenmacht muss gegen 4 Gegner auf 50 % skalieren.")
+    assert(is_equal_approx(lab._area_damage_multiplier_for_move(actor, expanding_force), 0.50), "Bedingte Flaechenmacht muss gegen 4 Gegner auf 50 % skalieren.")
 
 
 func _is_runtime_area_damage(move: Dictionary) -> bool:
-    if not bool(move.get("area", false)):
+    var target_rule: String = str(move.get("target", ""))
+    if not bool(move.get("area", false)) and not target_rule.begins_with("all_"):
         return false
 
     var runtime_value: Variant = move.get("runtime", {})
