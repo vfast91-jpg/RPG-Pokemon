@@ -1,4 +1,4 @@
-name: Nidoran Female Family Integration
+name: Nidoran Families Integration
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  nidoran-family:
+  nidoran-families:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,3 +33,6 @@ jobs:
 
       - name: Nidoran female family integration test
         run: ./godot --headless --path . --script tests/nidoran_f_family_integration_test.gd
+
+      - name: Nidoran male family integration test
+        run: ./godot --headless --path . --script tests/nidoran_m_family_integration_test.gd
