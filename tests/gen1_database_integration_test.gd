@@ -10,11 +10,14 @@ const CATERPIE_NEW_MOVES: Array[String] = [
     "thief","snore","attract","u_turn","echoed_voice","draining_kiss",
     "psychic","baton_pass","shadow_ball","skill_swap","pollen_puff"
 ]
-const BEEDRILL_NEW_MOVES: Array[String] = [
-    "payback","flash","x_scissor","swagger","cut","defog","rock_smash"
-]
+const BEEDRILL_NEW_MOVES: Array[String] = ["payback","flash","x_scissor","swagger","cut","defog","rock_smash"]
 const PIDGEY_NEW_MOVES: Array[String] = ["steel_wing"]
 const RATTATA_NEW_MOVES: Array[String] = ["taunt","shock_wave","charge_beam","strength"]
+const RETTAN_ARBOK_NEW_MOVES: Array[String] = [
+    "poison_tail","snarl","psychic_fangs","leech_life","spite","lash_out",
+    "scale_shot","sludge_wave","skitter_smack","pain_split","throat_chop"
+]
+
 
 func _initialize() -> void:
     var manifest: Dictionary = _read_json(MANIFEST_PATH)
@@ -37,7 +40,7 @@ func _initialize() -> void:
             moves[str(move_id_value)] = entries[move_id_value]
 
     assert(species.size() == int(manifest.get("species_count", -1)) and species.size() == 27, "Manifest/Spezieszahl muss 27 sein.")
-    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 233, "Manifest/Attackenzahl muss 233 sein.")
+    assert(moves.size() == int(manifest.get("move_count", -1)) and moves.size() == 244, "Manifest/Attackenzahl muss 244 sein.")
     assert((meta.get("route_roots", []) as Array).size() == 10, "Die Demo braucht zehn Basislinien.")
 
     _assert_evolution(species,"bulbasaur","ivysaur",16)
@@ -51,6 +54,7 @@ func _initialize() -> void:
     _assert_evolution(species,"pidgey","pidgeotto",18)
     _assert_evolution(species,"pidgeotto","pidgeot",36)
     _assert_evolution(species,"rattata","raticate",20)
+    _assert_evolution(species,"ekans","arbok",22)
     _assert_evolution(species,"pichu","pikachu",15)
     _assert_evolution(species,"pikachu","raichu",30)
 
@@ -68,6 +72,8 @@ func _initialize() -> void:
     _assert_tm_count(species,"pidgeot",22)
     _assert_tm_count(species,"rattata",29)
     _assert_tm_count(species,"raticate",34)
+    _assert_tm_count(species,"ekans",42)
+    _assert_tm_count(species,"arbok",53)
 
     var blastoise_tms: Dictionary = (((species.get("blastoise", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     for tm_id: String in ["TM046","TM149","TM154","TM158","TM172","TM179"]:
@@ -85,19 +91,24 @@ func _initialize() -> void:
     var pidgey_tms: Dictionary = (((species.get("pidgey", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     var pidgeotto_tms: Dictionary = (((species.get("pidgeotto", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     var pidgeot_tms: Dictionary = (((species.get("pidgeot", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
-    assert(str(pidgey_tms.get("TM047", "")) == "steel_wing", "Taubsi muss TM047 Stahlflügel lernen können.")
-    assert(str(pidgeotto_tms.get("TM047", "")) == "steel_wing", "Tauboga muss TM047 Stahlflügel lernen können.")
-    assert(str(pidgeot_tms.get("TM047", "")) == "steel_wing", "Tauboss muss TM047 Stahlflügel lernen können.")
+    assert(str(pidgey_tms.get("TM047", "")) == "steel_wing")
+    assert(str(pidgeotto_tms.get("TM047", "")) == "steel_wing")
+    assert(str(pidgeot_tms.get("TM047", "")) == "steel_wing")
 
     var rattata_tms: Dictionary = (((species.get("rattata", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     var raticate_tms: Dictionary = (((species.get("raticate", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
     for tm_id: String in ["TM012","TM034","TM057"]:
-        assert(rattata_tms.has(tm_id), "Rattfratz-TM fehlt: " + tm_id)
-        assert(raticate_tms.has(tm_id), "Rattikarl-TM fehlt: " + tm_id)
-    assert(str(rattata_tms.get("TM012", "")) == "taunt")
-    assert(str(rattata_tms.get("TM034", "")) == "shock_wave")
-    assert(str(rattata_tms.get("TM057", "")) == "charge_beam")
-    assert(str(raticate_tms.get("TM096", "")) == "strength", "Rattikarl muss TM096 Stärke lernen können.")
+        assert(rattata_tms.has(tm_id))
+        assert(raticate_tms.has(tm_id))
+    assert(str(raticate_tms.get("TM096", "")) == "strength")
+
+    var ekans_tms: Dictionary = (((species.get("ekans", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
+    var arbok_tms: Dictionary = (((species.get("arbok", {}) as Dictionary).get("learnset", {}) as Dictionary).get("tm_hm", {}))
+    for tm_id: String in ["TM026","TM030","TM063","TM095","TM177","TM199","TM200","TM214","TM219"]:
+        assert(ekans_tms.has(tm_id), "Rettan-TM fehlt: " + tm_id)
+        assert(arbok_tms.has(tm_id), "Arbok-TM fehlt: " + tm_id)
+    assert(str(arbok_tms.get("TM202", "")) == "pain_split")
+    assert(str(arbok_tms.get("TM221", "")) == "throat_chop")
 
     for move_id: String in SQUIRTLE_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Schiggy")
@@ -109,15 +120,17 @@ func _initialize() -> void:
         _assert_runtime_move(moves, move_id, "Taubsi")
     for move_id: String in RATTATA_NEW_MOVES:
         _assert_runtime_move(moves, move_id, "Rattfratz")
+    for move_id: String in RETTAN_ARBOK_NEW_MOVES:
+        _assert_runtime_move(moves, move_id, "Rettan/Arbok")
 
     for unsupported_id: String in ["belch","electro_ball"]:
-        var move: Dictionary = moves.get(unsupported_id, {})
-        assert(not bool((move.get("runtime", {}) as Dictionary).get("runtime_supported", true)), unsupported_id + " muss als unabhängige Runtime-Lücke deaktiviert bleiben.")
+        var unsupported_move: Dictionary = moves.get(unsupported_id, {})
+        assert(not bool((unsupported_move.get("runtime", {}) as Dictionary).get("runtime_supported", true)), unsupported_id + " muss als unabhängige Runtime-Lücke deaktiviert bleiben.")
 
     var gaps: Dictionary = meta.get("data_gaps", {})
     var missing_tm: Array = gaps.get("missing_tm_move_definitions", [])
     assert(not missing_tm.has("tera_blast"), "Tera-Ausbruch darf nicht als offene Timeflow-TM geführt werden.")
-    for move_id: String in SQUIRTLE_NEW_MOVES + CATERPIE_NEW_MOVES + BEEDRILL_NEW_MOVES + PIDGEY_NEW_MOVES + RATTATA_NEW_MOVES:
+    for move_id: String in SQUIRTLE_NEW_MOVES + CATERPIE_NEW_MOVES + BEEDRILL_NEW_MOVES + PIDGEY_NEW_MOVES + RATTATA_NEW_MOVES + RETTAN_ARBOK_NEW_MOVES:
         assert(not missing_tm.has(move_id), "Implementierte TM darf nicht mehr als Datenlücke geführt werden: " + move_id)
 
     var partial_rules: Array = gaps.get("runtime_partial_rules", [])
@@ -135,6 +148,8 @@ func _initialize() -> void:
     assert(scene_text.contains("res://scripts/battle_demo_route_vitamins_v1.gd"), "main.tscn muss den aktuellen BattleDemo-Einstieg laden.")
     var route_guard_text: String = FileAccess.get_file_as_string("res://scripts/battle_demo_route_result_guard.gd")
     assert(route_guard_text.contains("res://scripts/battle_demo_rattata_family.gd"), "Die aktive BattleDemo-Kette muss die Rattfratz-Runtime laden.")
+    var rattata_text: String = FileAccess.get_file_as_string("res://scripts/battle_demo_rattata_family.gd")
+    assert(rattata_text.contains("res://scripts/battle_demo_rettan_arbok_family.gd"), "Die aktive BattleDemo-Kette muss die Rettan/Arbok-Runtime laden.")
     assert(scene_text.contains("res://scripts/demo_route_cleanup_v1.gd"), "main.tscn muss den aktuellen Demo-Routen-Einstieg laden.")
     print("Gen1 database integration tests: OK")
     quit(0)

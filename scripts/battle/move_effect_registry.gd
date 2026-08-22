@@ -5,12 +5,7 @@ const IMPLEMENTED: String = "implemented"
 const PARTIAL: String = "partial"
 const UNSUPPORTED: String = "unsupported"
 
-# One registry entry is the contract between attack data, runtime and every
-# player-facing surface. Bad Poison, Freeze and Zurückschrecken are fully
-# implemented by the final Timeflow battle layers.
-#
-# Zurückschrecken deliberately requires only a chance. Historical `amount`
-# fields are legacy metadata; the canonical effect is always ATB -> 0 %.
+# Central contract between attack data, runtime and player-facing surfaces.
 const EFFECTS: Dictionary = {
     "damage": {"player_label":"Schaden","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "status": {"player_label":"Haupt-/Kampfstatus","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["status"]},
@@ -53,6 +48,11 @@ const EFFECTS: Dictionary = {
     "db_break_protect": {"player_label":"Schutzschild durchbrechen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_light_screen": {"player_label":"Lichtschild","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
     "db_atb_pause": {"player_label":"ATB-Pause","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
+    "db_move_ap_override": {"player_label":"RPG-AP festsetzen","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["ap","duration_actions"]},
+    "db_break_team_barriers": {"player_label":"Team-Barrieren zerstören","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
+    "db_drain_from_damage": {"player_label":"KP aus Schaden heilen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":["fraction"]},
+    "db_pair_hp_average": {"player_label":"KP zwischen zwei Pokémon teilen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
+    "db_block_move_tag": {"player_label":"Attackenmerkmal sperren","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["tag","duration_actions"]},
     "bulba_endure": {"player_label":"Ausdauer","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
     "bulba_rest": {"player_label":"Erholung","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":[]},
     "bulba_sleep_talk": {"player_label":"Schlafrede","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
@@ -76,34 +76,44 @@ const TARGETS: Array[String] = ["enemy_highest_aggro", "all_enemies", "self", "a
 const CATEGORIES: Array[String] = ["physical", "special", "status"]
 const TYPES: Array[String] = ["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"]
 
+
 static func effect_spec(kind: String) -> Dictionary:
     var value: Variant = EFFECTS.get(kind, {})
     return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
 
 static func status_spec(status_id: String) -> Dictionary:
     var value: Variant = STATUSES.get(status_id, {})
     return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
+
 static func is_known_effect(kind: String) -> bool:
     return EFFECTS.has(kind)
+
 
 static func is_known_status(status_id: String) -> bool:
     return STATUSES.has(status_id)
 
+
 static func is_known_target(target: String) -> bool:
     return TARGETS.has(target)
+
 
 static func is_known_type(type_id: String) -> bool:
     return TYPES.has(type_id)
 
+
 static func is_known_category(category: String) -> bool:
     return CATEGORIES.has(category)
+
 
 static func player_label_for_effect(kind: String) -> String:
     return str(effect_spec(kind).get("player_label", ""))
 
+
 static func player_label_for_status(status_id: String) -> String:
     return str(status_spec(status_id).get("player_label", status_id))
+
 
 static func surface_contract_errors() -> Array[String]:
     var errors: Array[String] = []

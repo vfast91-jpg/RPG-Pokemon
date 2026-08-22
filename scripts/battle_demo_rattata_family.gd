@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_pidgey_family.gd"
+extends "res://scripts/battle_demo_rettan_arbok_family.gd"
 
 # Rattfratz -> Rattikarl V4 runtime integration.
 # Schockwelle uses the existing accuracy=null always-hit path, Ladestrahl uses

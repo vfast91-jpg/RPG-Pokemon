@@ -18,16 +18,8 @@
       "emoji": "👁️",
       "effect_source": "apply_status(paralysis, chance=1.0, trigger=successful_hit)",
       "special_rules": "Zentrale Paralyse und zentrale Statusimmunitäten; keine lokale Paralyse-Logik. Aktueller deutscher Name: Schlangenblick; historisch hieß die Attacke Giftblick.",
-      "mechanics": [
-        {
-          "kind": "status",
-          "status": "paralysis",
-          "chance": 1.0
-        }
-      ],
-      "runtime": {
-        "runtime_supported": true
-      }
+      "mechanics": [{"kind":"status","status":"paralysis","chance":1.0}],
+      "runtime": {"runtime_supported":true}
     },
     "screech": {
       "id": "screech",
@@ -44,19 +36,11 @@
       "opening": false,
       "contact": false,
       "emoji": "🔊",
+      "tags": ["sound"],
       "effect_source": "temporary_effect(incoming_damage_multiplier=1+2*R(status), duration=3_target_own_actions)",
       "special_rules": "Die originale starke Verteidigungssenkung wird im RPG-System als 2×-Statuswert-Skalierung auf die zentrale Verteidigung übersetzt. R = Statuswert/(75+Statuswert).",
-      "mechanics": [
-        {
-          "kind": "incoming_damage_mod",
-          "multiplier_from_special": 2.0,
-          "uses_special_percent": true,
-          "duration": "3_actions"
-        }
-      ],
-      "runtime": {
-        "runtime_supported": true
-      }
+      "mechanics": [{"kind":"incoming_damage_mod","multiplier_from_special":2.0,"uses_special_percent":true,"duration":"3_actions"}],
+      "runtime": {"runtime_supported":true}
     },
     "acid": {
       "id": "acid",
@@ -75,24 +59,8 @@
       "emoji": "🧪",
       "effect_source": "[damage, per_target_chance(0.10, temporary_effect(incoming_damage_multiplier=1+R(status), duration=3_target_own_actions))]",
       "special_rules": "Genauigkeit und 10%-Zusatzwirkung werden pro Ziel aufgelöst. Die ursprüngliche Spezial-Verteidigungssenkung wird auf die zentrale Verteidigung des RPG-Systems abgebildet. R = Statuswert/(75+Statuswert).",
-      "mechanics": [
-        {
-          "kind": "damage"
-        },
-        {
-          "kind": "db_chance_mechanic",
-          "chance": 0.1,
-          "mechanic": {
-            "kind": "incoming_damage_mod",
-            "multiplier_from_special": 1.0,
-            "uses_special_percent": true,
-            "duration": "3_actions"
-          }
-        }
-      ],
-      "runtime": {
-        "runtime_supported": true
-      }
+      "mechanics": [{"kind":"damage"},{"kind":"db_chance_mechanic","chance":0.1,"mechanic":{"kind":"incoming_damage_mod","multiplier_from_special":1.0,"uses_special_percent":true,"duration":"3_actions"}}],
+      "runtime": {"runtime_supported":true}
     }
   }
 }
