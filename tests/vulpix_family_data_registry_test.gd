@@ -16,9 +16,9 @@ func _initialize() -> void:
     var weights: Dictionary = _read_json(WEIGHTS_PATH)
     var encounters: Dictionary = _read_json(ENCOUNTERS_PATH)
 
-    _check_equal_int(int(manifest.get("species_count", 0)), 41, "V6-Speziesanzahl ist falsch.")
-    _check_equal_int(int(manifest.get("move_count", 0)), 308, "V6-Attackenanzahl ist falsch.")
-    _check_equal_int(int(manifest.get("route_root_count", 0)), 15, "V6-Routenfamilienanzahl ist falsch.")
+    _check_equal_int(int(manifest.get("species_count", 0)), 43, "V6-Speziesanzahl ist falsch.")
+    _check_equal_int(int(manifest.get("move_count", 0)), 313, "V6-Attackenanzahl ist falsch.")
+    _check_equal_int(int(manifest.get("route_root_count", 0)), 16, "V6-Routenfamilienanzahl ist falsch.")
 
     var species_files_value: Variant = manifest.get("species_files", [])
     var species_files: Array = species_files_value if species_files_value is Array else []
