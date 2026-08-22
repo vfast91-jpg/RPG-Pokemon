@@ -59,7 +59,12 @@ func _canonical_species_runtime(source: Dictionary) -> Dictionary:
     if evolution_value is Dictionary:
         var evolution: Dictionary = evolution_value
         var target_id: String = str(evolution.get("evolves_into", ""))
-        var level: int = int(evolution.get("evolution_level", 0))
+        var level_value: Variant = evolution.get("evolution_level", 0)
+        var level: int = 0
+        if level_value is int or level_value is float:
+            level = int(level_value)
+        elif level_value is String and (level_value as String).is_valid_int():
+            level = int(level_value)
         if not target_id.is_empty() and level > 0:
             result["evolution"] = {
                 "target_species_id": target_id,
