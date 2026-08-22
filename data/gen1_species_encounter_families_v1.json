@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "source_date": "2026-08-22",
-  "source_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_FAMILIEN_FANGRATE_V1.xlsx",
+  "source_workbook": "Pokemon_Datenbank_Gen1_AKTUALISIERT_2026-08-22_SANDAN_SANDAMER_V2.xlsx",
   "definition": "family_catch_rate = arithmetic mean of the species catch_rate values of all members in the complete evolution family",
   "families": {
     "bulbasaur": {
@@ -43,6 +43,10 @@
     "pichu": {
       "members": ["pikachu", "raichu", "pichu"],
       "family_catch_rate": 151.666667
+    },
+    "sandshrew": {
+      "members": ["sandshrew", "sandslash"],
+      "family_catch_rate": 172.5
     }
   },
   "species_to_family": {
@@ -72,6 +76,8 @@
     "arbok": "ekans",
     "pikachu": "pichu",
     "raichu": "pichu",
-    "pichu": "pichu"
+    "pichu": "pichu",
+    "sandshrew": "sandshrew",
+    "sandslash": "sandshrew"
   }
 }
