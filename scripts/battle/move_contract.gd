@@ -322,8 +322,28 @@ static func _validate_player_text(move_id: String, description: String, report: 
     if description.contains("×"):
         _append(report, "errors", move_id + ": Spielerbeschreibung enthält einen Roh-Multiplikator (×).")
     for token: String in FORBIDDEN_PLAYER_TEXT:
-        if lower.contains(token):
+        if _contains_forbidden_player_token(lower, token):
             _append(report, "errors", move_id + ": Spielerbeschreibung enthält verbotenen/technischen Begriff: " + token)
+
+
+static func _contains_forbidden_player_token(lower: String, token: String) -> bool:
+    if token != "tempo":
+        return lower.contains(token)
+
+    # "Tempo" is forbidden when it is actually used as a synonym for
+    # Geschwindigkeit. It must not match the unrelated word stem "tempor-"
+    # in valid player text such as "temporär" or "temporären".
+    var search_from: int = 0
+    while true:
+        var index: int = lower.find(token, search_from)
+        if index < 0:
+            return false
+        var after: int = index + token.length()
+        if after >= lower.length() or lower.substr(after, 1) != "r":
+            return true
+        search_from = after
+
+    return false
 
 
 static func _needs_behavior_tests(move: Dictionary, has_special_mechanic: bool) -> bool:

@@ -6,9 +6,9 @@ const NIDORAN_M_MANIFEST_PATH: String = "res://data/gen1_database_manifest_v4.js
 const NIDORAN_M_META_PATH: String = "res://data/gen1_database_meta_v4.json"
 
 # The parent Nidoran♀ layer validates the same global V4 manifest while it is
-# still only responsible for the first 33 species / 271 moves / 12 route roots.
+# still only responsible for the first 32 species / 271 moves / 12 route roots.
 # During that parent phase, expose its phase-local counts. The final male layer
-# then validates the actual complete V4 manifest (36 / 274 / 13).
+# then validates the actual complete V4 manifest (35 / 273 / 13).
 var _nidoran_m_parent_load_phase: bool = false
 
 
@@ -16,7 +16,7 @@ func _database_read_json_dictionary(path: String) -> Dictionary:
     var parsed: Dictionary = super._database_read_json_dictionary(path)
     if _nidoran_m_parent_load_phase and path == NIDORAN_M_MANIFEST_PATH:
         parsed = parsed.duplicate(true)
-        parsed["species_count"] = 33
+        parsed["species_count"] = 32
         parsed["move_count"] = 271
         parsed["route_root_count"] = 12
     return parsed

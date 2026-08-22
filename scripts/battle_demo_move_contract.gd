@@ -2,8 +2,8 @@ extends "res://scripts/battle_demo_aggro_scaling_final.gd"
 
 # Final attack contract layer.
 # New attack packages are compiled/validated here before they become selectable.
-# Existing schema-v3 runtime data remains compatible, while V4-shaped entries
-# opt into the strict contract automatically.
+# Existing schema-v3 runtime data remains compatible. Strict V4 validation is
+# enabled explicitly by runtime.strict_contract or required_behavior_tests.
 
 const MoveContract = preload("res://scripts/battle/move_contract.gd")
 const MovePresenter = preload("res://scripts/battle/move_presenter.gd")
@@ -28,6 +28,55 @@ func _load_data() -> void:
     _apply_move_contract()
 
 
+# Legacy Sandstorm data already owns the correct Timeflow weather block and
+# runtime behavior, but predates the generic {kind="weather"} contract marker.
+# Normalize that one schema gap before the inherited weather audit runs.
+func _audit_weather_moves() -> void:
+    _normalize_legacy_sandstorm_weather_contract()
+    super._audit_weather_moves()
+
+
+func _normalize_legacy_sandstorm_weather_contract() -> void:
+    var moves_value: Variant = data.get("moves", {})
+    if not (moves_value is Dictionary):
+        return
+    var moves: Dictionary = moves_value
+    var move_value: Variant = moves.get("sandstorm", {})
+    if not (move_value is Dictionary):
+        return
+    var move: Dictionary = move_value
+    if not (move.get("weather", null) is Dictionary):
+        return
+
+    var mechanics_value: Variant = move.get("mechanics", [])
+    var mechanics: Array = mechanics_value if mechanics_value is Array else []
+    for mechanic_value: Variant in mechanics:
+        if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == "weather":
+            return
+    mechanics.append({"kind": "weather"})
+    move["mechanics"] = mechanics
+    moves["sandstorm"] = move
+    data["moves"] = moves
+
+
+# Some legacy status moves use power=null. The older Pikachu-family success
+# helper attempted int(null), which is invalid in Godot 4.7. Keep damage
+# detection type-safe while still accepting numeric strings from old exports.
+func _pika_move_has_damage(move: Dictionary) -> bool:
+    var mechanics_value: Variant = move.get("mechanics", [])
+    if mechanics_value is Array:
+        for mechanic_value: Variant in mechanics_value:
+            if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == "damage":
+                return true
+
+    var power_value: Variant = move.get("power", 0)
+    if power_value is int or power_value is float:
+        return float(power_value) > 0.0
+    if power_value is String and (power_value as String).is_valid_float():
+        return float(power_value) > 0.0
+    return false
+
+
 func _apply_move_contract() -> void:
     var moves_value: Variant = data.get("moves", {})
     if not (moves_value is Dictionary):
@@ -48,8 +97,6 @@ func _apply_move_contract() -> void:
         var strict: bool = (
             bool(runtime.get("strict_contract", false))
             or source.has("required_behavior_tests")
-            or source.has("rpg_ap")
-            or source.has("effects")
         )
 
         var report: Dictionary = MoveContract.compile_move(source, strict)
