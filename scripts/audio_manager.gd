@@ -23,14 +23,18 @@ const STINGER_POKEMON: String = "res://assets/audio/music/stingers/201. Obtained
 const SFX_ATTACK: String = "res://assets/audio/sfx/freesound_community-whoosh-6316.mp3"
 
 # Global rule for every long music track:
-# - skip the first 3 seconds
-# - skip the final 5 seconds (usually fade-out)
-# - restart immediately at second 3
+# - first playback starts at 0:00 so the musical intro is heard once
+# - five seconds before the file ends, jump to second 3
+# - every later loop therefore runs from second 3 to five seconds before the end
 # Manual looping is used because Godot's native MP3 loop offset can choose the
 # restart position, but does not provide the required early loop end point.
 const LOOP_START_SECONDS: float = 3.0
 const LOOP_END_SKIP_SECONDS: float = 5.0
 
+# Music changes use two players so the outgoing and incoming tracks overlap
+# briefly instead of producing a hard cut.
+const MUSIC_CROSSFADE_SECONDS: float = 0.65
+const MUSIC_FADE_FLOOR_DB: float = -48.0
 const MUSIC_VOLUME_DB: float = -9.0
 const EVENT_VOLUME_DB: float = -4.0
 const SFX_VOLUME_DB: float = -5.0
@@ -43,6 +47,8 @@ var _music_manual_loop_active: bool = false
 var _music_loop_end_seconds: float = 0.0
 
 var _music_player: AudioStreamPlayer
+var _music_standby_player: AudioStreamPlayer
+var _music_transition_tween: Tween
 var _event_player: AudioStreamPlayer
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _next_sfx_player: int = 0
@@ -50,9 +56,14 @@ var _next_sfx_player: int = 0
 
 func _ready() -> void:
     _music_player = AudioStreamPlayer.new()
-    _music_player.name = "MusicPlayer"
+    _music_player.name = "MusicPlayerA"
     _music_player.volume_db = MUSIC_VOLUME_DB
     add_child(_music_player)
+
+    _music_standby_player = AudioStreamPlayer.new()
+    _music_standby_player.name = "MusicPlayerB"
+    _music_standby_player.volume_db = MUSIC_VOLUME_DB
+    add_child(_music_standby_player)
 
     _event_player = AudioStreamPlayer.new()
     _event_player.name = "EventPlayer"
@@ -73,6 +84,8 @@ func _process(_delta: float) -> void:
     if _music_loop_end_seconds <= LOOP_START_SECONDS:
         return
 
+    # The first pass starts at 0:00. Only when the loop boundary is reached do
+    # we jump back to second 3, so the intro is never repeated afterwards.
     if _music_player.get_playback_position() >= _music_loop_end_seconds:
         _music_player.play(LOOP_START_SECONDS)
 
@@ -154,9 +167,18 @@ func play_attack_sfx() -> void:
 func stop_music() -> void:
     _music_manual_loop_active = false
     _music_loop_end_seconds = 0.0
+    _current_music_path = ""
+
+    if _music_transition_tween != null:
+        _music_transition_tween.kill()
+        _music_transition_tween = null
+
     if _music_player != null:
         _music_player.stop()
-    _current_music_path = ""
+        _music_player.volume_db = MUSIC_VOLUME_DB
+    if _music_standby_player != null:
+        _music_standby_player.stop()
+        _music_standby_player.volume_db = MUSIC_VOLUME_DB
 
 
 func stop_all() -> void:
@@ -186,13 +208,12 @@ func _play_looping_music(path: String) -> void:
         )
         loop_end = stream_length
 
-    _music_player.stop()
-    _music_player.stream = stream
-    _music_player.volume_db = MUSIC_VOLUME_DB
-    _music_manual_loop_active = loop_end > LOOP_START_SECONDS
-    _music_loop_end_seconds = loop_end
-    _current_music_path = path
-    _music_player.play(LOOP_START_SECONDS if stream_length > LOOP_START_SECONDS else 0.0)
+    _transition_music_stream(
+        path,
+        stream,
+        loop_end > LOOP_START_SECONDS,
+        loop_end
+    )
 
 
 func _play_one_shot_on_music_channel(path: String) -> void:
@@ -202,13 +223,71 @@ func _play_one_shot_on_music_channel(path: String) -> void:
     if stream == null:
         return
     _disable_loop(stream)
-    _music_manual_loop_active = false
-    _music_loop_end_seconds = 0.0
-    _music_player.stop()
-    _music_player.stream = stream
-    _music_player.volume_db = MUSIC_VOLUME_DB
-    _music_player.play()
+    _transition_music_stream(path, stream, false, 0.0)
+
+
+func _transition_music_stream(
+    path: String,
+    stream: AudioStream,
+    manual_loop: bool,
+    loop_end_seconds: float
+) -> void:
+    if _music_player == null or _music_standby_player == null:
+        return
+
+    # If another music change happened during the previous 0.65 s crossfade,
+    # stop that tween and use the two current players for the newest request.
+    if _music_transition_tween != null:
+        _music_transition_tween.kill()
+        _music_transition_tween = null
+
+    var outgoing: AudioStreamPlayer = _music_player
+    var incoming: AudioStreamPlayer = _music_standby_player
+    var has_outgoing: bool = outgoing.playing
+
+    incoming.stop()
+    incoming.stream = stream
+    incoming.volume_db = MUSIC_FADE_FLOOR_DB if has_outgoing else MUSIC_VOLUME_DB
+
+    # Every newly selected track is a genuinely new playback and therefore gets
+    # its complete musical intro once. LOOP_START_SECONDS is used only later by
+    # _process() when the first loop boundary is reached.
+    incoming.play(0.0)
+
+    _music_player = incoming
+    _music_standby_player = outgoing
+    _music_manual_loop_active = manual_loop
+    _music_loop_end_seconds = loop_end_seconds
     _current_music_path = path
+
+    if not has_outgoing:
+        incoming.volume_db = MUSIC_VOLUME_DB
+        outgoing.stop()
+        outgoing.volume_db = MUSIC_VOLUME_DB
+        return
+
+    _music_transition_tween = create_tween()
+    _music_transition_tween.set_parallel(true)
+    _music_transition_tween.tween_property(
+        outgoing,
+        "volume_db",
+        MUSIC_FADE_FLOOR_DB,
+        MUSIC_CROSSFADE_SECONDS
+    )
+    _music_transition_tween.tween_property(
+        incoming,
+        "volume_db",
+        MUSIC_VOLUME_DB,
+        MUSIC_CROSSFADE_SECONDS
+    )
+    _music_transition_tween.finished.connect(_finish_music_transition.bind(outgoing))
+
+
+func _finish_music_transition(outgoing: AudioStreamPlayer) -> void:
+    if outgoing != null and outgoing != _music_player:
+        outgoing.stop()
+        outgoing.volume_db = MUSIC_VOLUME_DB
+    _music_transition_tween = null
 
 
 func _play_event(path: String) -> void:
