@@ -25,7 +25,7 @@ func _initialize() -> void:
         var stage: int = int(stage_value)
         var expected_level: int = int(expected_notices[stage])
         var notice: String = route._route_level_notice_for_stage(stage)
-        _check(notice.contains("Neues Routenniveau"), "Etappe %d muss einen Niveau-Hinweis anzeigen." % stage)
+        _check(notice.contains("Neues Levelniveau"), "Etappe %d muss einen Levelniveau-Hinweis anzeigen." % stage)
         _check(notice.contains("Lv.%d" % expected_level), "Etappe %d muss Basisniveau Lv.%d nennen." % [stage, expected_level])
 
     for stage: int in [1, 2, 5, 7, 10, 12, 20, 22, 30, 40, 50, 60, 70, 80, 90]:
