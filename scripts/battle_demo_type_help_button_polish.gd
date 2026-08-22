@@ -1,5 +1,9 @@
-extends "res://scripts/battle_demo_database_sandshrew_family.gd"
+extends "res://scripts/battle_demo_database_nidoran_f_family.gd"
 
+# Active family chain:
+# battle_demo_database_nidoran_f_family.gd extends
+# res://scripts/battle_demo_database_sandshrew_family.gd.
+#
 # Final visual polish for the optional type-reference button.
 # Keeps the button compact and visually consistent with the battle UI without
 # changing the type-help overlay, combat layout, or battle mechanics.
@@ -14,8 +18,6 @@ func _polish_type_help_button() -> void:
     if _type_help_button == null:
         return
 
-    # Short, calm utility label: the tooltip explains the function, so the
-    # question mark is unnecessary visual noise in the always-visible HUD.
     _type_help_button.text = "TYPEN"
     _type_help_button.tooltip_text = "Typen-Stärken und -Schwächen anzeigen"
     _type_help_button.custom_minimum_size = Vector2(76.0, 25.0)
@@ -32,9 +34,6 @@ func _polish_type_help_button() -> void:
     _type_help_button.add_theme_color_override("font_pressed_color", Color("ffe46c"))
     _type_help_button.add_theme_color_override("font_disabled_color", Color("8e9993"))
 
-    # Same visual language as the combat command/info panels: deep forest
-    # surface, warm gold edge, restrained rounded corners. Hover brightens the
-    # frame rather than turning the whole button into a loud highlight.
     _type_help_button.add_theme_stylebox_override(
         "normal",
         _type_help_utility_style(Color("18231fe8"), Color("bfae63"), 1)
