@@ -22,19 +22,14 @@ const STINGER_POKEMON: String = "res://assets/audio/music/stingers/201. Obtained
 
 const SFX_ATTACK: String = "res://assets/audio/sfx/freesound_community-whoosh-6316.mp3"
 
-# The infrastructure already supports intro -> loop-section playback. Exact
-# musical loop offsets still need one listening pass, therefore they deliberately
-# remain 0.0 instead of pretending guessed timestamps are correct.
-const LOOP_OFFSETS: Dictionary = {
-    TRACK_MAIN_MENU: 0.0,
-    TRACK_ROUTE_EARLY: 0.0,
-    TRACK_ROUTE_MID: 0.0,
-    TRACK_ROUTE_LATE: 0.0,
-    TRACK_ROUTE_ENDGAME: 0.0,
-    TRACK_BATTLE_NORMAL: 0.0,
-    TRACK_BATTLE_BOSS: 0.0,
-    TRACK_BATTLE_FINAL: 0.0
-}
+# Global rule for every long music track:
+# - skip the first 3 seconds
+# - skip the final 5 seconds (usually fade-out)
+# - restart immediately at second 3
+# Manual looping is used because Godot's native MP3 loop offset can choose the
+# restart position, but does not provide the required early loop end point.
+const LOOP_START_SECONDS: float = 3.0
+const LOOP_END_SKIP_SECONDS: float = 5.0
 
 const MUSIC_VOLUME_DB: float = -9.0
 const EVENT_VOLUME_DB: float = -4.0
@@ -44,6 +39,8 @@ const SFX_POOL_SIZE: int = 4
 var current_battle_kind: String = "normal"
 var _prepared_battle_kind: String = "normal"
 var _current_music_path: String = ""
+var _music_manual_loop_active: bool = false
+var _music_loop_end_seconds: float = 0.0
 
 var _music_player: AudioStreamPlayer
 var _event_player: AudioStreamPlayer
@@ -68,6 +65,16 @@ func _ready() -> void:
         player.volume_db = SFX_VOLUME_DB
         add_child(player)
         _sfx_players.append(player)
+
+
+func _process(_delta: float) -> void:
+    if not _music_manual_loop_active or _music_player == null or not _music_player.playing:
+        return
+    if _music_loop_end_seconds <= LOOP_START_SECONDS:
+        return
+
+    if _music_player.get_playback_position() >= _music_loop_end_seconds:
+        _music_player.play(LOOP_START_SECONDS)
 
 
 func play_main_menu() -> void:
@@ -145,6 +152,8 @@ func play_attack_sfx() -> void:
 
 
 func stop_music() -> void:
+    _music_manual_loop_active = false
+    _music_loop_end_seconds = 0.0
     if _music_player != null:
         _music_player.stop()
     _current_music_path = ""
@@ -161,19 +170,29 @@ func stop_all() -> void:
 func _play_looping_music(path: String) -> void:
     if _music_player == null or path.is_empty():
         return
-    if _current_music_path == path and _music_player.playing:
+    if _current_music_path == path and _music_player.playing and _music_manual_loop_active:
         return
 
     var stream: AudioStream = _load_audio(path)
     if stream == null:
         return
-    _configure_loop(stream, path)
+    _disable_loop(stream)
+
+    var stream_length: float = stream.get_length()
+    var loop_end: float = stream_length - LOOP_END_SKIP_SECONDS
+    if stream_length <= LOOP_START_SECONDS + LOOP_END_SKIP_SECONDS:
+        push_warning(
+            "Audio ist zu kurz für die globale Loop-Regel 3s/5s: " + path
+        )
+        loop_end = stream_length
 
     _music_player.stop()
     _music_player.stream = stream
     _music_player.volume_db = MUSIC_VOLUME_DB
-    _music_player.play()
+    _music_manual_loop_active = loop_end > LOOP_START_SECONDS
+    _music_loop_end_seconds = loop_end
     _current_music_path = path
+    _music_player.play(LOOP_START_SECONDS if stream_length > LOOP_START_SECONDS else 0.0)
 
 
 func _play_one_shot_on_music_channel(path: String) -> void:
@@ -183,6 +202,8 @@ func _play_one_shot_on_music_channel(path: String) -> void:
     if stream == null:
         return
     _disable_loop(stream)
+    _music_manual_loop_active = false
+    _music_loop_end_seconds = 0.0
     _music_player.stop()
     _music_player.stream = stream
     _music_player.volume_db = MUSIC_VOLUME_DB
@@ -212,17 +233,6 @@ func _load_audio(path: String) -> AudioStream:
         return value as AudioStream
     push_warning("Datei ist kein AudioStream: " + path)
     return null
-
-
-func _configure_loop(stream: AudioStream, path: String) -> void:
-    if stream is AudioStreamMP3:
-        var mp3 := stream as AudioStreamMP3
-        mp3.loop = true
-        mp3.loop_offset = float(LOOP_OFFSETS.get(path, 0.0))
-    elif stream is AudioStreamOggVorbis:
-        var ogg := stream as AudioStreamOggVorbis
-        ogg.loop = true
-        ogg.loop_offset = float(LOOP_OFFSETS.get(path, 0.0))
 
 
 func _disable_loop(stream: AudioStream) -> void:
