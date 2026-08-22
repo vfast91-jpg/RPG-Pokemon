@@ -13,6 +13,22 @@ extends "res://scripts/battle_demo_endgame_v1.gd"
 
 const AreaDamageRules = preload("res://scripts/battle/area_damage_rules.gd")
 
+# Keyed by actor id + counted action + move id. The first damage resolution of
+# a spread move freezes its target-count multiplier for that whole action. That
+# prevents early KOs from making later targets in the SAME attack take a larger
+# percentage simply because fewer Pokemon are still alive by then.
+var _area_damage_action_multipliers: Dictionary = {}
+
+
+func _start_battle() -> void:
+    _area_damage_action_multipliers.clear()
+    super._start_battle()
+
+
+func open_config() -> void:
+    _area_damage_action_multipliers.clear()
+    super.open_config()
+
 
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
     var requested_level: int = maxi(1, int(setup.get("level", 1)))
@@ -62,7 +78,7 @@ func _damage(
     if move.is_empty() or not AreaDamageRules.move_uses_central_scaling(move):
         return damage
 
-    var multiplier: float = _area_damage_multiplier_for_move(actor, move)
+    var multiplier: float = _area_damage_multiplier_for_resolution(actor, move)
     if multiplier >= 0.9999:
         return damage
 
@@ -77,6 +93,21 @@ func _area_damage_active_move() -> Dictionary:
     if move_id.is_empty():
         return {}
     return _move_data(move_id)
+
+
+func _area_damage_multiplier_for_resolution(actor: Dictionary, move: Dictionary) -> float:
+    if not AreaDamageRules.move_uses_central_scaling(move):
+        return 1.0
+
+    var move_id: String = str(move.get("id", _database_move_id))
+    var action_key: String = (
+        str(actor.get("id", ""))
+        + "|" + str(actor.get("action_serial", 0))
+        + "|" + move_id
+    )
+    if not _area_damage_action_multipliers.has(action_key):
+        _area_damage_action_multipliers[action_key] = _area_damage_multiplier_for_move(actor, move)
+    return float(_area_damage_action_multipliers.get(action_key, 1.0))
 
 
 func _area_damage_multiplier_for_move(actor: Dictionary, move: Dictionary) -> float:
