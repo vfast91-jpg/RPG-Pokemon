@@ -57,6 +57,8 @@ jobs:
         run: ./godot --headless --path . --script tests/caterpie_family_tm_mechanics_test.gd
       - name: Hornliu/Kokuna/Bibor TM mechanics test
         run: ./godot --headless --path . --script tests/beedrill_family_tm_mechanics_test.gd
+      - name: Taubsi/Tauboga/Tauboss TM mechanics test
+        run: ./godot --headless --path . --script tests/pidgey_family_tm_mechanics_test.gd
       - name: Periodic wait effects regression test
         run: ./godot --headless --path . --script tests/periodic_wait_effects_test.gd
       - name: Combat roster layout regression test
