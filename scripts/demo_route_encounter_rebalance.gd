@@ -5,10 +5,9 @@ extends "res://scripts/demo_route_user_polish.gd"
 # table so route progression is easy to understand and balance:
 # 1-5 -> 3, 6-10 -> 7, then +8 levels per ten-stage block through stage 90.
 #
-# Encounter size still changes the actual enemy level to compensate for action
-# economy. Stages 1-5 keep their reduced enemy-count caps from the onboarding
-# layer and use a gentler modifier set; from stage 6 onward the established
-# +5 / +1 / -1 / -3 modifiers apply.
+# Stages 1-5 are a fixed onboarding sequence without positive action-economy
+# corrections. From stage 6 onward encounters are random again and use the
+# established +5 / +1 / -1 / -3 modifiers.
 
 const ENCOUNTER_LEVEL_MODIFIERS := {
     1: 5,
@@ -17,11 +16,12 @@ const ENCOUNTER_LEVEL_MODIFIERS := {
     4: -3
 }
 
-const ONBOARDING_LEVEL_MODIFIERS := {
-    1: 2,
-    2: 1,
-    3: 0,
-    4: -1
+const ONBOARDING_ENCOUNTERS := {
+    1: {"count": 1, "level": 2},
+    2: {"count": 1, "level": 3},
+    3: {"count": 2, "level": 3},
+    4: {"count": 2, "level": 4},
+    5: {"count": 3, "level": 4}
 }
 
 
@@ -56,11 +56,18 @@ func _enemy_level_for_stage(current_stage: int) -> int:
     return _route_base_level_for_stage(current_stage)
 
 
+func _roll_enemy_count(current_stage: int) -> int:
+    var onboarding_value: Variant = ONBOARDING_ENCOUNTERS.get(current_stage, {})
+    if onboarding_value is Dictionary and not (onboarding_value as Dictionary).is_empty():
+        return int((onboarding_value as Dictionary).get("count", 1))
+    return super._roll_enemy_count(current_stage)
+
+
 func _enemy_level_for_encounter(current_stage: int, enemy_count: int) -> int:
+    var onboarding_value: Variant = ONBOARDING_ENCOUNTERS.get(current_stage, {})
+    if onboarding_value is Dictionary and not (onboarding_value as Dictionary).is_empty():
+        return maxi(1, int((onboarding_value as Dictionary).get("level", 1)))
+
     var base_level: int = _route_base_level_for_stage(current_stage)
     var clamped_count: int = clampi(enemy_count, 1, 4)
-
-    if current_stage <= 5:
-        return maxi(1, base_level + int(ONBOARDING_LEVEL_MODIFIERS[clamped_count]))
-
     return maxi(1, base_level + int(ENCOUNTER_LEVEL_MODIFIERS[clamped_count]))
