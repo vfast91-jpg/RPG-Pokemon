@@ -93,11 +93,45 @@ func _route_begin_wave() -> void:
         if state_value is Dictionary:
             _route_apply_state(player_team[local_index], state_value)
 
+    # Runde 0 is initially assembled by the inherited battle startup before the
+    # persistent route KP have been restored. If that provisional list contains
+    # a Pokémon that is now K.O., rebuild the opening candidates immediately.
+    # This happens in the same frame, so the invalid choice is skipped silently.
+    _refresh_route_opening_after_state()
+
     _refresh_cards()
     _set_log(
         "Der Etappenkampf beginnt: %d gegen %d. KP bleiben zwischen Kämpfen erhalten; Statusveränderungen enden mit dem Kampf. K.O.-Pokémon bleiben sichtbar."
         % [player_team.size(), enemy_team.size()]
     )
+
+
+func _refresh_route_opening_after_state() -> void:
+    if not opening_phase_active:
+        return
+
+    var has_stale_candidate: bool = false
+    for candidate_value: Variant in _opening_player_candidates:
+        if candidate_value is Dictionary and not bool((candidate_value as Dictionary).get("alive", false)):
+            has_stale_candidate = true
+            break
+
+    if not has_stale_candidate:
+        return
+
+    _opening_player_candidates = _opening_candidates(player_team)
+    _opening_enemy_candidates = _opening_candidates(enemy_team)
+    _opening_player_index = 0
+    _opening_choices.clear()
+    selected_actor = {}
+    _clear_actions()
+
+    if _opening_player_candidates.is_empty() and _opening_enemy_candidates.is_empty():
+        opening_phase_active = false
+        paused = false
+        return
+
+    _prompt_next_opening_actor()
 
 
 func _status_tokens(combatant: Dictionary) -> Array[String]:
