@@ -25,6 +25,13 @@ func _show_stage_choices(message: String = "") -> void:
     AudioManager.play_route(stage)
 
 
+func _choose_path(choice: Dictionary) -> void:
+    var is_heal_source: bool = str(choice.get("kind", "")) == EVENT_HEAL
+    super._choose_path(choice)
+    if is_heal_source:
+        AudioManager.play_heal_sfx()
+
+
 func _start_stage_battle() -> void:
     AudioManager.prepare_battle("final" if stage >= AUDIO_FINAL_STAGE else "normal")
     super._start_stage_battle()
