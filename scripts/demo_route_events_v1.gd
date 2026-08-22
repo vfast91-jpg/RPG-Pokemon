@@ -61,8 +61,12 @@ func _active_event_choice(kind: String, current_stage: int) -> Dictionary:
     return choice
 
 
+func _boss_level() -> int:
+    return clampi(_highest_team_level() + 5, 1, 100)
+
+
 func _begin_rare_encounter() -> void:
-    var boss_level: int = clampi(_highest_team_level() + 5, 1, 100)
+    var boss_level: int = _boss_level()
     var candidates: Array = battle_demo.route_species_ids_for_level(boss_level)
     if candidates.is_empty():
         event_label.text = "Für die Besondere Begegnung ist auf Level %d noch keine vollständig spielbare Spezies verfügbar." % boss_level
