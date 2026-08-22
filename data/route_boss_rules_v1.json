@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -19,7 +19,7 @@
     "species_mode": "random_non_legendary"
   },
   "planned_endgame": {
-    "enabled": false,
+    "enabled": true,
     "stage_start": 91,
     "stage_end": 100,
     "boss_profile": {
@@ -33,11 +33,11 @@
       {"stage": 93, "species_mode": "random_non_legendary"},
       {"stage": 94, "species_mode": "random_non_legendary"},
       {"stage": 95, "species_mode": "random_non_legendary"},
-      {"stage": 96, "species_mode": "fixed", "species_id": "articuno", "display_name": "Arktos"},
-      {"stage": 97, "species_mode": "fixed", "species_id": "zapdos", "display_name": "Zapdos"},
-      {"stage": 98, "species_mode": "fixed", "species_id": "moltres", "display_name": "Lavados"},
-      {"stage": 99, "species_mode": "fixed", "species_id": "mew", "display_name": "Mew"},
-      {"stage": 100, "species_mode": "fixed", "species_id": "mewtwo", "display_name": "Mewtu"}
+      {"stage": 96, "species_mode": "random_non_legendary", "future_legendary": "articuno", "future_display_name": "Arktos"},
+      {"stage": 97, "species_mode": "random_non_legendary", "future_legendary": "zapdos", "future_display_name": "Zapdos"},
+      {"stage": 98, "species_mode": "random_non_legendary", "future_legendary": "moltres", "future_display_name": "Lavados"},
+      {"stage": 99, "species_mode": "random_non_legendary", "future_legendary": "mew", "future_display_name": "Mew"},
+      {"stage": 100, "species_mode": "random_non_legendary", "future_legendary": "mewtwo", "future_display_name": "Mewtu"}
     ]
   }
 }
