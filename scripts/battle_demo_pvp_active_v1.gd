@@ -17,6 +17,10 @@ extends "res://scripts/battle_demo_ad_final_v1.gd"
 
 func pvp_catalog(level: int) -> Array:
     var result: Array = []
+    if not pokemon_registry_ready():
+        push_error("PvP-Katalog blockiert: vollständiger 185-Pokémon-Roster ist nicht geladen.")
+        return result
+
     var bounded_level: int = clampi(level, 1, 100)
     var species_value: Variant = data.get("species", {})
     if not (species_value is Dictionary):
