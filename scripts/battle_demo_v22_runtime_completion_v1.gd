@@ -1,15 +1,9 @@
-extends "res://scripts/battle_demo_v22_charge_integrity_v1.gd"
+extends "res://scripts/battle_demo_move_info_standard_v1.gd"
 
-# Final V22 runtime completion layer.
-#
-# This layer closes mechanics whose canonical V22 data survived in legacy packs
-# with stale runtime flags or without a dedicated runtime hook. It deliberately
-# reuses the central Status curve and the established Aqua-Ring after-action
-# pipeline instead of introducing parallel timing/formula systems.
+# Final V22 runtime completion layer. This sits above the presentation layer so
+# newer UI work on main remains active while late runtime gaps are closed.
 
-const V22_ROOTED_BLOCKED_PAUSE_MOVE_IDS: Array[String] = [
-    "roar", "whirlwind"
-]
+const V22_ROOTED_BLOCKED_PAUSE_MOVE_IDS: Array[String] = ["roar", "whirlwind"]
 
 
 func _v22_apply_runtime_fixes() -> void:
@@ -20,19 +14,15 @@ func _v22_apply_runtime_fixes() -> void:
 
 func _v22_complete_whirlwind_and_roar() -> void:
     _v22_upsert_atb_pause_move(
-        "whirlwind",
-        "Wirbelwind",
+        "whirlwind", "Wirbelwind",
         "Ein heftiger Wind stoppt die ATB-Leiste des Ziels vorübergehend.",
-        100.0,
-        "🌪️",
+        100.0, "🌪️",
         "Keine Reserve und kein Zwangswechsel. Nach der Pause Fortsetzung vom vorherigen ATB-Füllstand. Gleiche zentrale ATB-Pause wie Brüller."
     )
     _v22_upsert_atb_pause_move(
-        "roar",
-        "Brüller",
+        "roar", "Brüller",
         "Ein einschüchternder Ruf pausiert die Aktionsleiste des Ziels.",
-        null,
-        "📢",
+        null, "📢",
         "Keine Reserve/kein Wechsel. Nach der Pause Fortsetzung vom vorherigen ATB-Füllstand. Exakt dieselbe zentrale Mechanik wie Wirbelwind."
     )
 
@@ -46,11 +36,7 @@ func _v22_upsert_atb_pause_move(
     special_rule: String
 ) -> void:
     var move: Dictionary = _move_data(move_id)
-    if move.is_empty():
-        move = {}
-    else:
-        move = move.duplicate(true)
-
+    move = {} if move.is_empty() else move.duplicate(true)
     move["schema_version"] = move.get("schema_version", 3)
     move["id"] = move_id
     move["name"] = display_name
@@ -78,7 +64,6 @@ func _v22_upsert_atb_pause_move(
         special_rule,
         "ATB-Pausendauer = normale volle ATB-Zyklusdauer des Ziels × Status/(75+Status)."
     ]
-
     var runtime_value: Variant = move.get("runtime", {})
     var runtime: Dictionary = (
         (runtime_value as Dictionary).duplicate(true)
@@ -93,11 +78,7 @@ func _v22_upsert_atb_pause_move(
 
 func _v22_complete_ingrain() -> void:
     var move: Dictionary = _move_data("ingrain")
-    if move.is_empty():
-        move = {}
-    else:
-        move = move.duplicate(true)
-
+    move = {} if move.is_empty() else move.duplicate(true)
     move["schema_version"] = 3
     move["id"] = "ingrain"
     move["name"] = "Verwurzler"
@@ -131,7 +112,7 @@ func _v22_complete_ingrain() -> void:
     move["special_rules"] = [
         "Nicht stapelbar; erneuter Einsatz während aktivem Verwurzler schlägt fehl.",
         "Heilt nach jeder vollständig ausgeführten eigenen Aktion um Max-KP × 0,125 × Status/(75+Status).",
-        "Rooted verhindert ausschließlich die Timeflow-Übersetzungen von Brüller und Wirbelwind; Drachenrute und andere ATB-Pausen bleiben erlaubt.",
+        "Rooted verhindert ausschließlich Brüller und Wirbelwind; Drachenrute und andere ATB-Pausen bleiben erlaubt.",
         "Nur tatsächlich wiederhergestellte KP erzeugen Heilungs-Aggro."
     ]
     var runtime_value: Variant = move.get("runtime", {})
@@ -141,6 +122,8 @@ func _v22_complete_ingrain() -> void:
     )
     runtime["runtime_supported"] = true
     runtime["v22_persistent_ingrain"] = true
+    runtime.erase("partial")
+    runtime.erase("notes")
     move["runtime"] = runtime
     _v22_replace_runtime_move("ingrain", move)
 
@@ -153,9 +136,10 @@ func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
 
 
 func _process(delta: float) -> void:
-    # Supersede the historical 'almost frozen' ATB-pause implementation without
-    # duplicating the inherited ATB loop. V22 requires the exact previous fill
-    # to be preserved and even a bar already at 100 % must not act while paused.
+    # V22 ATB pause freezes the exact fill. Hide paused combatants from the
+    # inherited pause implementation, let the normal ATB loop advance everyone
+    # else, then restore the frozen bar exactly. This also prevents a bar already
+    # at 100 % from acting while paused.
     var frozen_states: Array = []
     var tick_pause: bool = battle_active and not paused and not opening_phase_active
     if tick_pause:
@@ -169,7 +153,6 @@ func _process(delta: float) -> void:
             )
             if remaining <= 0.0 or not bool(combatant.get("alive", false)):
                 continue
-
             var stored_atb: float = float(combatant.get("atb", 0.0))
             frozen_states.append({
                 "combatant": combatant,
@@ -177,9 +160,6 @@ func _process(delta: float) -> void:
                 "atb": stored_atb,
                 "remaining": remaining
             })
-
-            # Hide the pause flag from the inherited status layer so it cannot
-            # decrement the same timer a second time.
             combatant["db_atb_pause_remaining_seconds"] = 0.0
             combatant["cycle"] = maxf(1.0, float(combatant.get("cycle", 1.0))) * 1000000.0
             if stored_atb >= 100.0:
@@ -196,11 +176,14 @@ func _process(delta: float) -> void:
             continue
         var combatant: Dictionary = combatant_value
         combatant["cycle"] = float(frozen.get("cycle", 1.0))
-        combatant["atb"] = float(frozen.get("atb", combatant.get("atb", 0.0)))
-        combatant["db_atb_pause_remaining_seconds"] = maxf(
-            0.0,
-            float(frozen.get("remaining", 0.0)) - delta
-        )
+        if bool(combatant.get("alive", false)):
+            combatant["atb"] = float(frozen.get("atb", combatant.get("atb", 0.0)))
+            combatant["db_atb_pause_remaining_seconds"] = maxf(
+                0.0,
+                float(frozen.get("remaining", 0.0)) - delta
+            )
+        else:
+            combatant["db_atb_pause_remaining_seconds"] = 0.0
 
     if not frozen_states.is_empty():
         _refresh_cards()
@@ -210,7 +193,6 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
     var kind: String = str(mechanic.get("kind", ""))
     if kind == "v22_ingrain":
         return _v22_apply_ingrain(actor)
-
     if kind == "db_atb_pause":
         var move_id: String = _v22_completion_current_move_id()
         if V22_ROOTED_BLOCKED_PAUSE_MOVE_IDS.has(move_id) and _v22_is_rooted(target):
@@ -221,7 +203,6 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
                 + " kann seine ATB-Leiste nicht pausieren."
             )
             return 0.0
-
     return super._effect(actor, target, mechanic)
 
 
@@ -231,7 +212,6 @@ func _v22_apply_ingrain(actor: Dictionary) -> float:
     if bool(actor.get("v22_ingrain_active", false)):
         _spawn_feedback_label(actor, "✖ VERWURZLER AKTIV", Color("d9a5a5"))
         return 0.0
-
     actor["v22_ingrain_active"] = true
     actor["v22_ingrain_last_heal_serial"] = -1
     _tf_set_state(actor, "rooted", true)
@@ -240,10 +220,6 @@ func _v22_apply_ingrain(actor: Dictionary) -> float:
 
 
 func _f30_trigger_aqua_ring_after_action(actor: Dictionary) -> void:
-    # The established Aqua-Ring hook is already called exactly at the game's
-    # completed-own-action boundaries (normal move, Wait and forced recharge).
-    # Reuse it so Ingrain follows the same lifecycle instead of inventing a
-    # second action counter.
     super._f30_trigger_aqua_ring_after_action(actor)
     _v22_trigger_ingrain_after_action(actor)
 
@@ -255,7 +231,6 @@ func _v22_trigger_ingrain_after_action(actor: Dictionary) -> void:
         or not bool(actor.get("v22_ingrain_active", false))
     ):
         return
-
     var serial: int = int(actor.get("action_serial", 0))
     if int(actor.get("v22_ingrain_last_heal_serial", -1)) == serial:
         return
@@ -265,7 +240,6 @@ func _v22_trigger_ingrain_after_action(actor: Dictionary) -> void:
     var missing: int = maxi(0, max_hp - int(actor.get("hp", 0)))
     if missing <= 0:
         return
-
     var ratio: float = _status_ratio(float(actor.get("special", 0.0)))
     if ratio <= 0.0:
         return
@@ -273,7 +247,6 @@ func _v22_trigger_ingrain_after_action(actor: Dictionary) -> void:
     var healed: int = mini(missing, requested)
     if healed <= 0:
         return
-
     actor["hp"] = int(actor.get("hp", 0)) + healed
     actor["aggro"] = float(actor.get("aggro", 0.0)) + float(healed)
     _spawn_feedback_label(actor, "🌱 +" + str(healed) + " KP", Color("8fe39b"))
@@ -282,10 +255,7 @@ func _v22_trigger_ingrain_after_action(actor: Dictionary) -> void:
 func _v22_is_rooted(combatant: Dictionary) -> bool:
     if combatant.is_empty():
         return false
-    return (
-        bool(combatant.get("v22_ingrain_active", false))
-        or _tf_has_state(combatant, "rooted")
-    )
+    return bool(combatant.get("v22_ingrain_active", false)) or _tf_has_state(combatant, "rooted")
 
 
 func _v22_completion_current_move_id() -> String:
