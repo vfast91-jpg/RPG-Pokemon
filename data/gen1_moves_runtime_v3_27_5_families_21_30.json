@@ -1,0 +1,56 @@
+{
+  "schema_version": 3,
+  "pack_id": "gen1_moves_families_21_30_v20_5",
+  "moves": {
+    "amnesia": {
+      "schema_version": 3,
+      "id": "amnesia",
+      "name": "Amnesie",
+      "description": "Der Anwender leert seinen Kopf und erhöht seine Verteidigung stark für die nächsten drei eigenen Aktionen.",
+      "emoji": "🧠",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 20,
+      "ap": 5,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {
+          "kind": "incoming_damage_mod",
+          "multiplier_from_special": -2.0,
+          "uses_special_percent": true,
+          "duration": "3_actions",
+          "scope": "self"
+        }
+      ],
+      "status_scaling": "Soft-Cap 2×: R=Status/(75+Status)",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "optional_tags": [
+        "status",
+        "self_buff",
+        "defense"
+      ],
+      "special_rules": [
+        "Starke defensive Statuswert-Skalierung; erneute Anwendung folgt der zentralen Drei-Aktionen-Logik."
+      ],
+      "required_behavior_tests": [
+        "amnesia_defense_buff",
+        "amnesia_duration"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true
+      }
+    }
+  }
+}
