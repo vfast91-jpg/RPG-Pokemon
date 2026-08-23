@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "default_landscape": "meadow",
+  "landscapes": [
+    {"id": "meadow", "name": "Wiese / Ebene", "background": "res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg"},
+    {"id": "forest", "name": "Wald", "background": "res://assets/battle_backgrounds/landscapes/02_forest.jpg"},
+    {"id": "jungle", "name": "Dschungel", "background": "res://assets/battle_backgrounds/landscapes/03_jungle.jpg"},
+    {"id": "desert", "name": "Wüste", "background": "res://assets/battle_backgrounds/landscapes/04_desert.jpg"},
+    {"id": "canyon", "name": "Canyon / Felsland", "background": "res://assets/battle_backgrounds/landscapes/05_canyon_rockland.jpg"},
+    {"id": "lakeshore", "name": "See / Flussufer", "background": "res://assets/battle_backgrounds/landscapes/06_lakeshore.jpg"},
+    {"id": "coast", "name": "Küste / Strand", "background": "res://assets/battle_backgrounds/landscapes/07_coast_beach.jpg"},
+    {"id": "swamp", "name": "Sumpf / Moor", "background": "res://assets/battle_backgrounds/landscapes/08_swamp_moor.jpg"},
+    {"id": "mountains", "name": "Gebirge", "background": "res://assets/battle_backgrounds/landscapes/09_mountains.jpg"},
+    {"id": "tundra", "name": "Tundra", "background": "res://assets/battle_backgrounds/landscapes/10_tundra.jpg"},
+    {"id": "volcano", "name": "Vulkan / Lavafeld", "background": "res://assets/battle_backgrounds/landscapes/11_volcano_lavafield.jpg"},
+    {"id": "cave", "name": "Höhle", "background": "res://assets/battle_backgrounds/landscapes/12_cave.jpg"},
+    {"id": "city", "name": "Stadt", "background": "res://assets/battle_backgrounds/landscapes/13_city.jpg"},
+    {"id": "industry", "name": "Industrie / Kraftwerk", "background": "res://assets/battle_backgrounds/landscapes/14_industry_powerplant.jpg"},
+    {"id": "ruins", "name": "Ruinen", "background": "res://assets/battle_backgrounds/landscapes/15_ruins.jpg"},
+    {"id": "mystic", "name": "Mystischer Ort", "background": "res://assets/battle_backgrounds/landscapes/16_mystic_place.jpg"},
+    {"id": "glacier", "name": "Gletscher / Eissee", "background": "res://assets/battle_backgrounds/landscapes/17_glacier_ice_lake.jpg"},
+    {"id": "temple", "name": "Tempel / Kloster", "background": "res://assets/battle_backgrounds/landscapes/18_temple_monastery.jpg"}
+  ]
+}
