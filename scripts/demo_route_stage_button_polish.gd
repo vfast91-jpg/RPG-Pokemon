@@ -1,4 +1,4 @@
-extends "res://scripts/demo_route_xp_progress_bonus.gd"
+extends "res://scripts/demo_route_tm_database_bridge_v1.gd"
 
 # Subtle route CTA polish: keep the established route UI, but give the
 # stage-battle action a clearer centered hierarchy without flashy effects.
