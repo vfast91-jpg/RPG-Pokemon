@@ -10,6 +10,8 @@ const LANDSCAPE_PREFERRED_MULTIPLIER: float = 3.0
 const LANDSCAPE_DEFAULT_MULTIPLIER: float = 1.0
 const LANDSCAPE_EXCLUDED_MULTIPLIER: float = 0.0
 
+var _tf_capture_generated_species_by_root: Dictionary = {}
+
 
 func route_landscape_type_multiplier(species_types: Array, landscape_id: String = "") -> float:
     var resolved_landscape_id: String = landscape_id
@@ -104,6 +106,11 @@ func _weighted_capture_root(roots: Array, search_number: int) -> String:
     if roots.is_empty() or battle_demo == null:
         return ""
 
+    # The exact generated branch used for landscape weighting must be the same
+    # branch that is shown and offered afterwards. Otherwise an Eevee family
+    # could be weighted as one type and then rerolled into another type.
+    _tf_capture_generated_species_by_root.clear()
+
     var unseen: Array[String] = []
     for root_value: Variant in roots:
         var root_id: String = str(root_value)
@@ -130,6 +137,35 @@ func _weighted_capture_root(roots: Array, search_number: int) -> String:
     return selected
 
 
+func _tf_generated_capture_species(root_id: String, capture_level: int) -> String:
+    var cached: String = str(_tf_capture_generated_species_by_root.get(root_id, ""))
+    if not cached.is_empty():
+        return cached
+
+    var species_id: String = ""
+    if battle_demo != null and battle_demo.has_method("route_resolve_generated_species_for_level"):
+        species_id = str(
+            battle_demo.call(
+                "route_resolve_generated_species_for_level",
+                root_id,
+                capture_level
+            )
+        )
+    elif battle_demo != null:
+        species_id = str(battle_demo.call("route_resolve_species_for_level", root_id, capture_level))
+
+    if not species_id.is_empty():
+        _tf_capture_generated_species_by_root[root_id] = species_id
+    return species_id
+
+
+func _resolve_capture_species_for_root(root_id: String, capture_level: int) -> String:
+    var cached: String = str(_tf_capture_generated_species_by_root.get(root_id, ""))
+    if not cached.is_empty():
+        return cached
+    return super._resolve_capture_species_for_root(root_id, capture_level)
+
+
 func _tf_weighted_capture_root_from_candidates(candidates: Array[String], search_number: int) -> String:
     if candidates.is_empty() or battle_demo == null:
         return ""
@@ -139,9 +175,7 @@ func _tf_weighted_capture_root_from_candidates(candidates: Array[String], search
     var weights: Array[float] = []
 
     for root_id: String in candidates:
-        var species_id: String = str(
-            battle_demo.call("route_resolve_species_for_level", root_id, capture_level)
-        )
+        var species_id: String = _tf_generated_capture_species(root_id, capture_level)
         if species_id.is_empty():
             weights.append(0.0)
             continue
