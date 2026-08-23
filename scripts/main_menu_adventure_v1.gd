@@ -4,6 +4,7 @@ extends "res://scripts/main_endgame_v1.gd"
 # - removes the obsolete free-configurable test battle / Kampflabor entry
 # - promotes Player vs Player to a full-width standalone menu button
 # - presents the route as the actual adventure instead of a demo
+# - gives the four main actions a calm, unified visual treatment without changing layout
 
 
 func _build_main_menu() -> void:
@@ -42,6 +43,63 @@ func _promote_adventure_menu() -> void:
         test_button.queue_free()
 
     _rewrite_main_menu_copy(menu_root)
+    _polish_main_menu_buttons()
+
+
+func _polish_main_menu_buttons() -> void:
+    # Deliberately style only the four player-facing start-screen actions.
+    # Their existing custom_minimum_size values and container flags stay untouched,
+    # so the menu keeps exactly the same footprint and cannot push content downward.
+    var button_texts: Array[String] = [
+        "AUF INS ABENTEUER!",
+        "PLAYER VS PLAYER",
+        "BESTENLISTE",
+        "WAS IST TIMEFLOW?"
+    ]
+
+    for button_text: String in button_texts:
+        var button: Button = _find_menu_button(menu_root, button_text)
+        if button == null:
+            continue
+        _apply_main_menu_button_style(button)
+
+
+func _apply_main_menu_button_style(button: Button) -> void:
+    button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+    button.add_theme_color_override("font_color", Color("e9f0ed"))
+    button.add_theme_color_override("font_hover_color", Color("ffffff"))
+    button.add_theme_color_override("font_pressed_color", Color("dbe7e1"))
+    button.add_theme_color_override("font_focus_color", Color("ffffff"))
+
+    button.add_theme_stylebox_override(
+        "normal",
+        _main_menu_button_style(Color("172520"), Color("667a72"))
+    )
+    button.add_theme_stylebox_override(
+        "hover",
+        _main_menu_button_style(Color("20322c"), Color("95aaa1"))
+    )
+    button.add_theme_stylebox_override(
+        "pressed",
+        _main_menu_button_style(Color("111d19"), Color("82978e"))
+    )
+    button.add_theme_stylebox_override(
+        "focus",
+        _main_menu_button_style(Color("1b2c26"), Color("a6bab1"))
+    )
+
+
+func _main_menu_button_style(bg: Color, border: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = bg
+    style.border_color = border
+    style.set_border_width_all(1)
+    style.set_corner_radius_all(9)
+    style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
+    style.shadow_size = 2
+    style.shadow_offset = Vector2(0.0, 1.0)
+    return style
 
 
 func _rewrite_main_menu_copy(node: Node) -> void:
