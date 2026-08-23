@@ -46,6 +46,16 @@
       "duration_seconds": 50.0,
       "duration_mode": "active_battle_time",
       "damage_type_strength_coefficients": {}
+    },
+    "hail": {
+      "display_name": "Hagelsturm",
+      "emoji": "🌨️",
+      "start_message": "🌨️ Ein Hagelsturm zieht auf!",
+      "end_message": "🌨️ Der Hagelsturm lässt nach.",
+      "effect_strength_percent": 0.0,
+      "duration_seconds": 50.0,
+      "duration_mode": "active_battle_time",
+      "damage_type_strength_coefficients": {}
     }
   }
 }
