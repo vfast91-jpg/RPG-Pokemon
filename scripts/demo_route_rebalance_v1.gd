@@ -6,8 +6,11 @@ extends "res://scripts/demo_route_levelup_evolution_order_fix.gd"
 
 const NORMAL_STAGE_XP_FRACTION: float = 0.50
 const ENCOUNTER_FAMILY_DATA_PATH: String = "res://data/gen1_species_encounter_families_v1.json"
-const CAPTURE_LEVEL_OFFSET: int = 3
-const CAPTURE_SEARCH_LEVEL_MULTIPLIERS: Array[float] = [1.0, 0.75, 0.50]
+# Fangwiesen-Gambling: Jede weitere Suche erhöht wie bisher die relative Chance
+# auf seltene Familien, kostet dafür aber bewusst Fanglevel. Die Abstände sind
+# direkt vom höchsten eigenen Pokémon aus definiert, damit sie über den gesamten
+# Run verständlich und konstant bleiben: Suche 1 -1, Suche 2 -3, Suche 3 -5.
+const CAPTURE_SEARCH_LEVEL_OFFSETS: Array[int] = [1, 3, 5]
 const CAPTURE_SEARCH_RARITY_EXPONENTS: Array[float] = [1.0, 0.5, 0.25]
 const CAPTURE_SEARCH_MAX: int = 3
 const ROUTE_RARITY_MAX_STAGE: int = 100
@@ -33,16 +36,14 @@ func _route_stage_xp(current_stage: int) -> int:
 
 
 func _capture_level_for_stage(_current_stage: int) -> int:
-    return maxi(1, _highest_team_level() - CAPTURE_LEVEL_OFFSET)
+    # Das Basis-Fanglevel entspricht Suche 1: genau ein Level unter dem aktuell
+    # höchsten eigenen Pokémon. Die Etappe selbst verändert dieses Level nicht.
+    return maxi(1, _highest_team_level() - CAPTURE_SEARCH_LEVEL_OFFSETS[0])
 
 
 func _capture_level_for_search(search_number: int) -> int:
-    var base_level: int = _capture_level_for_stage(stage)
-    var index: int = clampi(search_number - 1, 0, CAPTURE_SEARCH_LEVEL_MULTIPLIERS.size() - 1)
-    return maxi(
-        1,
-        int(floor(float(base_level) * CAPTURE_SEARCH_LEVEL_MULTIPLIERS[index]))
-    )
+    var index: int = clampi(search_number - 1, 0, CAPTURE_SEARCH_LEVEL_OFFSETS.size() - 1)
+    return maxi(1, _highest_team_level() - CAPTURE_SEARCH_LEVEL_OFFSETS[index])
 
 
 func _capture_rarity_exponent_for_search(search_number: int) -> float:
@@ -243,12 +244,12 @@ func _show_current_capture_offer() -> void:
         var next_search: int = _capture_search_number + 1
         var next_level: int = _capture_level_for_search(next_search)
         var search_button := Button.new()
-        search_button.text = "WEITERSUCHEN · NÄCHSTES POKÉMON CA. LV.%d" % next_level
+        search_button.text = "WEITERSUCHEN · HÖHERE SELTENHEITSCHANCE · NÄCHSTER FUND LV.%d" % next_level
         search_button.custom_minimum_size = Vector2(0, 28)
         search_button.tooltip_text = (
-            "Das aktuelle Pokémon wird nicht aufgenommen. Suche %d senkt das Fanglevel, "
-            + "erhöht aber relativ die Chance auf schwerer fangbare Pokémon-Familien."
-        ) % next_search
+            "Das aktuelle Pokémon wird nicht aufgenommen. Suche %d erhöht relativ die Chance auf "
+            + "schwerer fangbare Pokémon-Familien, der nächste Fund ist dafür fest auf Lv.%d."
+        ) % [next_search, next_level]
         search_button.pressed.connect(_search_capture_again)
         capture_actions.add_child(search_button)
     else:
