@@ -7,11 +7,12 @@ extends "res://scripts/battle_demo_ad_final_v1.gd"
 # therefore kept at the very top of the active BattleDemo script so Player 2 can
 # never silently fall back to AI while pvp_mode is active.
 #
-# PvP draft generation is deliberately independent from route encounter rarity:
-# every fully playable Pokemon form that is valid at the selected level appears
-# exactly once in the catalog. main_pvp.gd shuffles that flat catalog, so every
-# eligible Pokemon has the same chance to be offered (apart from the existing
-# no-duplicate-in-your-own-team rule).
+# Pokemon availability is global and independent from move implementation.
+# Every registered Pokemon form that is valid at the selected level appears
+# exactly once in the catalog. If it currently has no normally usable runtime
+# move, the system-wide Struggle fallback supplies Verzweifler instead of
+# removing the Pokemon from the draft. PvP itself has no encounter rarity
+# weighting; main_pvp.gd shuffles this flat catalog without weights.
 
 
 func pvp_catalog(level: int) -> Array:
@@ -35,8 +36,7 @@ func pvp_catalog(level: int) -> Array:
             {"species_id": species_id, "level": bounded_level}
         )
         var normal_moves: Array = _database_normal_battle_moves(combatant.get("moves", []))
-        if normal_moves.is_empty():
-            continue
+        var effective_moves: Array = _tf_effective_combat_moves(combatant, normal_moves)
 
         var types_value: Variant = combatant.get("types", [])
         var types: Array = types_value.duplicate() if types_value is Array else []
@@ -44,7 +44,7 @@ func pvp_catalog(level: int) -> Array:
             "id": species_id,
             "name": str(combatant.get("name", species_id)),
             "types": types,
-            "moves": _move_names(normal_moves),
+            "moves": _move_names(effective_moves),
             "stats": {
                 "hp": int(combatant.get("max_hp", 1)),
                 "attack": int(combatant.get("attack", 1)),
