@@ -5,11 +5,224 @@ extends "res://scripts/battle_demo_endgame_v2.gd"
 # lab itself sits below those layers in the inheritance chain, so its earlier
 # snapshot can be stale by the time the UI is built. Refresh once at the very
 # top after every family loader has finished.
+#
+# This is also the final target-Aggro guardrail. The historical base resolver
+# halves Aggro after damage only, which misses pure status moves and also halves
+# every damaged target of spread moves. At this top layer all family-specific
+# move wrappers have finished, so we can normalize the final result against the
+# actual resolved target selection without hard-coding individual moves.
+
+const SingleTargetAggroRules = preload("res://scripts/battle/single_target_aggro_rules.gd")
+
+var _single_target_aggro_context_stack: Array[Dictionary] = []
 
 
 func _load_data() -> void:
     super._load_data()
     lab_species_ids = species_ids.duplicate()
+
+
+func _execute_move(actor: Dictionary, move_id: String) -> void:
+    var context: Dictionary = {
+        "actor_id": str(actor.get("id", "")),
+        "move_id": move_id,
+        "action_serial_before": int(actor.get("action_serial", 0)),
+        "aggro_before": _single_target_aggro_snapshot(),
+        "fallback_target_ids": [],
+        "fallback_rule": "",
+        "fallback_move": {},
+        "resolved_target_ids": [],
+        "resolved_rule": "",
+        "resolved_move": {},
+        "explicit_miss": false
+    }
+    _single_target_aggro_context_stack.append(context)
+
+    super._execute_move(actor, move_id)
+
+    var resolved_context: Dictionary = _single_target_aggro_context_stack.pop_back()
+    _single_target_aggro_finalize(actor, move_id, resolved_context)
+
+
+func _targets(actor: Dictionary, rule: String) -> Array:
+    var targets: Array = super._targets(actor, rule)
+    if _single_target_aggro_context_stack.is_empty():
+        return targets
+
+    var context: Dictionary = _single_target_aggro_context_stack.back()
+    if str(context.get("actor_id", "")) != str(actor.get("id", "")):
+        return targets
+
+    var target_ids: Array[String] = []
+    for target_value: Variant in targets:
+        if target_value is Dictionary:
+            target_ids.append(str((target_value as Dictionary).get("id", "")))
+
+    var tracked_move_id: String = str(context.get("move_id", ""))
+    var move: Dictionary = _move_data(tracked_move_id).duplicate(true)
+
+    # Keep the latest call as a fallback. During the real database resolution,
+    # prefer the call made while the database move context is active. This is
+    # what preserves manual targets (e.g. Angeberei) and runtime target changes
+    # (e.g. a move becoming all_enemies only under a field condition).
+    context["fallback_target_ids"] = target_ids
+    context["fallback_rule"] = rule
+    context["fallback_move"] = move
+
+    var database_move_id: String = str(_database_move_id)
+    var database_active_id: String = ""
+    if _database_active_move is Dictionary:
+        database_active_id = str((_database_active_move as Dictionary).get("id", ""))
+
+    if database_move_id == tracked_move_id or database_active_id == tracked_move_id:
+        context["resolved_target_ids"] = target_ids
+        context["resolved_rule"] = rule
+        context["resolved_move"] = move
+
+    return targets
+
+
+func _set_log(text: String) -> void:
+    if (
+        not _single_target_aggro_context_stack.is_empty()
+        and text.to_lower().contains("verfehlt")
+    ):
+        var context: Dictionary = _single_target_aggro_context_stack.back()
+        context["explicit_miss"] = true
+    super._set_log(text)
+
+
+func _single_target_aggro_snapshot() -> Dictionary:
+    var result: Dictionary = {}
+    for combatant_value: Variant in combatants:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        result[str(combatant.get("id", ""))] = float(combatant.get("aggro", 0.0))
+    return result
+
+
+func _single_target_aggro_finalize(
+    actor: Dictionary,
+    move_id: String,
+    context: Dictionary
+) -> void:
+    var target_ids_value: Variant = context.get("resolved_target_ids", [])
+    var target_ids: Array = target_ids_value if target_ids_value is Array else []
+    var resolved_rule: String = str(context.get("resolved_rule", ""))
+    var move_value: Variant = context.get("resolved_move", {})
+    var move: Dictionary = move_value if move_value is Dictionary else {}
+
+    if target_ids.is_empty():
+        target_ids_value = context.get("fallback_target_ids", [])
+        target_ids = target_ids_value if target_ids_value is Array else []
+        resolved_rule = str(context.get("fallback_rule", ""))
+        move_value = context.get("fallback_move", {})
+        move = move_value if move_value is Dictionary else {}
+
+    if move.is_empty():
+        move = _move_data(move_id).duplicate(true)
+    if target_ids.is_empty():
+        return
+
+    var before_value: Variant = context.get("aggro_before", {})
+    var aggro_before: Dictionary = before_value if before_value is Dictionary else {}
+    var direct_damage: bool = SingleTargetAggroRules.is_direct_damage_move(move)
+    var spread: bool = SingleTargetAggroRules.is_spread_move(move, resolved_rule)
+
+    # Legacy base behavior already halves Aggro for every damaged target. Undo
+    # exactly that legacy half for spread damage, including the important case
+    # where only one valid target remains. Structurally it is still a spread move.
+    if spread:
+        if direct_damage:
+            for target_id_value: Variant in target_ids:
+                var spread_target: Dictionary = _single_target_aggro_find(str(target_id_value))
+                if spread_target.is_empty() or not SingleTargetAggroRules.is_hostile(actor, spread_target):
+                    continue
+                var spread_id: String = str(spread_target.get("id", ""))
+                if not aggro_before.has(spread_id):
+                    continue
+                var old_aggro: float = float(aggro_before.get(spread_id, 0.0))
+                var current_aggro: float = float(spread_target.get("aggro", 0.0))
+                if is_equal_approx(
+                    current_aggro,
+                    old_aggro * SingleTargetAggroRules.TARGET_AGGRO_MULTIPLIER
+                ):
+                    spread_target["aggro"] = old_aggro
+                    _refresh_cards()
+        return
+
+    # A true single-target action must resolve to exactly one concrete target.
+    if target_ids.size() != 1:
+        return
+    var target: Dictionary = _single_target_aggro_find(str(target_ids[0]))
+    if target.is_empty() or not SingleTargetAggroRules.is_hostile(actor, target):
+        return
+
+    var attempted: bool = _database_move_was_attempted(move_id)
+    if not attempted:
+        attempted = (
+            int(actor.get("action_serial", 0))
+            > int(context.get("action_serial_before", 0))
+        )
+    var outcome: String = str(actor.get("tf_last_move_outcome", ""))
+    var explicit_miss: bool = bool(context.get("explicit_miss", false))
+    var success: bool = SingleTargetAggroRules.should_reduce(
+        move,
+        actor,
+        target,
+        attempted,
+        outcome,
+        explicit_miss,
+        resolved_rule
+    )
+
+    var target_id: String = str(target.get("id", ""))
+    var old_target_aggro: float = float(
+        aggro_before.get(target_id, float(target.get("aggro", 0.0)))
+    )
+    var current_target_aggro: float = float(target.get("aggro", 0.0))
+    var legacy_half: float = (
+        old_target_aggro * SingleTargetAggroRules.TARGET_AGGRO_MULTIPLIER
+    )
+
+    if not success:
+        # Damage immunity/protection can still pass through the historical
+        # `damaged` flag in old resolver paths. A failed hit must never keep a
+        # legacy Aggro half.
+        if direct_damage and is_equal_approx(current_target_aggro, legacy_half):
+            target["aggro"] = old_target_aggro
+            _refresh_cards()
+        return
+
+    if direct_damage:
+        # Standard damage and multi-hit moves have already received exactly one
+        # legacy half in the base resolver. Do not halve a second time. If a
+        # newer damage path did not perform that legacy step, normalize it here.
+        if is_equal_approx(current_target_aggro, legacy_half):
+            return
+        if is_equal_approx(current_target_aggro, old_target_aggro):
+            SingleTargetAggroRules.reduce(target)
+            _refresh_cards()
+        return
+
+    # Pure status/debuff/control single-target moves were the missing case.
+    # Apply the global relief after the complete move resolution so any status
+    # effect has already finished before the target's current Aggro is halved.
+    SingleTargetAggroRules.reduce(target)
+    _refresh_cards()
+
+
+func _single_target_aggro_find(combatant_id: String) -> Dictionary:
+    if combatant_id.is_empty():
+        return {}
+    for combatant_value: Variant in combatants:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        if str(combatant.get("id", "")) == combatant_id:
+            return combatant
+    return {}
 
 
 # Doppelteam's generated mechanics text was technically derived but very hard
