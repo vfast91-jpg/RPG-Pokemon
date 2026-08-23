@@ -11,7 +11,6 @@ extends "res://scripts/demo_route_endgame_legendary_landscapes_v1.gd"
 # This deliberately sits at the active top of the route inheritance chain so
 # later feature layers cannot accidentally fall back to the old plain text rows.
 
-const RouteBossRules = preload("res://scripts/route_boss_rules.gd")
 const POKEMON_CHOICE_CARD_HEIGHT: float = 58.0
 const POKEMON_CHOICE_SPRITE_SIZE: Vector2 = Vector2(44.0, 44.0)
 
