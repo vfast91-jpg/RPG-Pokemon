@@ -1,7 +1,7 @@
 extends SceneTree
 
-const ActiveRouteScript = preload("res://scripts/demo_route_endgame_v1.gd")
-const ActiveBattleScript = preload("res://scripts/battle_demo_endgame_v2.gd")
+const ActiveRouteScript = preload("res://scripts/demo_route_milestone_double_boss_v1.gd")
+const ActiveBattleScript = preload("res://scripts/battle_demo_double_boss_feedback_v1.gd")
 const RULES_PATH: String = "res://data/route_boss_rules_v1.json"
 
 var failures: int = 0
@@ -9,8 +9,8 @@ var failures: int = 0
 
 func _initialize() -> void:
     var main_text: String = FileAccess.get_file_as_string("res://main.tscn")
-    _check(main_text.contains("res://scripts/demo_route_endgame_v1.gd"), "main.tscn muss die 100-Etappen-Route aktivieren.")
-    _check(main_text.contains("res://scripts/battle_demo_endgame_v2.gd"), "main.tscn muss den unlimitierten Endgame-Kampflayer aktivieren.")
+    _check(main_text.contains("res://scripts/demo_route_milestone_double_boss_v1.gd"), "main.tscn muss den aktiven Doppelboss-/100-Etappen-Routenlayer laden.")
+    _check(main_text.contains("res://scripts/battle_demo_double_boss_feedback_v1.gd"), "main.tscn muss den aktiven Doppelboss-/Endgame-Kampflayer laden.")
 
     var rules_text: String = FileAccess.get_file_as_string(RULES_PATH)
     var parsed: Variant = JSON.parse_string(rules_text)
