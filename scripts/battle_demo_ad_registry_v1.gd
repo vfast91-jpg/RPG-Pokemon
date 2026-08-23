@@ -4,7 +4,12 @@ extends "res://scripts/battle_demo_landscape_background_v1.gd"
 # The complete species registry already contains these move IDs. This layer
 # only merges the newly approved move definitions and rebuilds runtime learnsets.
 
-const AD_MOVE_PACK_PATH: String = "res://data/gen1_moves_runtime_v3_26_abra_to_doduo.json"
+const AD_MOVE_PACK_PATHS: Array[String] = [
+    "res://data/gen1_moves_runtime_v3_26_1_abra_to_doduo.json",
+    "res://data/gen1_moves_runtime_v3_26_2_abra_to_doduo.json",
+    "res://data/gen1_moves_runtime_v3_26_3_abra_to_doduo.json",
+    "res://data/gen1_moves_runtime_v3_26_4_abra_to_doduo.json"
+]
 
 var _ad_self_ally_picker_move_id: String = ""
 
@@ -16,17 +21,6 @@ func _load_data() -> void:
 
 
 func _ad_load_move_pack() -> void:
-    var text: String = FileAccess.get_file_as_string(AD_MOVE_PACK_PATH)
-    var parsed: Variant = JSON.parse_string(text)
-    if not (parsed is Dictionary):
-        push_error("Abra-Dodri-Attackenpaket konnte nicht gelesen werden: " + AD_MOVE_PACK_PATH)
-        return
-
-    var entries_value: Variant = (parsed as Dictionary).get("moves", {})
-    if not (entries_value is Dictionary):
-        push_error("Abra-Dodri-Attackenpaket besitzt kein moves-Dictionary.")
-        return
-
     var runtime_moves_value: Variant = data.get("moves", {})
     var runtime_moves: Dictionary = (
         runtime_moves_value if runtime_moves_value is Dictionary else {}
@@ -36,13 +30,25 @@ func _ad_load_move_pack() -> void:
         canonical_moves_value if canonical_moves_value is Dictionary else {}
     )
 
-    for move_id_value: Variant in (entries_value as Dictionary).keys():
-        var move_id: String = str(move_id_value)
-        var move_value: Variant = (entries_value as Dictionary).get(move_id_value, {})
-        if not (move_value is Dictionary):
+    for pack_path: String in AD_MOVE_PACK_PATHS:
+        var text: String = FileAccess.get_file_as_string(pack_path)
+        var parsed: Variant = JSON.parse_string(text)
+        if not (parsed is Dictionary):
+            push_error("Abra-Dodri-Attackenpaket konnte nicht gelesen werden: " + pack_path)
             continue
-        runtime_moves[move_id] = (move_value as Dictionary).duplicate(true)
-        canonical_moves[move_id] = (move_value as Dictionary).duplicate(true)
+
+        var entries_value: Variant = (parsed as Dictionary).get("moves", {})
+        if not (entries_value is Dictionary):
+            push_error("Abra-Dodri-Attackenpaket besitzt kein moves-Dictionary: " + pack_path)
+            continue
+
+        for move_id_value: Variant in (entries_value as Dictionary).keys():
+            var move_id: String = str(move_id_value)
+            var move_value: Variant = (entries_value as Dictionary).get(move_id_value, {})
+            if not (move_value is Dictionary):
+                continue
+            runtime_moves[move_id] = (move_value as Dictionary).duplicate(true)
+            canonical_moves[move_id] = (move_value as Dictionary).duplicate(true)
 
     data["moves"] = runtime_moves
     _canonical_pack["moves"] = canonical_moves
