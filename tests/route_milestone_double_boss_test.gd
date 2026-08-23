@@ -19,6 +19,8 @@ func _initialize() -> void:
         {"species_id": "rattata", "level": 15, "hp": 24, "max_hp": 24}
     ]
 
+    var allowed_species: Array[String] = ["bulbasaur", "rattata", "caterpie"]
+
     for milestone: int in [20, 40, 60, 80]:
         _check(
             route._is_milestone_double_boss_stage(milestone),
@@ -57,8 +59,8 @@ func _initialize() -> void:
             _check(is_equal_approx(float(enemy.get("hp_multiplier", 0.0)), 2.0), "Boss auf Etappe %d muss 2× KP besitzen." % milestone)
             _check(int(enemy.get("hp_bars", 0)) == 2, "Boss auf Etappe %d muss zwei KP-Leisten besitzen." % milestone)
             _check(
-                not EndgameBossRules.is_legendary_species(str(enemy.get("species_id", ""))),
-                "Doppelboss auf Etappe %d darf nicht legendär sein." % milestone
+                allowed_species.has(str(enemy.get("species_id", ""))),
+                "Doppelboss auf Etappe %d muss aus dem gefilterten nicht-legendären Kandidatenpool stammen." % milestone
             )
 
     for normal_stage: int in [11, 19, 21, 39, 41, 59, 61, 79, 81, 90]:
