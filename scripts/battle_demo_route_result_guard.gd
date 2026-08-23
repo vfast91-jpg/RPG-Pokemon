@@ -14,10 +14,10 @@ extends "res://scripts/battle_demo_rattata_family.gd"
 #
 # Route victory still emits `route_battle_finished` before BattleDemo is hidden.
 # The established 0.65 s route settle window therefore remains useful, but is now
-# included inside the five-second visible victory hold instead of extending it.
+# included inside the three-second visible victory hold instead of extending it.
 
-const VICTORY_QUIET_BEAT_SECONDS: float = 0.35
-const VICTORY_RESULT_SECONDS: float = 5.0
+const VICTORY_QUIET_BEAT_SECONDS: float = 0.25
+const VICTORY_RESULT_SECONDS: float = 3.0
 const ROUTE_VICTORY_HANDOFF_HOLD_SECONDS: float = 0.65
 const ROUTE_VICTORY_PRE_HANDOFF_SECONDS: float = (
     VICTORY_RESULT_SECONDS - ROUTE_VICTORY_HANDOFF_HOLD_SECONDS
@@ -212,7 +212,7 @@ func _resolve_route_victory_with_visible_handoff() -> void:
 
     _show_victory_result()
 
-    # Hold most of the five-second victory beat before starting the route-side
+    # Hold most of the three-second victory beat before starting the route-side
     # settle work. The final 0.65 s run in parallel while BattleDemo remains
     # visible, preserving the existing no-grey-screen handoff.
     await get_tree().create_timer(ROUTE_VICTORY_PRE_HANDOFF_SECONDS).timeout
