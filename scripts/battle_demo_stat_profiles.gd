@@ -10,11 +10,14 @@ extends "res://scripts/battle_demo_adaptive_family_ui.gd"
 
 const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json"
 const STAT_KEYS: Array[String] = ["hp", "attack", "defense", "special", "speed"]
-const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/meadow_grassland_day.webp"
+const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg"
+
+var _active_battle_background_rect: TextureRect = null
 
 
 func _build_battle(root: Control) -> void:
-    # Tell the reusable presentation layer which arena image is active.
+    # Use the landscape system's meadow as the initial fallback. The route can
+    # replace this path at runtime through set_battle_background().
     battle_background_path = ACTIVE_BATTLE_BACKGROUND_PATH
     super._build_battle(root)
 
@@ -38,24 +41,38 @@ func _build_battle(root: Control) -> void:
         if first_child is ColorRect:
             (first_child as ColorRect).visible = false
 
-    var arena_texture: Texture2D = load(ACTIVE_BATTLE_BACKGROUND_PATH) as Texture2D
+    var arena_texture: Texture2D = load(battle_background_path) as Texture2D
     if arena_texture == null:
-        push_error("Kampfhintergrund konnte nicht geladen werden: " + ACTIVE_BATTLE_BACKGROUND_PATH)
+        push_error("Kampfhintergrund konnte nicht geladen werden: " + battle_background_path)
         return
 
-    var arena: TextureRect = TextureRect.new()
-    arena.name = "ActiveBattleBackground"
-    arena.position = area.position
-    arena.size = area.size
-    arena.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    arena.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-    arena.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    arena.texture = arena_texture
-    battle_panel.add_child(arena)
+    _active_battle_background_rect = TextureRect.new()
+    _active_battle_background_rect.name = "ActiveBattleBackground"
+    _active_battle_background_rect.position = area.position
+    _active_battle_background_rect.size = area.size
+    _active_battle_background_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    _active_battle_background_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    _active_battle_background_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _active_battle_background_rect.texture = arena_texture
+    battle_panel.add_child(_active_battle_background_rect)
 
     # Put it directly before BattleArea in sibling order. No negative z-index,
     # no cross-parent ordering assumptions.
-    battle_panel.move_child(arena, area.get_index())
+    battle_panel.move_child(_active_battle_background_rect, area.get_index())
+
+
+func set_battle_background(path: String) -> void:
+    # The reusable presentation layer owns validation and the canonical path.
+    # Keep the visible sibling arena in sync as well. Previously only the hidden
+    # BattleArea child was updated, while this visible rect stayed hardcoded to
+    # the old meadow_grassland_day.webp image.
+    super.set_battle_background(path)
+    if battle_background_path != path or _active_battle_background_rect == null:
+        return
+
+    var texture_value: Resource = load(battle_background_path)
+    if texture_value is Texture2D:
+        _active_battle_background_rect.texture = texture_value as Texture2D
 
 
 func _load_data() -> void:
