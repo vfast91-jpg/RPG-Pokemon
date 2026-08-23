@@ -16,6 +16,23 @@ const FLINCH_IDS: Array[String] = [
     "stomp", "headbutt", "icicle_crash", "mountain_gale", "dragon_rush"
 ]
 
+const MULTI_HIT_CONTRACTS: Dictionary = {
+    "fury_attack": {"min": 2, "max": 5, "weights": [3, 3, 1, 1]},
+    "pin_missile": {"min": 2, "max": 5, "weights": [3, 3, 1, 1]},
+    "bullet_seed": {"min": 2, "max": 5, "weights": [7, 7, 3, 3]},
+    "scale_shot": {"min": 2, "max": 5, "weights": [7, 7, 3, 3]},
+    "fury_swipes": {"min": 2, "max": 5, "weights": [3, 3, 1, 1]},
+    "double_kick": {"min": 2, "max": 2, "weights": [1]},
+    "dual_wingbeat": {"min": 2, "max": 2, "weights": [1]},
+    "double_hit": {"min": 2, "max": 2, "weights": [1]},
+    "rock_blast": {"min": 2, "max": 5, "weights": [3, 3, 1, 1]},
+    "dual_chop": {"min": 2, "max": 2, "weights": [1]},
+    "icicle_spear": {"min": 2, "max": 5, "weights": [3, 3, 1, 1]},
+    "triple_axel": {"min": 3, "max": 3, "weights": [1]},
+    "bonemerang": {"min": 2, "max": 2, "weights": [1]},
+    "triple_kick": {"min": 3, "max": 3, "weights": [1]}
+}
+
 var failures: int = 0
 
 
@@ -57,6 +74,7 @@ func _initialize() -> void:
     _test_special_targets(moves)
     _test_confirmed_drift_fixes(moves)
     _test_flinch_catalog(moves)
+    _test_sequence_contracts(moves)
 
     battle.free()
 
@@ -182,6 +200,64 @@ func _test_confirmed_drift_fixes(moves: Dictionary) -> void:
 func _test_flinch_catalog(moves: Dictionary) -> void:
     for move_id: String in FLINCH_IDS:
         _check(moves.has(move_id), "V22-Zurückschreckattacke fehlt: " + move_id)
+
+
+func _test_sequence_contracts(moves: Dictionary) -> void:
+    for move_id_value: Variant in MULTI_HIT_CONTRACTS.keys():
+        var move_id: String = str(move_id_value)
+        var expected_value: Variant = MULTI_HIT_CONTRACTS.get(move_id, {})
+        var expected: Dictionary = expected_value if expected_value is Dictionary else {}
+        var runtime: Dictionary = _runtime(_move(moves, move_id))
+        var spec_value: Variant = runtime.get("multi_hit", {})
+        _check(spec_value is Dictionary, move_id + ": Multi-Hit-Vertrag fehlt.")
+        if not (spec_value is Dictionary):
+            continue
+        var spec: Dictionary = spec_value
+        _check_equal_int(int(spec.get("min", 0)), int(expected.get("min", 0)), move_id + ": falsche Mindesttrefferzahl.")
+        _check_equal_int(int(spec.get("max", 0)), int(expected.get("max", 0)), move_id + ": falsche Höchsttrefferzahl.")
+        _check(
+            spec.get("weights", []) == expected.get("weights", []),
+            move_id + ": falsche V22-Trefferverteilung."
+        )
+        _check(
+            bool(spec.get("v22_target_aggro_once", false)),
+            move_id + ": Ziel-Aggro darf über Folgetreffer nicht mehrfach halbiert werden."
+        )
+
+    var uproar_sequence: Dictionary = _forced_sequence(_move(moves, "uproar"))
+    _check_equal_int(int(uproar_sequence.get("min", 0)), 3, "Aufruhr muss exakt drei Aktionen dauern.")
+    _check_equal_int(int(uproar_sequence.get("max", 0)), 3, "Aufruhr muss exakt drei Aktionen dauern.")
+    _check(not bool(uproar_sequence.get("confuse_after", false)), "Aufruhr darf nach V22 keine automatische Verwirrung erzwingen.")
+
+    var rollout: Dictionary = _move(moves, "rollout")
+    var rollout_sequence: Dictionary = _forced_sequence(rollout)
+    _check_equal_int(int(rollout_sequence.get("min", 0)), 5, "Walzer muss bis zu fünf eigene Aktionen vorsehen.")
+    _check_equal_int(int(rollout_sequence.get("max", 0)), 5, "Walzer muss bis zu fünf eigene Aktionen vorsehen.")
+    _check(
+        _runtime(rollout).get("consecutive_power_chain", []) == [30, 60, 120, 240, 480],
+        "Walzer muss die V22-Stärkenfolge 30/60/120/240/480 verwenden."
+    )
+
+    # Meteor Beam is intentionally NOT a generic charge_then_fire move. Its
+    # Cleffa-family handler re-evaluates highest Aggro on phase 2.
+    _check(
+        not bool(_runtime(_move(moves, "meteor_beam")).get("charge_then_fire", false)),
+        "Meteorstrahl darf nicht in den generischen Ziel-Lock fallen."
+    )
+    _check(
+        bool(_runtime(_move(moves, "meteor_beam")).get("timeflow_meteor_beam", false)),
+        "Meteorstrahl braucht seinen zweiphasigen Spezialpfad."
+    )
+
+    _check(
+        bool(_runtime(_move(moves, "future_sight")).get("timeflow_future_sight", false)),
+        "Seher braucht seinen verzögerten Positions-/Slot-Pfad."
+    )
+
+
+func _forced_sequence(move: Dictionary) -> Dictionary:
+    var value: Variant = _runtime(move).get("forced_sequence", {})
+    return value if value is Dictionary else {}
 
 
 func _move(moves: Dictionary, move_id: String) -> Dictionary:
