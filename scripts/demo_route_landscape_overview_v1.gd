@@ -5,13 +5,12 @@ extends "res://scripts/demo_route_landscape_choice_v1.gd"
 # Etappenbildschirm sichtbar. Vor jedem normalen oder besonderen Route-Kampf
 # wird ihr Hintergrund erneut gesetzt, damit der Kampf immer zur Route passt.
 
-# Die Landschaftskarte bleibt bewusst kompakt. Die vorherigen 72px plus 60px
-# Thumbnail haben zusammen mit den drei Weg-Buttons die Mindesthöhe der Route
-# knapp über die verfügbare Fensterhöhe gedrückt. Dadurch ragte der goldene
-# Außenrahmen unten aus dem Bild. 66/54 erhält denselben Aufbau und schafft
-# zuverlässig genug vertikalen Puffer, ohne die Route optisch umzubauen.
-const CURRENT_LANDSCAPE_CARD_HEIGHT: float = 66.0
-const CURRENT_LANDSCAPE_THUMBNAIL_SIZE: Vector2 = Vector2(80.0, 54.0)
+# Die normale Etappenansicht muss vollständig in den 640x360-Viewport passen.
+# Da das Fenster auf 1280x720 skaliert wird, zählt hier jeder interne Pixel
+# doppelt. Die Landschaftskarte bleibt deshalb bewusst kompakt und der Hinweis
+# bleibt einzeilig. So bleibt auch der untere Goldrahmen zuverlässig sichtbar.
+const CURRENT_LANDSCAPE_CARD_HEIGHT: float = 54.0
+const CURRENT_LANDSCAPE_THUMBNAIL_SIZE: Vector2 = Vector2(66.0, 46.0)
 
 
 func _show_stage_choices(message: String = "") -> void:
@@ -71,12 +70,12 @@ func _tf_make_current_landscape_card(landscape: Dictionary) -> Control:
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     card.add_theme_stylebox_override(
         "panel",
-        _panel(Color("162620"), Color("739a82"), 8, 4.0)
+        _panel(Color("162620"), Color("739a82"), 8, 3.0)
     )
 
     var row := HBoxContainer.new()
     row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    row.add_theme_constant_override("separation", 8)
+    row.add_theme_constant_override("separation", 7)
     card.add_child(row)
 
     var thumbnail := TextureRect.new()
@@ -109,7 +108,7 @@ func _tf_make_current_landscape_card(landscape: Dictionary) -> Control:
     var name_label := Label.new()
     name_label.name = "CurrentLandscapeName"
     name_label.text = str(landscape.get("name", current_landscape_id))
-    name_label.add_theme_font_size_override("font_size", 14)
+    name_label.add_theme_font_size_override("font_size", 13)
     name_label.add_theme_color_override("font_color", Color("fff0ad"))
     name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -117,10 +116,10 @@ func _tf_make_current_landscape_card(landscape: Dictionary) -> Control:
 
     var hint := Label.new()
     hint.name = "CurrentLandscapeHint"
-    hint.text = "Bestimmt den Kampfhintergrund und beeinflusst die Pokémon-Typen dieser Etappe."
-    hint.add_theme_font_size_override("font_size", 8)
+    hint.text = "Bestimmt Kampfhintergrund und Pokémon-Typen dieser Etappe."
+    hint.add_theme_font_size_override("font_size", 7)
     hint.add_theme_color_override("font_color", Color("b8d3c7"))
-    hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
     text_box.add_child(hint)
 
