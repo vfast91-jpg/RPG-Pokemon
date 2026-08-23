@@ -7,6 +7,7 @@ extends "res://scripts/demo_route_endgame_v1.gd"
 # - Milestone bosses reuse the existing standard boss profile and the normal
 #   route victory / XP / stage progression flow.
 
+const MilestoneBossRules = preload("res://scripts/route_boss_rules.gd")
 const MILESTONE_DOUBLE_BOSS_STAGES: Array[int] = [20, 40, 60, 80]
 const MILESTONE_DOUBLE_BOSS_COUNT: int = 2
 
@@ -32,7 +33,7 @@ func _milestone_double_boss_party(current_stage: int) -> Array:
     if battle_demo == null:
         return []
 
-    var profile: Dictionary = EndgameBossRules.standard_boss_profile()
+    var profile: Dictionary = MilestoneBossRules.standard_boss_profile()
     var level_offset: int = int(profile.get("level_offset", 5))
     var boss_level: int = maxi(1, _highest_team_level() + level_offset)
     var candidates: Array = _standard_combat_candidates(
