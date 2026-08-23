@@ -11,68 +11,173 @@ extends "res://scripts/battle_demo_adaptive_family_ui.gd"
 const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json"
 const STAT_KEYS: Array[String] = ["hp", "attack", "defense", "special", "speed"]
 const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg"
+const DEFAULT_BATTLE_FRAMING: Dictionary = {
+    "zoom": 1.18,
+    "focus_x": 0.5,
+    "focus_y": 0.5,
+    "offset_x": 0.0,
+    "offset_y": 0.0
+}
 
+var _active_battle_background_layer: Control = null
 var _active_battle_background_rect: TextureRect = null
+var _active_battle_focus_rect: TextureRect = null
+var _battle_background_framing: Dictionary = DEFAULT_BATTLE_FRAMING.duplicate(true)
 
 
 func _build_battle(root: Control) -> void:
     # Use the landscape system's meadow as the initial fallback. The route can
-    # replace this path at runtime through set_battle_background().
+    # replace both image and framing at runtime.
     battle_background_path = ACTIVE_BATTLE_BACKGROUND_PATH
+    _battle_background_framing = DEFAULT_BATTLE_FRAMING.duplicate(true)
     super._build_battle(root)
 
-    # IMPORTANT: battle_demo_hd.gd creates a full-screen turquoise ColorRect
-    # before BattleArea. A background placed as a child of BattleArea can end up
-    # behind that sibling because of CanvasItem z-ordering. Install the arena as
-    # its own battle_panel sibling immediately BEFORE BattleArea instead. This
-    # makes the draw order unambiguous: fallback -> arena -> Pokemon/UI.
+    # battle_demo_hd.gd creates a fallback ColorRect and BattleArea. The old
+    # background implementation used COVER directly on the complete ultrawide
+    # battle strip. The landscape JPGs are much less wide, so COVER had to crop
+    # away a very large part of the image and made the scenery look unnaturally
+    # close to the small Pokemon sprites.
+    #
+    # The permanent solution is a panoramic two-layer framing:
+    # - an ambient COVER layer fills the far left/right edges behind the cards;
+    # - a sharp focal layer in the middle keeps almost the complete source image
+    #   and therefore preserves the intended camera distance.
+    # The stat cards naturally cover the transition between both layers.
     var area: Control = battle_panel.get_node_or_null("BattleArea") as Control
     if area == null:
         push_error("BattleArea fehlt; Kampfhintergrund konnte nicht eingebaut werden.")
         return
 
-    # Disable the old child background so there is only one authoritative image.
     if _battle_background_rect != null:
         _battle_background_rect.visible = false
 
-    # Hide the turquoise full-screen fallback created by battle_demo_hd.gd.
     if battle_panel.get_child_count() > 0:
         var first_child: Node = battle_panel.get_child(0)
         if first_child is ColorRect:
             (first_child as ColorRect).visible = false
 
-    var arena_texture: Texture2D = load(battle_background_path) as Texture2D
-    if arena_texture == null:
-        push_error("Kampfhintergrund konnte nicht geladen werden: " + battle_background_path)
-        return
+    _active_battle_background_layer = Control.new()
+    _active_battle_background_layer.name = "ActiveBattleBackgroundLayer"
+    _active_battle_background_layer.position = area.position
+    _active_battle_background_layer.size = area.size
+    _active_battle_background_layer.clip_contents = true
+    _active_battle_background_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    battle_panel.add_child(_active_battle_background_layer)
 
     _active_battle_background_rect = TextureRect.new()
-    _active_battle_background_rect.name = "ActiveBattleBackground"
-    _active_battle_background_rect.position = area.position
+    _active_battle_background_rect.name = "AmbientBattleBackground"
+    _active_battle_background_rect.position = Vector2.ZERO
     _active_battle_background_rect.size = area.size
     _active_battle_background_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
     _active_battle_background_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
     _active_battle_background_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _active_battle_background_rect.texture = arena_texture
-    battle_panel.add_child(_active_battle_background_rect)
+    _active_battle_background_layer.add_child(_active_battle_background_rect)
 
-    # Put it directly before BattleArea in sibling order. No negative z-index,
-    # no cross-parent ordering assumptions.
-    battle_panel.move_child(_active_battle_background_rect, area.get_index())
+    _active_battle_focus_rect = TextureRect.new()
+    _active_battle_focus_rect.name = "FocusedBattleBackground"
+    _active_battle_focus_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    _active_battle_focus_rect.stretch_mode = TextureRect.STRETCH_SCALE
+    _active_battle_focus_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _active_battle_background_layer.add_child(_active_battle_focus_rect)
+
+    # Put the complete background layer directly before BattleArea. The Pokemon,
+    # cards and connectors remain children of BattleArea and are therefore always
+    # rendered above it.
+    battle_panel.move_child(_active_battle_background_layer, area.get_index())
+    area.resized.connect(_sync_visible_battle_background.bind(area))
+
+    _update_visible_battle_background()
 
 
 func set_battle_background(path: String) -> void:
-    # The reusable presentation layer owns validation and the canonical path.
-    # Keep the visible sibling arena in sync as well. Previously only the hidden
-    # BattleArea child was updated, while this visible rect stayed hardcoded to
-    # the old meadow_grassland_day.webp image.
+    _battle_background_framing = DEFAULT_BATTLE_FRAMING.duplicate(true)
     super.set_battle_background(path)
-    if battle_background_path != path or _active_battle_background_rect == null:
+    if battle_background_path != path:
+        return
+    _update_visible_battle_background()
+
+
+func set_battle_background_framed(path: String, framing: Dictionary) -> void:
+    _battle_background_framing = _normalized_battle_framing(framing)
+    super.set_battle_background(path)
+    if battle_background_path != path:
+        return
+    _update_visible_battle_background()
+
+
+func _normalized_battle_framing(framing: Dictionary) -> Dictionary:
+    var result: Dictionary = DEFAULT_BATTLE_FRAMING.duplicate(true)
+    for key_value: Variant in result.keys():
+        var key: String = str(key_value)
+        if framing.has(key):
+            result[key] = framing.get(key)
+
+    # zoom=1 means "fit the whole source image into the battle height". Values
+    # only slightly above 1 give a restrained crop. The old COVER-only behavior
+    # effectively required roughly twice that zoom for the current 4:3 artwork.
+    result["zoom"] = clampf(float(result.get("zoom", 1.18)), 1.0, 1.6)
+    result["focus_x"] = clampf(float(result.get("focus_x", 0.5)), 0.0, 1.0)
+    result["focus_y"] = clampf(float(result.get("focus_y", 0.5)), 0.0, 1.0)
+    result["offset_x"] = float(result.get("offset_x", 0.0))
+    result["offset_y"] = float(result.get("offset_y", 0.0))
+    return result
+
+
+func _sync_visible_battle_background(area: Control) -> void:
+    if _active_battle_background_layer == null:
+        return
+    _active_battle_background_layer.position = area.position
+    _active_battle_background_layer.size = area.size
+    if _active_battle_background_rect != null:
+        _active_battle_background_rect.position = Vector2.ZERO
+        _active_battle_background_rect.size = area.size
+    if _active_battle_focus_rect != null and _active_battle_focus_rect.texture != null:
+        _layout_battle_focus(_active_battle_focus_rect.texture)
+
+
+func _update_visible_battle_background() -> void:
+    if _active_battle_background_rect == null or _active_battle_focus_rect == null:
         return
 
     var texture_value: Resource = load(battle_background_path)
-    if texture_value is Texture2D:
-        _active_battle_background_rect.texture = texture_value as Texture2D
+    if not (texture_value is Texture2D):
+        push_error("Kampfhintergrund konnte nicht geladen werden: " + battle_background_path)
+        return
+
+    var texture: Texture2D = texture_value as Texture2D
+    _active_battle_background_rect.texture = texture
+    _active_battle_focus_rect.texture = texture
+    _layout_battle_focus(texture)
+
+
+func _layout_battle_focus(texture: Texture2D) -> void:
+    if _active_battle_background_layer == null or _active_battle_focus_rect == null:
+        return
+
+    var area_size: Vector2 = _active_battle_background_layer.size
+    var texture_size := Vector2(float(texture.get_width()), float(texture.get_height()))
+    if area_size.x <= 0.0 or area_size.y <= 0.0 or texture_size.x <= 0.0 or texture_size.y <= 0.0:
+        return
+
+    # Start from a contain/fit-height scale instead of COVER. The configurable
+    # zoom can then add only a small deliberate crop, never the huge implicit
+    # crop caused by the battle strip's very wide aspect ratio.
+    var fit_scale: float = minf(area_size.x / texture_size.x, area_size.y / texture_size.y)
+    var zoom: float = float(_battle_background_framing.get("zoom", 1.18))
+    var render_size: Vector2 = texture_size * fit_scale * zoom
+
+    var focus_x: float = float(_battle_background_framing.get("focus_x", 0.5))
+    var focus_y: float = float(_battle_background_framing.get("focus_y", 0.5))
+    var offset := Vector2(
+        float(_battle_background_framing.get("offset_x", 0.0)),
+        float(_battle_background_framing.get("offset_y", 0.0))
+    )
+
+    var target_point: Vector2 = area_size * 0.5 + offset
+    var source_focus := Vector2(render_size.x * focus_x, render_size.y * focus_y)
+
+    _active_battle_focus_rect.position = target_point - source_focus
+    _active_battle_focus_rect.size = render_size
 
 
 func _load_data() -> void:
