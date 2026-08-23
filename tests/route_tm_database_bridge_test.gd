@@ -130,7 +130,7 @@ func _initialize() -> void:
         quit(1)
 
 
-func _first_other_compatible_entry(route: Node, species_id: String, excluded_move_id: String) -> Dictionary:
+func _first_other_compatible_entry(route, species_id: String, excluded_move_id: String) -> Dictionary:
     for entry_value: Variant in route._tm_catalog.values():
         if not (entry_value is Dictionary):
             continue
