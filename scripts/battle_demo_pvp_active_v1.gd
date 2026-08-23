@@ -15,6 +15,21 @@ extends "res://scripts/battle_demo_ad_final_v1.gd"
 # weighting; main_pvp.gd shuffles this flat catalog without weights.
 
 
+func _load_data() -> void:
+    super._load_data()
+
+    # The route deliberately uses the 78 family roots, but the combat lab is a
+    # direct test/play surface and must expose every one of the 185 registered
+    # forms. This topmost refresh prevents lower historical family snapshots from
+    # reducing the lab back to route roots after the complete registry loaded.
+    lab_species_ids = []
+    if not pokemon_registry_ready():
+        return
+    var species_value: Variant = data.get("species", {})
+    if species_value is Dictionary:
+        lab_species_ids = (species_value as Dictionary).keys()
+
+
 func pvp_catalog(level: int) -> Array:
     var result: Array = []
     if not pokemon_registry_ready():
