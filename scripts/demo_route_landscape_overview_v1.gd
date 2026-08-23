@@ -5,7 +5,13 @@ extends "res://scripts/demo_route_landscape_choice_v1.gd"
 # Etappenbildschirm sichtbar. Vor jedem normalen oder besonderen Route-Kampf
 # wird ihr Hintergrund erneut gesetzt, damit der Kampf immer zur Route passt.
 
-const CURRENT_LANDSCAPE_THUMBNAIL_SIZE: Vector2 = Vector2(86.0, 60.0)
+# Die Landschaftskarte bleibt bewusst kompakt. Die vorherigen 72px plus 60px
+# Thumbnail haben zusammen mit den drei Weg-Buttons die Mindesthöhe der Route
+# knapp über die verfügbare Fensterhöhe gedrückt. Dadurch ragte der goldene
+# Außenrahmen unten aus dem Bild. 66/54 erhält denselben Aufbau und schafft
+# zuverlässig genug vertikalen Puffer, ohne die Route optisch umzubauen.
+const CURRENT_LANDSCAPE_CARD_HEIGHT: float = 66.0
+const CURRENT_LANDSCAPE_THUMBNAIL_SIZE: Vector2 = Vector2(80.0, 54.0)
 
 
 func _show_stage_choices(message: String = "") -> void:
@@ -61,11 +67,11 @@ func _tf_show_current_landscape_card() -> void:
 func _tf_make_current_landscape_card(landscape: Dictionary) -> Control:
     var card := PanelContainer.new()
     card.name = "CurrentLandscapeCard"
-    card.custom_minimum_size = Vector2(0.0, 72.0)
+    card.custom_minimum_size = Vector2(0.0, CURRENT_LANDSCAPE_CARD_HEIGHT)
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     card.add_theme_stylebox_override(
         "panel",
-        _panel(Color("162620"), Color("739a82"), 8, 5.0)
+        _panel(Color("162620"), Color("739a82"), 8, 4.0)
     )
 
     var row := HBoxContainer.new()
