@@ -28,6 +28,7 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
         "move_id": move_id,
         "action_serial_before": int(actor.get("action_serial", 0)),
         "aggro_before": _single_target_aggro_snapshot(),
+        "target_state_before": _single_target_aggro_state_hash_snapshot(),
         "fallback_target_ids": [],
         "fallback_rule": "",
         "fallback_move": {},
@@ -102,6 +103,39 @@ func _single_target_aggro_snapshot() -> Dictionary:
     return result
 
 
+func _single_target_aggro_state_hash_snapshot() -> Dictionary:
+    var result: Dictionary = {}
+    for combatant_value: Variant in combatants:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        result[str(combatant.get("id", ""))] = _single_target_aggro_state_hash(combatant)
+    return result
+
+
+func _single_target_aggro_state_hash(combatant: Dictionary) -> int:
+    var state: Dictionary = combatant.duplicate(true)
+    # Aggro itself is the value we are deciding whether to reduce. Excluding it
+    # lets us detect whether a status/control move actually changed its target
+    # instead of mistaking the legacy Aggro half for a successful effect.
+    state.erase("aggro")
+    return hash(state)
+
+
+func _single_target_aggro_target_state_changed(
+    target: Dictionary,
+    context: Dictionary
+) -> bool:
+    var before_value: Variant = context.get("target_state_before", {})
+    if not (before_value is Dictionary):
+        return false
+    var before: Dictionary = before_value
+    var target_id: String = str(target.get("id", ""))
+    if not before.has(target_id):
+        return false
+    return int(before.get(target_id, 0)) != _single_target_aggro_state_hash(target)
+
+
 func _single_target_aggro_finalize(
     actor: Dictionary,
     move_id: String,
@@ -128,6 +162,7 @@ func _single_target_aggro_finalize(
     var before_value: Variant = context.get("aggro_before", {})
     var aggro_before: Dictionary = before_value if before_value is Dictionary else {}
     var direct_damage: bool = SingleTargetAggroRules.is_direct_damage_move(move)
+    var damage_resolution: bool = SingleTargetAggroRules.is_damage_resolution_move(move)
     var spread: bool = SingleTargetAggroRules.is_spread_move(move, resolved_rule)
 
     # Legacy base behavior already halves Aggro for every damaged target. Undo
@@ -136,7 +171,7 @@ func _single_target_aggro_finalize(
     # This applies to every spread target, including allies hit by all-others
     # moves such as Surf or Earthquake: area damage never receives target relief.
     if spread:
-        if direct_damage:
+        if damage_resolution:
             for target_id_value: Variant in target_ids:
                 var spread_target: Dictionary = _single_target_aggro_find(str(target_id_value))
                 if spread_target.is_empty():
@@ -179,6 +214,14 @@ func _single_target_aggro_finalize(
         resolved_rule
     )
 
+    # For pure status/control moves and custom damage contracts without a normal
+    # damage mechanic, a successful accuracy roll is not enough: the target must
+    # actually have changed. This excludes e.g. failed Disable, Mimic/Psych Up
+    # (which only change the user) and the cast step of Future Sight, while a
+    # real Bitter Kiss/confusion/debuff or custom Night Shade hit still qualifies.
+    if success and not direct_damage:
+        success = _single_target_aggro_target_state_changed(target, context)
+
     var target_id: String = str(target.get("id", ""))
     var old_target_aggro: float = float(
         aggro_before.get(target_id, float(target.get("aggro", 0.0)))
@@ -189,28 +232,29 @@ func _single_target_aggro_finalize(
     )
 
     if not success:
-        # Damage immunity/protection can still pass through the historical
-        # `damaged` flag in old resolver paths. A failed hit must never keep a
-        # legacy Aggro half.
-        if direct_damage and is_equal_approx(current_target_aggro, legacy_half):
+        # Damage immunity/protection or a custom no-effect path can still pass
+        # through historical code that applied a half. A failed hit must never
+        # keep that legacy Aggro relief.
+        if damage_resolution and is_equal_approx(current_target_aggro, legacy_half):
             target["aggro"] = old_target_aggro
             _refresh_cards()
         return
 
-    if direct_damage:
-        # Standard damage and multi-hit moves have already received exactly one
-        # legacy half in the base resolver. Do not halve a second time. If a
-        # newer damage path did not perform that legacy step, normalize it here.
-        if is_equal_approx(current_target_aggro, legacy_half):
-            return
+    # Some older custom damage paths (notably Night Shade) already applied the
+    # historical half themselves. Treat that as the one allowed reduction and
+    # never halve a second time.
+    if is_equal_approx(current_target_aggro, legacy_half):
+        return
+
+    if damage_resolution:
         if is_equal_approx(current_target_aggro, old_target_aggro):
             SingleTargetAggroRules.reduce(target)
             _refresh_cards()
         return
 
-    # Pure status/debuff/control single-target moves were the missing case.
-    # Apply the global relief after the complete move resolution so any status
-    # effect has already finished before the target's current Aggro is halved.
+    # Pure status/debuff/control single-target moves were the original missing
+    # case. Apply the global relief after the complete move resolution so the
+    # target-changing effect has already finished before current Aggro is halved.
     SingleTargetAggroRules.reduce(target)
     _refresh_cards()
 
@@ -225,6 +269,62 @@ func _single_target_aggro_find(combatant_id: String) -> Dictionary:
         if str(combatant.get("id", "")) == combatant_id:
             return combatant
     return {}
+
+
+# Gegenstoß and Seher intentionally resolve damage outside the normal move
+# resolver. Let the legacy implementation perform its special damage/state work,
+# then normalize only its target-Aggro result through the same central rule.
+func _bfam_resolve_payback_retaliation(defender: Dictionary, attacker: Dictionary) -> int:
+    var aggro_before: float = float(attacker.get("aggro", 0.0))
+    var damage: int = super._bfam_resolve_payback_retaliation(defender, attacker)
+    if damage <= 0:
+        return damage
+
+    attacker["aggro"] = aggro_before
+    if SingleTargetAggroRules.is_hostile(defender, attacker):
+        SingleTargetAggroRules.reduce(attacker)
+    _refresh_cards()
+    return damage
+
+
+func _cleffa_resolve_future_sight(event: Dictionary) -> void:
+    var target: Dictionary = {}
+    var target_team: Array = _team_for_side(str(event.get("target_side", "")))
+    var slot: int = int(event.get("slot", -1))
+    if slot >= 0 and slot < target_team.size() and target_team[slot] is Dictionary:
+        target = target_team[slot]
+
+    var hp_before: int = int(target.get("hp", 0)) if not target.is_empty() else 0
+    var aggro_before: float = float(target.get("aggro", 0.0)) if not target.is_empty() else 0.0
+
+    super._cleffa_resolve_future_sight(event)
+
+    if target.is_empty():
+        return
+    var actual_damage: int = maxi(0, hp_before - int(target.get("hp", 0)))
+    if actual_damage <= 0:
+        return
+
+    # The inherited special path already applied its historical half. Restore
+    # the pre-impact value and let the canonical rule own the final reduction.
+    target["aggro"] = aggro_before
+    var snapshot_value: Variant = event.get("snapshot_actor", {})
+    if not (snapshot_value is Dictionary):
+        _refresh_cards()
+        return
+    var snapshot_actor: Dictionary = snapshot_value
+    var move: Dictionary = _move_data("future_sight")
+    if SingleTargetAggroRules.should_reduce(
+        move,
+        snapshot_actor,
+        target,
+        true,
+        "success",
+        false,
+        "enemy_highest_aggro"
+    ):
+        SingleTargetAggroRules.reduce(target)
+    _refresh_cards()
 
 
 # Doppelteam's generated mechanics text was technically derived but very hard
