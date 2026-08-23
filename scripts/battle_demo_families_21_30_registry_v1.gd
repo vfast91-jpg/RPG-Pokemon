@@ -8,7 +8,8 @@ const F30_MOVE_PACK_PATHS: Array[String] = [
     "res://data/gen1_moves_runtime_v3_27_1_families_21_30.json",
     "res://data/gen1_moves_runtime_v3_27_2_families_21_30.json",
     "res://data/gen1_moves_runtime_v3_27_3_families_21_30.json",
-    "res://data/gen1_moves_runtime_v3_27_4_families_21_30.json"
+    "res://data/gen1_moves_runtime_v3_27_4_families_21_30.json",
+    "res://data/gen1_moves_runtime_v3_27_5_families_21_30.json"
 ]
 const F30_SingleTargetAggroRules = preload("res://scripts/battle/single_target_aggro_rules.gd")
 const F30_HAIL_PULSE_SECONDS: float = 10.0
