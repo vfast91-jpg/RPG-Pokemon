@@ -134,7 +134,7 @@ func _install_type_help() -> void:
     header.add_child(close_button)
 
     var legend := Label.new()
-    legend.text = "LINKS Angriff · OBEN Verteidigung    2 = stark    ½ = weniger effektiv    0 = keine Wirkung    leer = normal"
+    legend.text = "LINKS Angriff · OBEN Verteidigung    2 = stark    ½ / ¼ = weniger effektiv    leer = normal"
     legend.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     legend.add_theme_font_size_override("font_size", 8)
     legend.add_theme_color_override("font_color", Color("d6ded9"))
@@ -271,14 +271,20 @@ func _matrix_value_cell(
 func _matrix_text(multiplier: float) -> String:
     if is_zero_approx(multiplier):
         return "0"
+    if is_equal_approx(multiplier, 0.25):
+        return "¼"
+    if is_equal_approx(multiplier, 0.5):
+        return "½"
     if multiplier < 1.0:
-        return "½" if is_equal_approx(multiplier, 0.5) else str(multiplier)
+        return str(multiplier)
     if multiplier > 1.0:
         return "2" if is_equal_approx(multiplier, 2.0) else str(multiplier)
     return ""
 
 
 func _matrix_background(multiplier: float) -> Color:
+    if is_equal_approx(multiplier, 0.25):
+        return Color("7b3f42")
     if is_zero_approx(multiplier):
         return Color("66445f")
     if multiplier < 1.0:
@@ -295,8 +301,12 @@ func _matrix_text_color(multiplier: float) -> Color:
 
 
 func _matrix_tooltip(multiplier: float) -> String:
+    if is_equal_approx(multiplier, 0.25):
+        return "weniger effektiv (¼×)"
     if is_zero_approx(multiplier):
         return "keine Wirkung (0×)"
+    if is_equal_approx(multiplier, 0.5):
+        return "weniger effektiv (½×)"
     if multiplier < 1.0:
         return "weniger effektiv (%s×)" % str(multiplier)
     if multiplier > 1.0:
