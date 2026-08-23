@@ -1,17 +1,29 @@
 extends "res://scripts/battle_demo_struggle_fallback_v1.gd"
 
 # Complete Gen-1-family species registry.
-# "Gen 1" means the full evolution families of the original 151: all Kanto
-# species plus later-added pre-evolutions/evolutions from the authoritative
-# workbook. This layer also loads the move snapshot already declared by the
-# v8 manifest; it does not invent move definitions or mechanics beyond it.
-# Missing runtime move IDs stay stored in the species source data and are
-# filtered by the established runtime until the attack batch implements them.
+# Availability is a global data contract: the game either loads the complete
+# 185-Pokemon / 78-family roster or exposes no Pokemon roster at all. Missing
+# or deferred attacks never remove a Pokemon; the global Verzweifler fallback
+# handles combat until those attacks are implemented.
 
 const REMAINING_GEN1_MANIFEST_PATH: String = "res://data/gen1_database_manifest_v8.json"
-const REMAINING_PACK_MAX_BYTES: int = 2_000_000
+const REMAINING_EXPECTED_SPECIES_COUNT: int = 185
+const REMAINING_EXPECTED_ROUTE_ROOT_COUNT: int = 78
+const REMAINING_SENTINEL_SPECIES: Array[String] = [
+	"lapras",
+	"snorlax",
+	"articuno",
+	"zapdos",
+	"moltres",
+	"dragonite",
+	"mewtwo",
+	"mew",
+	"annihilape",
+	"sylveon"
+]
 
 var _remaining_tm_move_universe: Dictionary = {}
+var _remaining_registry_ready: bool = false
 
 
 func _load_data() -> void:
@@ -19,36 +31,68 @@ func _load_data() -> void:
 	_remaining_load_expanded_species_registry()
 
 
+func pokemon_registry_ready() -> bool:
+	return _remaining_registry_ready
+
+
 func _remaining_load_expanded_species_registry() -> void:
+	_remaining_registry_ready = false
+
 	var manifest: Dictionary = _remaining_read_json_dictionary(REMAINING_GEN1_MANIFEST_PATH)
 	if manifest.is_empty():
-		push_error("Vollständiges Gen-1-Familien-Manifest fehlt: " + REMAINING_GEN1_MANIFEST_PATH)
+		_remaining_fail_registry(
+			"Vollständiges Gen-1-Familien-Manifest fehlt: " + REMAINING_GEN1_MANIFEST_PATH
+		)
+		return
+
+	if int(manifest.get("species_count", -1)) != REMAINING_EXPECTED_SPECIES_COUNT:
+		_remaining_fail_registry(
+			"Gen-1-Familien-Manifest muss exakt %d Pokémon deklarieren."
+			% REMAINING_EXPECTED_SPECIES_COUNT
+		)
+		return
+	if int(manifest.get("route_root_count", -1)) != REMAINING_EXPECTED_ROUTE_ROOT_COUNT:
+		_remaining_fail_registry(
+			"Gen-1-Familien-Manifest muss exakt %d Familien deklarieren."
+			% REMAINING_EXPECTED_ROUTE_ROOT_COUNT
+		)
 		return
 
 	var meta_path: String = str(manifest.get("species_meta_file", ""))
 	var meta: Dictionary = _remaining_read_json_dictionary(meta_path)
 	if meta.is_empty():
-		push_error("Vollständige Gen-1-Familien-Metadaten fehlen: " + meta_path)
+		_remaining_fail_registry("Vollständige Gen-1-Familien-Metadaten fehlen: " + meta_path)
 		return
 
 	var merged_species: Dictionary = {}
 	var species_files_value: Variant = manifest.get("species_files", [])
-	if not (species_files_value is Array):
-		push_error("Gen-1-Familien-Manifest braucht species_files.")
+	if not (species_files_value is Array) or (species_files_value as Array).is_empty():
+		_remaining_fail_registry("Gen-1-Familien-Manifest braucht mindestens eine species_files-Quelle.")
 		return
 
 	for path_value: Variant in species_files_value:
 		var path: String = str(path_value)
+		if path.to_lower().ends_with(".gz"):
+			_remaining_fail_registry(
+				"Komprimierte Pokémon-Datenpakete sind im aktiven Roster nicht mehr erlaubt: " + path
+			)
+			return
 		var pack: Dictionary = _remaining_read_json_dictionary(path)
 		var entries_value: Variant = pack.get("species", {})
 		if not (entries_value is Dictionary):
-			push_error("Pokémon-Datenpaket ist ungültig: " + path)
+			_remaining_fail_registry("Pokémon-Datenpaket ist ungültig: " + path)
 			return
 		for species_id_value: Variant in (entries_value as Dictionary).keys():
 			var species_id: String = str(species_id_value)
 			var entry_value: Variant = (entries_value as Dictionary).get(species_id_value, {})
-			if entry_value is Dictionary:
-				merged_species[species_id] = _remaining_sanitize_species_source(entry_value as Dictionary)
+			if not (entry_value is Dictionary):
+				_remaining_fail_registry(
+					"Pokémon-Datensatz ist ungültig: %s in %s" % [species_id, path]
+				)
+				return
+			merged_species[species_id] = _remaining_sanitize_species_source(
+				entry_value as Dictionary
+			)
 
 	var runtime_species: Dictionary = {}
 	for species_id_value: Variant in merged_species.keys():
@@ -57,29 +101,50 @@ func _remaining_load_expanded_species_registry() -> void:
 		if source_value is Dictionary:
 			runtime_species[species_id] = _canonical_species_runtime(source_value as Dictionary)
 
+	var contract_error: String = _remaining_validate_species_contract(
+		manifest,
+		meta,
+		merged_species,
+		runtime_species
+	)
+	if not contract_error.is_empty():
+		_remaining_fail_registry(contract_error)
+		return
+
 	# The inherited canonical database still starts from the older v3 manifest.
-	# Merge the v8 move files here so the manifest's move_count actually describes
-	# what this top-level registry loaded. Runtime-only system moves (notably
-	# Verzweifler) are preserved and therefore deliberately excluded from the
-	# manifest count audit below.
+	# Merge the complete v8 move snapshot here. Runtime-only system moves such as
+	# Verzweifler stay preserved but are deliberately excluded from manifest count.
 	var manifest_moves: Dictionary = {}
 	var move_files_value: Variant = manifest.get("move_files", [])
-	if not (move_files_value is Array):
-		push_error("Gen-1-Familien-Manifest braucht move_files.")
+	if not (move_files_value is Array) or (move_files_value as Array).is_empty():
+		_remaining_fail_registry("Gen-1-Familien-Manifest braucht move_files.")
 		return
 
 	for path_value: Variant in move_files_value:
 		var path: String = str(path_value)
+		if path.to_lower().ends_with(".gz"):
+			_remaining_fail_registry(
+				"Komprimierte Attacken-Datenpakete sind nicht erlaubt: " + path
+			)
+			return
 		var pack: Dictionary = _remaining_read_json_dictionary(path)
 		var entries_value: Variant = pack.get("moves", {})
 		if not (entries_value is Dictionary):
-			push_error("Attacken-Datenpaket ist ungültig: " + path)
+			_remaining_fail_registry("Attacken-Datenpaket ist ungültig: " + path)
 			return
 		for move_id_value: Variant in (entries_value as Dictionary).keys():
 			var move_id: String = str(move_id_value)
 			var entry_value: Variant = (entries_value as Dictionary).get(move_id_value, {})
 			if entry_value is Dictionary:
 				manifest_moves[move_id] = (entry_value as Dictionary).duplicate(true)
+
+	var expected_move_count: int = int(manifest.get("move_count", -1))
+	if expected_move_count < 0 or manifest_moves.size() != expected_move_count:
+		_remaining_fail_registry(
+			"Gen-1-Familien-Datenbank: Attackenzahl stimmt nicht mit Manifest überein: %d/%d."
+			% [manifest_moves.size(), expected_move_count]
+		)
+		return
 
 	var runtime_moves_value: Variant = data.get("moves", {})
 	var runtime_moves: Dictionary = (
@@ -111,6 +176,8 @@ func _remaining_load_expanded_species_registry() -> void:
 			if move_value is Dictionary:
 				canonical_moves[move_id] = (move_value as Dictionary).duplicate(true)
 
+	# Publish only after every species/family/move contract has succeeded. There
+	# is intentionally no fallback to the inherited partial roster.
 	_canonical_pack = meta.duplicate(true)
 	_canonical_pack["species"] = merged_species
 	_canonical_pack["moves"] = canonical_moves
@@ -120,55 +187,132 @@ func _remaining_load_expanded_species_registry() -> void:
 	data["moves"] = runtime_moves
 
 	var roots_value: Variant = meta.get("route_roots", [])
-	species_ids = (roots_value as Array).duplicate() if roots_value is Array else []
+	species_ids = (roots_value as Array).duplicate()
 	data["species_order"] = species_ids.duplicate()
-
-	# The route continues to use one root per complete family, while the combat
-	# lab can directly select every registered form for testing.
 	lab_species_ids = merged_species.keys()
 	_remaining_rebuild_tm_move_universe()
 
-	if runtime_species.size() != int(manifest.get("species_count", runtime_species.size())):
-		push_error("Gen-1-Familien-Datenbank: Pokémon-Anzahl stimmt nicht mit Manifest überein.")
-	if manifest_moves.size() != int(manifest.get("move_count", manifest_moves.size())):
-		push_error("Gen-1-Familien-Datenbank: Attackenzahl stimmt nicht mit Manifest überein.")
-	if species_ids.size() != int(manifest.get("route_root_count", species_ids.size())):
-		push_error("Gen-1-Familien-Datenbank: Familienanzahl stimmt nicht mit Manifest überein.")
-
+	_remaining_registry_ready = true
+	print(
+		"Pokémon-Datenbank OK: %d Pokémon · %d Familien"
+		% [runtime_species.size(), species_ids.size()]
+	)
 	_audit_canonical_database()
+
+
+func _remaining_validate_species_contract(
+	manifest: Dictionary,
+	meta: Dictionary,
+	merged_species: Dictionary,
+	runtime_species: Dictionary
+) -> String:
+	if merged_species.size() != REMAINING_EXPECTED_SPECIES_COUNT:
+		return (
+			"Gen-1-Familien-Datenbank unvollständig: %d/%d Pokémon in den Quelldaten."
+			% [merged_species.size(), REMAINING_EXPECTED_SPECIES_COUNT]
+		)
+	if runtime_species.size() != REMAINING_EXPECTED_SPECIES_COUNT:
+		return (
+			"Gen-1-Familien-Datenbank unvollständig: %d/%d Pokémon in der Runtime."
+			% [runtime_species.size(), REMAINING_EXPECTED_SPECIES_COUNT]
+		)
+
+	var roots_value: Variant = meta.get("route_roots", [])
+	if not (roots_value is Array):
+		return "Gen-1-Familien-Metadaten besitzen keine route_roots-Liste."
+	var roots: Array = roots_value
+	if roots.size() != REMAINING_EXPECTED_ROUTE_ROOT_COUNT:
+		return (
+			"Gen-1-Familien-Datenbank unvollständig: %d/%d Familien."
+			% [roots.size(), REMAINING_EXPECTED_ROUTE_ROOT_COUNT]
+		)
+
+	var seen_roots: Dictionary = {}
+	for root_value: Variant in roots:
+		var root_id: String = str(root_value)
+		if root_id.is_empty() or seen_roots.has(root_id):
+			return "Gen-1-Familien-Metadaten enthalten eine leere oder doppelte Familienwurzel."
+		seen_roots[root_id] = true
+		if not merged_species.has(root_id):
+			return "Familienwurzel fehlt in der Pokémon-Datenbank: " + root_id
+
+	var family_members_value: Variant = meta.get("family_members", {})
+	if not (family_members_value is Dictionary):
+		return "Gen-1-Familien-Metadaten besitzen kein family_members-Dictionary."
+	var family_members: Dictionary = family_members_value
+	var family_species: Dictionary = {}
+	for root_value: Variant in roots:
+		var root_id: String = str(root_value)
+		var members_value: Variant = family_members.get(root_id, [])
+		if not (members_value is Array) or (members_value as Array).is_empty():
+			return "Familie besitzt keine Mitglieder: " + root_id
+		for member_value: Variant in members_value:
+			var member_id: String = str(member_value)
+			if member_id.is_empty():
+				return "Familie enthält eine leere Pokémon-ID: " + root_id
+			family_species[member_id] = true
+
+	if family_species.size() != REMAINING_EXPECTED_SPECIES_COUNT:
+		return (
+			"Familien-Metadaten decken nur %d/%d Pokémon ab."
+			% [family_species.size(), REMAINING_EXPECTED_SPECIES_COUNT]
+		)
+	for species_id_value: Variant in merged_species.keys():
+		var species_id: String = str(species_id_value)
+		if not family_species.has(species_id):
+			return "Pokémon ist keiner vollständigen Gen-1-Familie zugeordnet: " + species_id
+
+	for sentinel_id: String in REMAINING_SENTINEL_SPECIES:
+		if not merged_species.has(sentinel_id) or not runtime_species.has(sentinel_id):
+			return "Spätes/legendäres Pflicht-Pokémon fehlt in der Runtime: " + sentinel_id
+
+	for species_id_value: Variant in runtime_species.keys():
+		var species_id: String = str(species_id_value)
+		var runtime_value: Variant = runtime_species.get(species_id_value, {})
+		if not (runtime_value is Dictionary):
+			return "Runtime-Pokémon ist ungültig: " + species_id
+		var runtime_entry: Dictionary = runtime_value
+		if str(runtime_entry.get("id", "")) != species_id:
+			return "Runtime-Pokémon-ID stimmt nicht mit Datenbankschlüssel überein: " + species_id
+		if str(runtime_entry.get("name", "")).is_empty():
+			return "Runtime-Pokémon besitzt keinen Namen: " + species_id
+		var types_value: Variant = runtime_entry.get("types", [])
+		if not (types_value is Array) or (types_value as Array).is_empty():
+			return "Runtime-Pokémon besitzt keinen gültigen Typ: " + species_id
+		var stats_value: Variant = runtime_entry.get("base_stats", {})
+		if not (stats_value is Dictionary):
+			return "Runtime-Pokémon besitzt keine Basiswerte: " + species_id
+		var stats: Dictionary = stats_value
+		for stat_key: String in ["hp", "attack", "defense", "special", "speed"]:
+			if not stats.has(stat_key):
+				return "Runtime-Pokémon besitzt unvollständige Basiswerte: " + species_id
+
+	if int(manifest.get("species_count", 0)) != merged_species.size():
+		return "Manifest- und Runtime-Pokémonzahl widersprechen sich."
+	return ""
+
+
+func _remaining_fail_registry(message: String) -> void:
+	_remaining_registry_ready = false
+	_remaining_tm_move_universe.clear()
+	data["species"] = {}
+	data["species_order"] = []
+	species_ids = []
+	lab_species_ids = []
+	_canonical_pack["species"] = {}
+	push_error(message)
 
 
 func _remaining_read_json_dictionary(path: String) -> Dictionary:
 	if path.is_empty():
 		return {}
-
-	var text: String = ""
-	if path.ends_with(".gz"):
-		var compressed: PackedByteArray = FileAccess.get_file_as_bytes(path)
-		if compressed.size() < 18:
-			push_error("GZIP-Datenpaket ist leer oder zu kurz: " + path)
-			return {}
-
-		# Standard-GZIP stores the uncompressed byte size (ISIZE) in the final
-		# four little-endian bytes. Supplying that exact size avoids Godot's
-		# dynamic decompressor path that failed on the externally generated packs.
-		var expected_size: int = compressed.decode_u32(compressed.size() - 4)
-		if expected_size <= 0 or expected_size > REMAINING_PACK_MAX_BYTES:
-			push_error("GZIP-Datenpaket meldet eine ungültige Entpackgröße: " + path)
-			return {}
-
-		var raw: PackedByteArray = compressed.decompress(
-			expected_size,
-			FileAccess.COMPRESSION_GZIP
-		)
-		if raw.size() != expected_size:
-			push_error("GZIP-Datenpaket konnte nicht vollständig entpackt werden: " + path)
-			return {}
-		text = raw.get_string_from_utf8()
-	else:
-		text = FileAccess.get_file_as_string(path)
-
-	var parsed: Variant = JSON.parse_string(text)
+	if path.to_lower().ends_with(".gz"):
+		push_error("GZIP-Datenpakete werden nicht mehr unterstützt: " + path)
+		return {}
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	return parsed if parsed is Dictionary else {}
 
 
@@ -191,10 +335,8 @@ func _remaining_sanitize_species_source(source: Dictionary) -> Dictionary:
 				types[type_key] = ""
 		sanitized["types"] = types
 
-	# Non-level evolutions legitimately have no numeric evolution_level. Older
-	# family traversal calls int() on this field, so normalize only the missing /
-	# non-numeric representation to 0 (= no automatic level evolution) instead of
-	# inventing a trigger.
+	# Non-level evolutions legitimately have no numeric evolution_level. Normalize
+	# missing/non-numeric values to 0 (= no automatic level evolution).
 	var evolution_value: Variant = sanitized.get("evolution", {})
 	if evolution_value is Dictionary:
 		var evolution: Dictionary = (evolution_value as Dictionary).duplicate(true)
