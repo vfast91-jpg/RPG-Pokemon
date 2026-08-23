@@ -73,9 +73,15 @@ func _tf_load_landscape_registry() -> void:
 
 
 func _tf_apply_current_landscape_background() -> void:
-    if battle_demo == null:
-        _find_battle_demo()
-    if battle_demo == null:
+    # Der BattleDemo ist im Hauptbaum ein Geschwisterknoten der Route. Ältere
+    # Route-Layer stellen bereits battle_demo bereit; der direkte Lookup ist nur
+    # der robuste Fallback und ersetzt die inzwischen entfernte _find_battle_demo()-Methode.
+    var active_battle_demo: Node = battle_demo as Node
+    if active_battle_demo == null:
+        var parent: Node = get_parent()
+        if parent != null:
+            active_battle_demo = parent.get_node_or_null("BattleDemo")
+    if active_battle_demo == null:
         return
 
     var landscape: Dictionary = route_current_landscape()
@@ -83,8 +89,8 @@ func _tf_apply_current_landscape_background() -> void:
     if background_path.is_empty():
         push_warning("Für Landschaft '%s' fehlt ein Hintergrundpfad." % current_landscape_id)
         return
-    if not battle_demo.has_method("set_battle_background"):
+    if not active_battle_demo.has_method("set_battle_background"):
         push_warning("BattleDemo unterstützt set_battle_background noch nicht.")
         return
 
-    battle_demo.call("set_battle_background", background_path)
+    active_battle_demo.call("set_battle_background", background_path)
