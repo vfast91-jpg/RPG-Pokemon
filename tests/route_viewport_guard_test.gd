@@ -13,17 +13,22 @@ func _initialize() -> void:
     var frame := route.root.get_node_or_null("RouteViewportFrame") as PanelContainer
     assert(frame != null, "Der äußere Goldrahmen braucht den zentralen Viewport-Schutz.")
     assert(frame.clip_contents, "Der äußere Goldrahmen darf Inhalte außerhalb seiner Grenzen nicht zeichnen.")
+    assert(frame.anchor_left == 0.0 and frame.anchor_top == 0.0, "Der Goldrahmen muss links/oben am Viewport verankert bleiben.")
+    assert(frame.anchor_right == 1.0 and frame.anchor_bottom == 1.0, "Der Goldrahmen muss rechts/unten am Viewport verankert bleiben.")
+    assert(frame.offset_left == 8.0 and frame.offset_top == 8.0, "Der Goldrahmen braucht den festen oberen/ linken Innenabstand.")
+    assert(frame.offset_right == -8.0 and frame.offset_bottom == -8.0, "Der Goldrahmen braucht den festen unteren/rechten Innenabstand.")
 
-    var frame_scroll := frame.get_node_or_null("RouteViewportScroll") as ScrollContainer
-    assert(frame_scroll != null, "Der Goldrahmen braucht einen inneren ScrollContainer als Overflow-Sicherheitsnetz.")
+    # Regression: the complete route screen must never become scrollable. The
+    # previous safety wrapper caused the unwanted scrollbar on the far right.
     assert(
-        frame_scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO,
-        "Vertikaler Overflow im Routenrahmen muss intern scrollbar sein."
+        frame.get_node_or_null("RouteViewportScroll") == null,
+        "Der komplette Routenrahmen darf keinen globalen ScrollContainer besitzen."
     )
-    assert(
-        frame_scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED,
-        "Die Route darf keinen horizontalen Scroll-Overflow erzeugen."
-    )
+    for child: Node in frame.get_children():
+        assert(
+            not (child is ScrollContainer),
+            "Direkt im Goldrahmen darf kein ScrollContainer die komplette Route scrollbar machen."
+        )
 
     assert(route.event_label != null, "Die Route braucht weiterhin ihr Ereignis-/Ergebnisfeld.")
     assert(not route.event_label.fit_content, "Dynamischer Routentext darf die Höhe des Layouts nicht bestimmen.")
