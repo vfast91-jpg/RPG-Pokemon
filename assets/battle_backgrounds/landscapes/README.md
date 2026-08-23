@@ -1,24 +1,27 @@
 # Landschafts-Hintergründe
 
-Hier werden die 18 festen Landschaftsbilder für die Routen- und Kampflogik abgelegt.
+Hier liegen die 18 festen Landschaftsbilder für die spätere Routen- und Kampflogik.
 
-Bitte exakt diese Dateinamen als PNG verwenden:
+Bitte exakt diese Dateinamen als JPG verwenden:
 
-01_meadow_grassland.png
-02_forest.png
-03_jungle.png
-04_desert.png
-05_canyon_rockland.png
-06_lakeshore.png
-07_coast_beach.png
-08_swamp_moor.png
-09_mountains.png
-10_tundra.png
-11_volcano_lavafield.png
-12_cave.png
-13_city.png
-14_industry_powerplant.png
-15_ruins.png
-16_mystic_place.png
-17_glacier_ice_lake.png
-18_temple_monastery.png
+01_meadow_grassland.jpg
+02_forest.jpg
+03_jungle.jpg
+04_desert.jpg
+05_canyon_rockland.jpg
+06_lakeshore.jpg
+07_coast_beach.jpg
+08_swamp_moor.jpg
+09_mountains.jpg
+10_tundra.jpg
+11_volcano_lavafield.jpg
+12_cave.jpg
+13_city.jpg
+14_industry_powerplant.jpg
+15_ruins.jpg
+16_mystic_place.jpg
+17_glacier_ice_lake.jpg
+18_temple_monastery.jpg
+
+Die stabile technische Zuordnung von Landschafts-ID, Anzeigename und Bildpfad liegt in `res://data/landscapes_v1.json`.
+Die Typ-Gewichtungen der Landschaften werden separat in Schritt 5 des Landschaftssystems ergänzt.
