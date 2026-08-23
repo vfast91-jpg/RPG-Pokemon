@@ -14,10 +14,57 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     var context: Dictionary = _phase_build_context(actor, move_id, move)
     _phase_feedback_context = context
 
+    # Felsaxt is a normal damaging move first. Only if its successful hit
+    # actually creates a new Tarnsteine field do we queue the separate field
+    # animation afterwards. This keeps the two visual beats strictly ordered
+    # without executing Tarnsteine as a second gameplay move.
+    var stone_axe_rocks_before: Dictionary = {}
+    if move_id == "stone_axe":
+        stone_axe_rocks_before = _f64_stealth_rock_by_side.duplicate(true)
+
     super._execute_move(actor, move_id)
 
     _phase_finish_context(actor, move_id, move, context)
+
+    if (
+        move_id == "stone_axe"
+        and _phase_stone_axe_placed_stealth_rock(stone_axe_rocks_before)
+    ):
+        _phase_queue_stone_axe_stealth_rock_animation(actor)
+
     _phase_feedback_context = previous_context
+
+
+func _phase_stone_axe_placed_stealth_rock(before: Dictionary) -> bool:
+    for side_value: Variant in _f64_stealth_rock_by_side.keys():
+        if not before.has(side_value):
+            return true
+    return false
+
+
+func _phase_queue_stone_axe_stealth_rock_animation(actor: Dictionary) -> void:
+    var rock_move: Dictionary = _move_data("stealth_rock")
+    if rock_move.is_empty():
+        # Defensive visual fallback. The gameplay state has already been set by
+        # Felsaxt; this dictionary is presentation-only and never executes the
+        # Tarnsteine move itself.
+        rock_move = {
+            "id": "stealth_rock",
+            "name": "Tarnsteine",
+            "emoji": "🪨",
+            "category": "status",
+            "target": "enemy_field"
+        }
+
+    # Normal travel/hit animation lasts roughly MOVE_EMOJI_TRAVEL_SECONDS plus
+    # its short impact fade. Starting just after that makes the sequence read
+    # as: Felsaxt hits -> Tarnsteine alter the battlefield.
+    _animate_field_move_emoji_after_delay(
+        actor,
+        "stealth_rock",
+        rock_move,
+        MOVE_EMOJI_TRAVEL_SECONDS + 0.12
+    )
 
 
 func _phase_build_context(
