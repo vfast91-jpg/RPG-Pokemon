@@ -1,7 +1,7 @@
 extends SceneTree
 
-const CurrentBattleScript = preload("res://scripts/battle_demo_v22_consistency_v1.gd")
-const EXPECTED_MOVE_COUNT: int = 479
+const CurrentBattleScript = preload("res://scripts/battle_demo_v22_playability_gate_v1.gd")
+const V22MoveCatalog = preload("res://scripts/battle/v22_move_catalog.gd")
 
 const PER_TARGET_ACCURACY_IDS: Array[String] = [
     "string_shot", "razor_leaf", "heat_wave", "electroweb", "hurricane",
@@ -26,36 +26,37 @@ func _initialize() -> void:
     var moves_value: Variant = battle.data.get("moves", {})
     var moves: Dictionary = moves_value if moves_value is Dictionary else {}
 
+    _check_equal_int(V22MoveCatalog.count(), 479, "Der kanonische V22-Katalog muss genau 479 Attacken enthalten.")
     _check(
-        moves.size() >= EXPECTED_MOVE_COUNT,
-        "Finaler V22-Runtime-Bestand enthält nur %d statt mindestens %d Attacken."
-        % [moves.size(), EXPECTED_MOVE_COUNT]
+        moves.size() >= V22MoveCatalog.count(),
+        "Finaler Runtime-Bestand ist kleiner als der kanonische V22-Katalog."
     )
 
-    for move_id_value: Variant in moves.keys():
-        var move_id: String = str(move_id_value)
+    for move_id: String in V22MoveCatalog.IDS:
+        _check(moves.has(move_id), "Kanonische V22-Attacke fehlt: " + move_id)
+        if not moves.has(move_id):
+            continue
         var move_value: Variant = moves.get(move_id, {})
         _check(move_value is Dictionary, move_id + ": Attackendefinition ist kein Dictionary.")
         if not (move_value is Dictionary):
             continue
         var move: Dictionary = move_value
-        var mechanics_value: Variant = move.get("mechanics", [])
-        _check(
-            mechanics_value is Array and not (mechanics_value as Array).is_empty(),
-            move_id + ": finale Runtime besitzt keine ausführbare mechanics-Liste."
-        )
         var runtime_value: Variant = move.get("runtime", {})
-        if runtime_value is Dictionary:
-            _check(
-                bool((runtime_value as Dictionary).get("runtime_supported", true)),
-                move_id + ": finale Runtime ist als nicht unterstützt markiert."
-            )
+        var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
+        _check(
+            bool(runtime.get("runtime_supported", true)),
+            move_id + ": finale Runtime ist als nicht unterstützt markiert."
+        )
+        _check(
+            battle._v22_move_has_executable_path(move),
+            move_id + ": besitzt weder mechanics noch Runtime-Spezialpfad."
+        )
 
     _test_rock_slide(battle, moves)
     _test_per_target_accuracy(moves)
     _test_special_targets(moves)
-    _test_confirmed_v22_drift_fixes(moves)
-    _test_canonical_flinch_runtime(battle)
+    _test_confirmed_drift_fixes(moves)
+    _test_flinch_catalog(moves)
 
     battle.free()
 
@@ -68,11 +69,7 @@ func _initialize() -> void:
 
 
 func _test_rock_slide(battle, moves: Dictionary) -> void:
-    var move_value: Variant = moves.get("rock_slide", {})
-    _check(move_value is Dictionary, "Steinhagel fehlt im finalen Runtime-Bestand.")
-    if not (move_value is Dictionary):
-        return
-    var move: Dictionary = move_value
+    var move: Dictionary = _move(moves, "rock_slide")
     _check_equal_int(int(move.get("power", 0)), 75, "Steinhagel muss Stärke 75 besitzen.")
     _check_equal_float(float(move.get("accuracy", 0.0)), 90.0, "Steinhagel muss Genauigkeit 90 besitzen.")
     _check(str(move.get("target", "")) == "all_enemies", "Steinhagel muss alle Gegner treffen.")
@@ -80,9 +77,9 @@ func _test_rock_slide(battle, moves: Dictionary) -> void:
 
     var mechanics_value: Variant = move.get("mechanics", [])
     _check(mechanics_value is Array, "Steinhagel-Legacy-effects wurden nicht nach mechanics normalisiert.")
+    var has_damage: bool = false
+    var has_flinch: bool = false
     if mechanics_value is Array:
-        var has_damage: bool = false
-        var has_flinch: bool = false
         for mechanic_value: Variant in mechanics_value:
             if not (mechanic_value is Dictionary):
                 continue
@@ -91,21 +88,15 @@ func _test_rock_slide(battle, moves: Dictionary) -> void:
             has_flinch = has_flinch or kind in [
                 "atb_knockback", "zf_flinch", "f40_flinch_on_damage", "f64_flinch_on_damage"
             ]
-        _check(has_damage, "Steinhagel besitzt nach finaler Normalisierung keine Schadensmechanik.")
-        _check(has_flinch, "Steinhagel besitzt nach finaler Normalisierung keine Zurückschreckmechanik.")
+    _check(has_damage, "Steinhagel besitzt nach finaler Normalisierung keine Schadensmechanik.")
+    _check(has_flinch, "Steinhagel besitzt nach finaler Normalisierung keine Zurückschreckmechanik.")
 
-    var runtime_value: Variant = move.get("runtime", {})
-    var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
+    var runtime: Dictionary = _runtime(move)
     _check(bool(runtime.get("v22_per_target_accuracy", false)), "Steinhagel muss Genauigkeit pro Ziel auflösen.")
+    _check(_status_aggro(move), "Steinhagel muss Zurückschrecken als Status-Aggro werten.")
 
-    var aggro_value: Variant = move.get("aggro", {})
-    var aggro: Dictionary = aggro_value if aggro_value is Dictionary else {}
-    _check(
-        bool(aggro.get("from_status", aggro.get("status", false))),
-        "Steinhagel muss erfolgreiche Zurückschreckwirkung als Status-Aggro werten."
-    )
-
-    # Exact runtime regression for the old amount=0.25 representation.
+    # Regression gegen die alte konkrete Datenform, die den Fehler ausgelöst hat:
+    # amount=0.25 darf niemals mehr zu einem partiellen Rückwurf führen.
     var actor: Dictionary = {"id": "rock_actor", "side": "player"}
     var target: Dictionary = {
         "id": "rock_target", "side": "enemy", "hp": 90, "max_hp": 100,
@@ -129,14 +120,9 @@ func _test_rock_slide(battle, moves: Dictionary) -> void:
 
 func _test_per_target_accuracy(moves: Dictionary) -> void:
     for move_id: String in PER_TARGET_ACCURACY_IDS:
-        var move_value: Variant = moves.get(move_id, {})
-        _check(move_value is Dictionary, move_id + ": V22-Flächenattacke fehlt.")
-        if not (move_value is Dictionary):
-            continue
-        var runtime_value: Variant = (move_value as Dictionary).get("runtime", {})
-        var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
+        var move: Dictionary = _move(moves, move_id)
         _check(
-            bool(runtime.get("v22_per_target_accuracy", false)),
+            bool(_runtime(move).get("v22_per_target_accuracy", false)),
             move_id + ": getrennte Genauigkeitsprüfung pro Ziel ist nicht aktiv."
         )
 
@@ -145,9 +131,7 @@ func _test_special_targets(moves: Dictionary) -> void:
     for move_id: String in ["switcheroo", "transform", "conversion_2"]:
         var move: Dictionary = _move(moves, move_id)
         _check(str(move.get("target", "")) == "single_enemy", move_id + ": muss freie Gegnerwahl verwenden.")
-        var runtime_value: Variant = move.get("runtime", {})
-        var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
-        _check(bool(runtime.get("requires_enemy_selection", false)), move_id + ": Zielauswahl-UI fehlt.")
+        _check(bool(_runtime(move).get("requires_enemy_selection", false)), move_id + ": Zielauswahl-UI fehlt.")
 
     for move_id: String in ["self_destruct", "explosion", "brutal_swing"]:
         var move: Dictionary = _move(moves, move_id)
@@ -155,19 +139,29 @@ func _test_special_targets(moves: Dictionary) -> void:
         _check(bool(move.get("area", false)), move_id + ": all_others benötigt area=true.")
 
     for move_id: String in ["self_destruct", "explosion"]:
-        var move: Dictionary = _move(moves, move_id)
-        var runtime_value: Variant = move.get("runtime", {})
-        var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
+        var runtime: Dictionary = _runtime(_move(moves, move_id))
         _check(bool(runtime.get("v22_unconditional_self_ko", false)), move_id + ": V22-Selbst-K.O. fehlt.")
         _check(not bool(runtime.get("f40_self_ko_on_any_damage", false)), move_id + ": alter schadensabhängiger Selbst-K.O.-Pfad ist noch aktiv.")
 
+    for move_id: String in ["swagger", "flatter"]:
+        var move: Dictionary = _move(moves, move_id)
+        _check(
+            str(move.get("target", "")) == "enemy_highest_aggro_or_single_ally",
+            move_id + ": muss Gegner mit höchster Aggro ODER gewählten Verbündeten erlauben."
+        )
 
-func _test_confirmed_v22_drift_fixes(moves: Dictionary) -> void:
+    _check(
+        str(_move(moves, "dragon_cheer").get("target", "")) == "all_allies_except_self",
+        "Drachenjubel muss alle Verbündeten außer dem Anwender betreffen."
+    )
+
+
+func _test_confirmed_drift_fixes(moves: Dictionary) -> void:
     var psychic_noise: Dictionary = _move(moves, "psychic_noise")
-    var noise_mechanics_value: Variant = psychic_noise.get("mechanics", [])
     var found_noise_block: bool = false
-    if noise_mechanics_value is Array:
-        for mechanic_value: Variant in noise_mechanics_value:
+    var mechanics_value: Variant = psychic_noise.get("mechanics", [])
+    if mechanics_value is Array:
+        for mechanic_value: Variant in mechanics_value:
             if not (mechanic_value is Dictionary):
                 continue
             var mechanic: Dictionary = mechanic_value
@@ -179,15 +173,13 @@ func _test_confirmed_v22_drift_fixes(moves: Dictionary) -> void:
     _check(found_noise_block, "Psycholärm besitzt keine Heilsperrenmechanik.")
     _check(_status_aggro(psychic_noise), "Psycholärm muss Status-Aggro aktivieren.")
 
-    var blaze_kick: Dictionary = _move(moves, "blaze_kick")
-    _check(_status_aggro(blaze_kick), "Feuerfeger muss eine neu angewandte Verbrennung als Status-Aggro werten.")
+    _check(
+        _status_aggro(_move(moves, "blaze_kick")),
+        "Feuerfeger muss eine neu angewandte Verbrennung als Status-Aggro werten."
+    )
 
 
-func _test_canonical_flinch_runtime(battle) -> void:
-    # All known V22 flinch IDs must at least exist in the final runtime. Legacy
-    # mechanic kinds are allowed in data because the final layer redirects them
-    # centrally, but no legacy amount may influence the result.
-    var moves: Dictionary = battle.data.get("moves", {})
+func _test_flinch_catalog(moves: Dictionary) -> void:
     for move_id: String in FLINCH_IDS:
         _check(moves.has(move_id), "V22-Zurückschreckattacke fehlt: " + move_id)
 
@@ -200,11 +192,16 @@ func _move(moves: Dictionary, move_id: String) -> Dictionary:
     return value as Dictionary
 
 
+func _runtime(move: Dictionary) -> Dictionary:
+    var value: Variant = move.get("runtime", {})
+    return value if value is Dictionary else {}
+
+
 func _status_aggro(move: Dictionary) -> bool:
-    var aggro_value: Variant = move.get("aggro", {})
-    if not (aggro_value is Dictionary):
+    var value: Variant = move.get("aggro", {})
+    if not (value is Dictionary):
         return false
-    var aggro: Dictionary = aggro_value
+    var aggro: Dictionary = value
     return bool(aggro.get("from_status", aggro.get("status", false)))
 
 
