@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -33,11 +33,11 @@
       {"stage": 93, "species_mode": "random_non_legendary"},
       {"stage": 94, "species_mode": "random_non_legendary"},
       {"stage": 95, "species_mode": "random_non_legendary"},
-      {"stage": 96, "species_mode": "random_non_legendary", "future_legendary": "articuno", "future_display_name": "Arktos"},
-      {"stage": 97, "species_mode": "random_non_legendary", "future_legendary": "zapdos", "future_display_name": "Zapdos"},
-      {"stage": 98, "species_mode": "random_non_legendary", "future_legendary": "moltres", "future_display_name": "Lavados"},
-      {"stage": 99, "species_mode": "random_non_legendary", "future_legendary": "mew", "future_display_name": "Mew"},
-      {"stage": 100, "species_mode": "random_non_legendary", "future_legendary": "mewtwo", "future_display_name": "Mewtu"}
+      {"stage": 96, "species_mode": "fixed", "species_id": "articuno", "display_name": "Arktos", "landscape_id": "glacier"},
+      {"stage": 97, "species_mode": "fixed", "species_id": "zapdos", "display_name": "Zapdos", "landscape_id": "industry"},
+      {"stage": 98, "species_mode": "fixed", "species_id": "moltres", "display_name": "Lavados", "landscape_id": "volcano"},
+      {"stage": 99, "species_mode": "fixed", "species_id": "mew", "display_name": "Mew", "landscape_id": "mystic"},
+      {"stage": 100, "species_mode": "fixed", "species_id": "mewtwo", "display_name": "Mewtu", "landscape_id": "cave"}
     ]
   }
 }
