@@ -12,7 +12,8 @@ extends "res://scripts/battle_demo_v22_charge_integrity_v1.gd"
 # - If a newer special mechanic has no dedicated presentation yet, the box falls
 #   back to its player-facing description/special rules instead of exposing an
 #   internal runtime id.
-# - Additional inherited preview lines (Runde 0, charge rules, etc.) are kept.
+# - Additional inherited preview lines (Runde 0, charge rules, etc.) are kept,
+#   but pass through the same player-text safety filter.
 #
 # Combat logic and move data are untouched; this layer changes presentation only.
 
@@ -113,7 +114,8 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
     var inherited_text: String = log_label.text
     var text: String = _standardized_move_info_text(move, touch_confirm)
 
-    for extra_line: String in _inherited_preview_extra_lines(inherited_text):
+    for inherited_line: String in _inherited_preview_extra_lines(inherited_text):
+        var extra_line: String = _standardize_inherited_extra_line(inherited_line)
         if extra_line.is_empty():
             continue
         var plain_extra: String = extra_line.replace("[b]", "").replace("[/b]", "").strip_edges()
@@ -124,6 +126,15 @@ func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = fals
         text += "\n" + extra_line
 
     log_label.text = text
+
+
+func _standardize_inherited_extra_line(source: String) -> String:
+    var plain: String = source.replace("[b]", "").replace("[/b]", "").strip_edges()
+    if plain.is_empty():
+        return ""
+    if plain.contains("_") or _contains_internal_infobox_token(plain):
+        return ""
+    return _space_percentages(source.strip_edges())
 
 
 func _move_tooltip(move: Dictionary) -> String:
@@ -274,7 +285,7 @@ func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
     if _contains_internal_infobox_token(text):
         return true
     if text.is_empty():
-        return _move_requires_effect_line(move)
+        return _move_has_complex_player_rule(move)
     if (
         text.length() <= 24
         and _move_has_complex_player_rule(move)
