@@ -12,16 +12,15 @@ const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json
 const STAT_KEYS: Array[String] = ["hp", "attack", "defense", "special", "speed"]
 const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg"
 const DEFAULT_BATTLE_FRAMING: Dictionary = {
-    "zoom": 1.18,
+    "zoom": 1.0,
     "focus_x": 0.5,
-    "focus_y": 0.5,
+    "focus_y": 0.0,
     "offset_x": 0.0,
     "offset_y": 0.0
 }
 
 var _active_battle_background_layer: Control = null
 var _active_battle_background_rect: TextureRect = null
-var _active_battle_focus_rect: TextureRect = null
 var _battle_background_framing: Dictionary = DEFAULT_BATTLE_FRAMING.duplicate(true)
 
 
@@ -32,25 +31,22 @@ func _build_battle(root: Control) -> void:
     _battle_background_framing = DEFAULT_BATTLE_FRAMING.duplicate(true)
     super._build_battle(root)
 
-    # battle_demo_hd.gd creates a fallback ColorRect and BattleArea. The old
-    # background implementation used COVER directly on the complete ultrawide
-    # battle strip. The landscape JPGs are much less wide, so COVER had to crop
-    # away a very large part of the image and made the scenery look unnaturally
-    # close to the small Pokemon sprites.
-    #
-    # The permanent solution is a panoramic two-layer framing:
-    # - an ambient COVER layer fills the far left/right edges behind the cards;
-    # - a sharp focal layer in the middle keeps almost the complete source image
-    #   and therefore preserves the intended camera distance.
-    # The stat cards naturally cover the transition between both layers.
+    # The battle strip is much wider than the landscape source images. Do not
+    # build a second centre image and do not centre-crop the scenery. Instead the
+    # source image is enlarged proportionally until its left and right edges are
+    # exactly flush with the battle area. Its top edge stays at the top of the
+    # arena; everything that extends below the arena is simply clipped away.
     var area: Control = battle_panel.get_node_or_null("BattleArea") as Control
     if area == null:
         push_error("BattleArea fehlt; Kampfhintergrund konnte nicht eingebaut werden.")
         return
 
+    # Disable the older reusable child background. This layer is the single
+    # authoritative visible arena image.
     if _battle_background_rect != null:
         _battle_background_rect.visible = false
 
+    # Hide the turquoise fallback created by battle_demo_hd.gd.
     if battle_panel.get_child_count() > 0:
         var first_child: Node = battle_panel.get_child(0)
         if first_child is ColorRect:
@@ -65,24 +61,13 @@ func _build_battle(root: Control) -> void:
     battle_panel.add_child(_active_battle_background_layer)
 
     _active_battle_background_rect = TextureRect.new()
-    _active_battle_background_rect.name = "AmbientBattleBackground"
-    _active_battle_background_rect.position = Vector2.ZERO
-    _active_battle_background_rect.size = area.size
+    _active_battle_background_rect.name = "ActiveBattleBackground"
     _active_battle_background_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    _active_battle_background_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    _active_battle_background_rect.stretch_mode = TextureRect.STRETCH_SCALE
     _active_battle_background_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _active_battle_background_layer.add_child(_active_battle_background_rect)
 
-    _active_battle_focus_rect = TextureRect.new()
-    _active_battle_focus_rect.name = "FocusedBattleBackground"
-    _active_battle_focus_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    _active_battle_focus_rect.stretch_mode = TextureRect.STRETCH_SCALE
-    _active_battle_focus_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _active_battle_background_layer.add_child(_active_battle_focus_rect)
-
-    # Put the complete background layer directly before BattleArea. The Pokemon,
-    # cards and connectors remain children of BattleArea and are therefore always
-    # rendered above it.
+    # Keep the background below Pokemon/cards, which remain children of BattleArea.
     battle_panel.move_child(_active_battle_background_layer, area.get_index())
     area.resized.connect(_sync_visible_battle_background.bind(area))
 
@@ -112,13 +97,13 @@ func _normalized_battle_framing(framing: Dictionary) -> Dictionary:
         if framing.has(key):
             result[key] = framing.get(key)
 
-    # zoom=1 means "fit the whole source image into the battle height". Values
-    # only slightly above 1 give a restrained crop. The old COVER-only behavior
-    # effectively required roughly twice that zoom for the current 4:3 artwork.
-    result["zoom"] = clampf(float(result.get("zoom", 1.18)), 1.0, 1.6)
-    result["focus_x"] = clampf(float(result.get("focus_x", 0.5)), 0.0, 1.0)
-    result["focus_y"] = clampf(float(result.get("focus_y", 0.5)), 0.0, 1.0)
-    result["offset_x"] = float(result.get("offset_x", 0.0))
+    # Width-fit/top-crop is intentionally fixed for landscape battles. offset_y
+    # remains available for later fine tuning: negative values push an image a
+    # little farther upward without changing its scale.
+    result["zoom"] = 1.0
+    result["focus_x"] = 0.5
+    result["focus_y"] = 0.0
+    result["offset_x"] = 0.0
     result["offset_y"] = float(result.get("offset_y", 0.0))
     return result
 
@@ -128,15 +113,12 @@ func _sync_visible_battle_background(area: Control) -> void:
         return
     _active_battle_background_layer.position = area.position
     _active_battle_background_layer.size = area.size
-    if _active_battle_background_rect != null:
-        _active_battle_background_rect.position = Vector2.ZERO
-        _active_battle_background_rect.size = area.size
-    if _active_battle_focus_rect != null and _active_battle_focus_rect.texture != null:
-        _layout_battle_focus(_active_battle_focus_rect.texture)
+    if _active_battle_background_rect != null and _active_battle_background_rect.texture != null:
+        _layout_battle_background(_active_battle_background_rect.texture)
 
 
 func _update_visible_battle_background() -> void:
-    if _active_battle_background_rect == null or _active_battle_focus_rect == null:
+    if _active_battle_background_rect == null:
         return
 
     var texture_value: Resource = load(battle_background_path)
@@ -146,12 +128,11 @@ func _update_visible_battle_background() -> void:
 
     var texture: Texture2D = texture_value as Texture2D
     _active_battle_background_rect.texture = texture
-    _active_battle_focus_rect.texture = texture
-    _layout_battle_focus(texture)
+    _layout_battle_background(texture)
 
 
-func _layout_battle_focus(texture: Texture2D) -> void:
-    if _active_battle_background_layer == null or _active_battle_focus_rect == null:
+func _layout_battle_background(texture: Texture2D) -> void:
+    if _active_battle_background_layer == null or _active_battle_background_rect == null:
         return
 
     var area_size: Vector2 = _active_battle_background_layer.size
@@ -159,25 +140,15 @@ func _layout_battle_focus(texture: Texture2D) -> void:
     if area_size.x <= 0.0 or area_size.y <= 0.0 or texture_size.x <= 0.0 or texture_size.y <= 0.0:
         return
 
-    # Start from a contain/fit-height scale instead of COVER. The configurable
-    # zoom can then add only a small deliberate crop, never the huge implicit
-    # crop caused by the battle strip's very wide aspect ratio.
-    var fit_scale: float = minf(area_size.x / texture_size.x, area_size.y / texture_size.y)
-    var zoom: float = float(_battle_background_framing.get("zoom", 1.18))
-    var render_size: Vector2 = texture_size * fit_scale * zoom
+    # User-facing rule: preserve the source aspect ratio, make the image exactly
+    # as wide as the full battle window, anchor it to the upper edge, and crop
+    # only the overflow at the bottom.
+    var width_scale: float = area_size.x / texture_size.x
+    var render_size: Vector2 = texture_size * width_scale
+    var vertical_offset: float = float(_battle_background_framing.get("offset_y", 0.0))
 
-    var focus_x: float = float(_battle_background_framing.get("focus_x", 0.5))
-    var focus_y: float = float(_battle_background_framing.get("focus_y", 0.5))
-    var offset := Vector2(
-        float(_battle_background_framing.get("offset_x", 0.0)),
-        float(_battle_background_framing.get("offset_y", 0.0))
-    )
-
-    var target_point: Vector2 = area_size * 0.5 + offset
-    var source_focus := Vector2(render_size.x * focus_x, render_size.y * focus_y)
-
-    _active_battle_focus_rect.position = target_point - source_focus
-    _active_battle_focus_rect.size = render_size
+    _active_battle_background_rect.position = Vector2(0.0, vertical_offset)
+    _active_battle_background_rect.size = render_size
 
 
 func _load_data() -> void:
