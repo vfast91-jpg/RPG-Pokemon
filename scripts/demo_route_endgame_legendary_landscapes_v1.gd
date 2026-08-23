@@ -52,7 +52,41 @@ func _begin_endgame_boss() -> void:
     # Defensive Absicherung: Selbst wenn vor dem Klick irgendeine andere Demo
     # den sichtbaren Hintergrund geändert hat, startet 96-100 im festen Ziel.
     _tf_apply_fixed_endgame_landscape_for_stage(stage)
+
+    if _tf_is_fixed_legendary_stage(stage):
+        var profile: Dictionary = FixedEndgameBossRules.boss_profile_for_stage(stage)
+        var fixed_id: String = str(profile.get("species_id", "")).strip_edges()
+        var display_name: String = str(profile.get("display_name", fixed_id))
+        if (
+            battle_demo == null
+            or not battle_demo.has_method("route_species_is_available")
+            or not bool(battle_demo.call("route_species_is_available", fixed_id))
+        ):
+            event_label.text = (
+                "Der festgelegte legendäre Superboss [b]%s[/b] ist in den aktuellen Pokémon-Daten nicht verfügbar. "
+                + "Etappe %d wird deshalb nicht durch einen zufälligen Ersatzboss verfälscht."
+            ) % [display_name, stage]
+            return
+
     super._begin_endgame_boss()
+
+
+func _endgame_species_for_profile(profile: Dictionary, boss_level: int) -> String:
+    # Für species_mode=fixed gibt es absichtlich keinen Zufallsfallback. So kann
+    # ein fehlendes legendäres Pokémon niemals unbemerkt durch einen normalen
+    # nicht-legendären Superboss ersetzt werden.
+    if str(profile.get("species_mode", "")) == "fixed":
+        var fixed_id: String = str(profile.get("species_id", "")).strip_edges()
+        if (
+            not fixed_id.is_empty()
+            and battle_demo != null
+            and battle_demo.has_method("route_species_is_available")
+            and bool(battle_demo.call("route_species_is_available", fixed_id))
+        ):
+            return fixed_id
+        return ""
+
+    return super._endgame_species_for_profile(profile, boss_level)
 
 
 func _tf_is_fixed_legendary_stage(current_stage: int) -> bool:
