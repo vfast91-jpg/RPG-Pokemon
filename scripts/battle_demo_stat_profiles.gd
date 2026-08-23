@@ -11,6 +11,10 @@ extends "res://scripts/battle_demo_adaptive_family_ui.gd"
 const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json"
 const STAT_KEYS: Array[String] = ["hp", "attack", "defense", "special", "speed"]
 const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg"
+# Keep every landscape width-fitted, but spend roughly the upper third of its
+# vertical overflow above the visible arena. This leaves only a modest amount of
+# sky while preserving substantially more ground for the Pokemon rows.
+const BATTLE_BG_OVERFLOW_UPSHIFT_RATIO: float = 0.30
 const DEFAULT_BATTLE_FRAMING: Dictionary = {
     "zoom": 1.0,
     "focus_x": 0.5,
@@ -34,8 +38,8 @@ func _build_battle(root: Control) -> void:
     # The battle strip is much wider than the landscape source images. Do not
     # build a second centre image and do not centre-crop the scenery. Instead the
     # source image is enlarged proportionally until its left and right edges are
-    # exactly flush with the battle area. Its top edge stays at the top of the
-    # arena; everything that extends below the arena is simply clipped away.
+    # exactly flush with the battle area, then shifted upward inside the clipped
+    # arena so the playable Pokemon rows sit on ground instead of in the sky.
     var area: Control = battle_panel.get_node_or_null("BattleArea") as Control
     if area == null:
         push_error("BattleArea fehlt; Kampfhintergrund konnte nicht eingebaut werden.")
@@ -97,9 +101,9 @@ func _normalized_battle_framing(framing: Dictionary) -> Dictionary:
         if framing.has(key):
             result[key] = framing.get(key)
 
-    # Width-fit/top-crop is intentionally fixed for landscape battles. offset_y
-    # remains available for later fine tuning: negative values push an image a
-    # little farther upward without changing its scale.
+    # Width-fit/upward-crop is intentionally fixed for landscape battles.
+    # offset_y remains available for later per-landscape fine tuning: negative
+    # values push an image farther upward, positive values lower it again.
     result["zoom"] = 1.0
     result["focus_x"] = 0.5
     result["focus_y"] = 0.0
@@ -140,12 +144,20 @@ func _layout_battle_background(texture: Texture2D) -> void:
     if area_size.x <= 0.0 or area_size.y <= 0.0 or texture_size.x <= 0.0 or texture_size.y <= 0.0:
         return
 
-    # User-facing rule: preserve the source aspect ratio, make the image exactly
-    # as wide as the full battle window, anchor it to the upper edge, and crop
-    # only the overflow at the bottom.
+    # Preserve the source aspect ratio and make the image exactly as wide as the
+    # full battle window. Instead of centering vertically, shift a controlled
+    # share of the excess height above the arena. This keeps the side edges flush
+    # while showing much less sky and more useful ground behind the Pokemon.
     var width_scale: float = area_size.x / texture_size.x
     var render_size: Vector2 = texture_size * width_scale
-    var vertical_offset: float = float(_battle_background_framing.get("offset_y", 0.0))
+    var vertical_overflow: float = maxf(0.0, render_size.y - area_size.y)
+    var automatic_upshift: float = vertical_overflow * BATTLE_BG_OVERFLOW_UPSHIFT_RATIO
+    var manual_offset: float = float(_battle_background_framing.get("offset_y", 0.0))
+    var vertical_offset: float = clampf(
+        -automatic_upshift + manual_offset,
+        -vertical_overflow,
+        0.0
+    )
 
     _active_battle_background_rect.position = Vector2(0.0, vertical_offset)
     _active_battle_background_rect.size = render_size
