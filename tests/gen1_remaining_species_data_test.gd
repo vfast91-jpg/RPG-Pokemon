@@ -1,9 +1,9 @@
 extends SceneTree
 
-const MANIFEST_PATH: String = "res://data/gen1_database_manifest_v8.json"
+const MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.json"
 const EVOLUTION_PATH: String = "res://data/rules/evolution_chains.json"
 const ACTIVE_SCRIPT_PATH: String = "res://scripts/battle_demo_remaining_gen1_species_v1.gd"
-const EXPECTED_MASTER_PATH: String = "res://data/gen1_species_roster_master_v8.json"
+const EXPECTED_MASTER_PATH: String = "res://data/pokemon_species_master_v1.json"
 
 const LATER_FAMILY_MEMBERS: Array[String] = ["crobat", "pichu", "cleffa", "igglybuff", "bellossom", "politoed", "espeon", "umbreon", "slowking", "steelix", "scizor", "kingdra", "porygon2", "tyrogue", "hitmontop", "smoochum", "elekid", "magby", "blissey", "mime-jr", "happiny", "munchlax", "magnezone", "lickilicky", "rhyperior", "tangrowth", "electivire", "magmortar", "leafeon", "glaceon", "porygon-z", "sylveon", "kleavor", "annihilape"]
 const LATE_SENTINELS: Array[String] = ["lapras", "snorlax", "articuno", "zapdos", "moltres", "dragonite", "mewtwo", "mew"]
@@ -11,13 +11,24 @@ const LATE_SENTINELS: Array[String] = ["lapras", "snorlax", "articuno", "zapdos"
 
 func _initialize() -> void:
 	var manifest: Dictionary = _read_json(MANIFEST_PATH)
-	assert(not manifest.is_empty(), "V8-Manifest muss lesbar sein.")
-	assert(int(manifest.get("species_count", -1)) == 185, "V8 muss 185 registrierte Spezies enthalten.")
-	assert(int(manifest.get("move_count", -1)) == 313, "Das Manifest muss weiterhin 313 bekannte Attackendefinitionen deklarieren.")
-	assert(int(manifest.get("route_root_count", -1)) == 78, "Es müssen 78 vollständige Familienwurzeln registriert sein.")
+	assert(not manifest.is_empty(), "Globales Pokémon-Manifest muss lesbar sein.")
+	assert(int(manifest.get("species_count", -1)) == 185, "Der aktuelle Datenstand muss 185 registrierte Spezies enthalten.")
+	assert(int(manifest.get("move_count", -1)) == 313, "Der aktuelle Datenstand muss 313 bekannte Attackendefinitionen deklarieren.")
+	assert(int(manifest.get("route_root_count", -1)) == 78, "Der aktuelle Datenstand muss 78 vollständige Familienwurzeln registrieren.")
+
+	var pool_policy_value: Variant = manifest.get("pool_policy", {})
+	assert(pool_policy_value is Dictionary, "Das globale Manifest braucht eine Pool-Richtlinie.")
+	var pool_policy: Dictionary = pool_policy_value
+	assert(str(pool_policy.get("species", "")) == "single_global_pool", "Alle Pokémon müssen in genau einem globalen Pool liegen.")
+	assert(str(pool_policy.get("moves", "")) == "single_global_pool", "Alle Attacken müssen in genau einem globalen Pool liegen.")
+	assert(bool(pool_policy.get("generation_is_metadata_only", false)), "Generation darf nur Metadatum sein und keinen Runtime-Pool trennen.")
+	assert(bool(pool_policy.get("availability_never_gated_by_generation", false)), "Generation darf Pokémon-Verfügbarkeit niemals filtern.")
+	assert(bool(pool_policy.get("cross_generation_families_share_one_family_graph", false)), "Generationsübergreifende Entwicklungen müssen in derselben Familie bleiben.")
+	assert(bool(pool_policy.get("species_move_access_is_by_learnset_and_tm_compatibility_only", false)), "Attackenzugriff muss über Learnset/TM-Kompatibilität laufen, nicht über Generationen.")
+	assert(str(manifest.get("move_pool_mode", "")) == "single_global_runtime_dictionary_merged_from_plain_json_sources", "Attackendateien müssen in genau ein globales Runtime-Dictionary zusammengeführt werden.")
 
 	var master_path: String = str(manifest.get("species_master_file", ""))
-	assert(master_path == EXPECTED_MASTER_PATH, "Der vollständige Roster muss genau eine feste Masterdatei verwenden.")
+	assert(master_path == EXPECTED_MASTER_PATH, "Der vollständige Roster muss genau eine generation-neutrale Masterdatei verwenden.")
 	var species_files_value: Variant = manifest.get("species_files", [])
 	assert(species_files_value is Array, "species_files muss eine Liste sein.")
 	var species_files: Array = species_files_value
@@ -28,18 +39,19 @@ func _initialize() -> void:
 		var paths_value: Variant = manifest.get(list_key, [])
 		assert(paths_value is Array, list_key + " muss eine Liste sein.")
 		for path_value: Variant in paths_value:
-			assert(not str(path_value).to_lower().ends_with(".gz"), "Aktiver V8-Datenpfad darf kein GZIP mehr enthalten: " + str(path_value))
+			assert(not str(path_value).to_lower().ends_with(".gz"), "Aktiver Datenpfad darf kein GZIP mehr enthalten: " + str(path_value))
 
 	var meta: Dictionary = _read_json(str(manifest.get("species_meta_file", "")))
-	assert(not meta.is_empty(), "V8-Metadaten müssen lesbar sein.")
+	assert(not meta.is_empty(), "Globale Familienmetadaten müssen lesbar sein.")
 
 	var master_pack: Dictionary = _read_json(master_path)
 	var master_species_value: Variant = master_pack.get("species", {})
 	assert(master_species_value is Dictionary, "Masterdatei muss ein species-Dictionary enthalten.")
 	var master_species: Dictionary = master_species_value
-	assert(master_species.size() == 185, "Die eine Masterdatei muss exakt 185 Pokémon enthalten.")
+	assert(master_species.size() == 185, "Die aktuelle Masterdatei muss exakt 185 Pokémon enthalten.")
 
-	# All original 151 must be present exactly once in the one master.
+	# Current snapshot regression: all original 151 are present exactly once.
+	# Future generations extend this same master; they do not create a new pool.
 	var original_dex_seen: Dictionary = {}
 	for species_value: Variant in master_species.values():
 		assert(species_value is Dictionary, "Jeder Mastereintrag muss ein Dictionary sein.")
@@ -59,8 +71,8 @@ func _initialize() -> void:
 		assert(master_species.has(species_id), "Spätes/legendäres Pflicht-Pokémon fehlt im Master: " + species_id)
 
 	# Detail files are optional for availability but should currently enrich the
-	# master with the approved source learnsets/TMs. Merge them without letting
-	# them create new roster identities.
+	# master with approved source learnsets/TMs. They may never create a second
+	# species pool or new roster identities behind the master's back.
 	var detailed_species: Dictionary = master_species.duplicate(true)
 	for path_value: Variant in manifest.get("species_detail_files", []):
 		var path: String = str(path_value)
@@ -76,7 +88,7 @@ func _initialize() -> void:
 					detailed_species.get(species_id, {}) as Dictionary,
 					detail_value as Dictionary
 				)
-	assert(detailed_species.size() == 185, "Detailanreicherung darf die Rostergröße niemals verändern.")
+	assert(detailed_species.size() == master_species.size(), "Detailanreicherung darf die Rostergröße niemals verändern.")
 
 	var crobat: Dictionary = detailed_species.get("crobat", {})
 	assert(int(crobat.get("pokedex_number", 0)) == 169, "Iksbat muss als #169 registriert sein.")
@@ -101,7 +113,7 @@ func _initialize() -> void:
 	_assert_family_members(family_members, "porygon", ["porygon", "porygon2", "porygon-z"])
 
 	var roots: Array = meta.get("route_roots", [])
-	assert(roots.size() == 78, "Metadaten müssen exakt 78 Familienwurzeln besitzen.")
+	assert(roots.size() == 78, "Der aktuelle Datenstand muss exakt 78 Familienwurzeln besitzen.")
 	for root_id: String in ["tyrogue", "smoochum", "elekid", "magby", "happiny", "mime-jr", "munchlax", "mew"]:
 		assert(roots.has(root_id), "Vollständige Familienwurzel fehlt: " + root_id)
 
@@ -119,11 +131,13 @@ func _initialize() -> void:
 	_assert_branch_rule(rules, "eevee", ["vaporeon", "jolteon", "flareon", "espeon", "umbreon", "leafeon", "glaceon", "sylveon"], 30)
 
 	var active_script: String = FileAccess.get_file_as_string(ACTIVE_SCRIPT_PATH)
+	assert(active_script.contains("pokemon_database_manifest_v1.json"), "Der aktive Spezies-Layer muss das generation-neutrale Manifest laden.")
 	assert(active_script.contains("species_master_file"), "Der aktive Spezies-Layer muss die eine Masterdatei laden.")
+	assert(active_script.contains("single_global_pool"), "Der aktive Spezies-Layer muss den globalen Ein-Pool-Vertrag erzwingen.")
 	assert(active_script.contains("pokemon_registry_ready"), "Der aktive Spezies-Layer muss einen harten Runtime-Readiness-Status besitzen.")
 	assert(not active_script.contains("COMPRESSION_GZIP"), "Der aktive Spezies-Layer darf keinen GZIP-Entpacker mehr enthalten.")
 
-	print("Complete Gen1 master registry test passed: one master = 151 originals + 34 later family members = 185 species.")
+	print("Global Pokemon pool contract passed: current snapshot 185 species, one species pool, one move pool.")
 	quit(0)
 
 
@@ -172,7 +186,7 @@ func _assert_branch_rule(rules: Dictionary, source_id: String, targets: Array, l
 
 
 func _read_json(path: String) -> Dictionary:
-	assert(not path.to_lower().ends_with(".gz"), "GZIP-Dateien sind im aktiven V8-Datenweg verboten: " + path)
+	assert(not path.to_lower().ends_with(".gz"), "GZIP-Dateien sind im aktiven Datenweg verboten: " + path)
 	var text: String = FileAccess.get_file_as_string(path)
 	assert(not text.is_empty(), "Datei konnte nicht gelesen werden: " + path)
 	var parsed: Variant = JSON.parse_string(text)
