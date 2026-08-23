@@ -9,10 +9,47 @@ func _initialize() -> void:
     var lab = PvpBattleScript.new()
     root.add_child(lab)
 
+    # Owned Pokemon keep explicit branch choice, generated Pokemon get a random
+    # valid endpoint. Eevee is the strongest regression fixture because all
+    # eight branches must remain reachable without multiplying family weight.
+    var eevee_options: Array = lab.route_generated_species_options_for_level("eevee", 30)
+    var expected_eevee_options: Array[String] = [
+        "vaporeon",
+        "jolteon",
+        "flareon",
+        "espeon",
+        "umbreon",
+        "leafeon",
+        "glaceon",
+        "sylveon"
+    ]
+    _check(eevee_options.size() == expected_eevee_options.size(), "Evoli muss auf Level 30 alle acht System-Entwicklungen besitzen.")
+    for species_id: String in expected_eevee_options:
+        _check(eevee_options.has(species_id), "Evoli-Systemzweig fehlt im PvP/Generator: %s" % species_id)
+    _check(
+        lab.route_resolve_species_for_level("eevee", 30).is_empty(),
+        "Ein eigenes Evoli darf trotz System-Zufall weiterhin keine Entwicklung ohne Spielerwahl erhalten."
+    )
+
+    var seen_generated_eevee: Dictionary = {}
+    for _sample: int in range(128):
+        var generated_id: String = lab.route_resolve_generated_species_for_level("eevee", 30)
+        _check(eevee_options.has(generated_id), "Systemgenerierung darf nur einen gültigen Evoli-Zweig wählen.")
+        if not generated_id.is_empty():
+            seen_generated_eevee[generated_id] = true
+    _check(seen_generated_eevee.size() > 1, "Systemgenerierung darf bei Evoli nicht auf einen einzigen festen Zweig verdrahtet sein.")
+
+    var scyther_options: Array = lab.route_generated_species_options_for_level("scyther", 50)
+    _check(scyther_options.has("scyther"), "Sichlor muss ohne erfundenes Entwicklungslevel systemgenerierbar bleiben.")
+    _check(scyther_options.has("scizor"), "Scherox muss über den vollständigen Sichlor-Familienlink systemgenerierbar sein.")
+    _check(scyther_options.has("kleavor"), "Axantor muss über den vollständigen Sichlor-Familienlink systemgenerierbar sein.")
+
     _check(lab._pvp_species_is_available_at_level("bulbasaur", 15), "Bisasam muss bis Level 15 im PvP-Pool erlaubt sein.")
     _check(not lab._pvp_species_is_available_at_level("bulbasaur", 16), "Bisasam darf ab seiner Pflichtentwicklung auf Level 16 nicht mehr angeboten werden.")
     _check(lab._pvp_species_is_available_at_level("ivysaur", 16), "Bisaknosp muss ab Level 16 im PvP-Pool erlaubt sein.")
     _check(not lab._pvp_species_is_available_at_level("ivysaur", 32), "Bisaknosp darf ab der Pflichtentwicklung auf Level 32 nicht mehr angeboten werden.")
+    _check(lab._pvp_species_is_available_at_level("vaporeon", 50), "Aquana muss als möglicher Evoli-Systemzweig im PvP erreichbar sein.")
+    _check(lab._pvp_species_is_available_at_level("sylveon", 50), "Feelinara muss als möglicher Evoli-Systemzweig im PvP erreichbar sein.")
 
     var catalog: Array = lab.pvp_catalog(50)
     _check(catalog.size() >= 6, "PvP braucht auf Level 50 mindestens sechs spielbare Pokémon, damit jeder Pick drei unterschiedliche Optionen behalten kann.")
