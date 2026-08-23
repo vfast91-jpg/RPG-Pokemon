@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_super_ineffective_v1.gd"
+extends "res://scripts/battle_demo_zf_payday_v1.gd"
 
 # Landschafts-Hintergründe für das aktive Kampffeld.
 # Die 4:3-Originalbilder bleiben unverändert; im sehr breiten BattleArea-Fenster
