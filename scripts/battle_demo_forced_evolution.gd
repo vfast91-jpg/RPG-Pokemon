@@ -2,15 +2,20 @@ extends "res://scripts/battle_demo_tm_support.gd"
 
 const EvolutionResolverScript = preload("res://scripts/evolution_resolver.gd")
 const SPECIES_DATA_DIR: String = "res://data"
+const EVOLUTION_RULES_PATH: String = "res://data/rules/evolution_chains.json"
 
 var _mandatory_evolution = EvolutionResolverScript.new()
+var _system_nonlevel_family_links: Dictionary = {}
 
 
 func _load_data() -> void:
     super._load_data()
+    _load_system_generated_evolution_links()
     _merge_species_data_packs()
 
 
+# Player-owned Pokemon keep the strict resolver: a branching evolution must be
+# chosen explicitly by the player and is never silently randomized here.
 func route_resolve_species_for_level(species_id: String, level: int) -> String:
     return _mandatory_evolution.resolve_species_for_level(
         species_id,
@@ -19,10 +24,109 @@ func route_resolve_species_for_level(species_id: String, level: int) -> String:
     )
 
 
+# Generated Pokemon use a separate path. Enemies, captures, PvP drafts and
+# other system-created encounters may randomly choose any valid branch while
+# the player-owned evolution flow above stays untouched.
+func route_generated_species_options_for_level(species_id: String, level: int) -> Array:
+    var result: Array = []
+    _append_generated_species_options(
+        species_id,
+        maxi(1, level),
+        _runtime_species(),
+        {},
+        result
+    )
+    return result
+
+
+func route_resolve_generated_species_for_level(species_id: String, level: int) -> String:
+    var options: Array = route_generated_species_options_for_level(species_id, level)
+    if options.is_empty():
+        return ""
+    return str(options.pick_random())
+
+
+func _append_generated_species_options(
+    species_id: String,
+    level: int,
+    available_species: Dictionary,
+    visited: Dictionary,
+    result: Array
+) -> void:
+    if species_id.is_empty() or visited.has(species_id) or not available_species.has(species_id):
+        return
+
+    var branch_visited: Dictionary = visited.duplicate()
+    branch_visited[species_id] = true
+
+    var required: Dictionary = _mandatory_evolution.required_level_evolution(
+        species_id,
+        level,
+        available_species
+    )
+    if required.is_empty():
+        if not result.has(species_id):
+            result.append(species_id)
+
+        # A few complete-family links (currently e.g. Scyther -> Scizor/Kleavor)
+        # deliberately have no Timeflow level trigger. For generated Pokemon we
+        # expose all registered forms instead of inventing an evolution level.
+        var links_value: Variant = _system_nonlevel_family_links.get(species_id, [])
+        if links_value is Array:
+            for linked_value: Variant in links_value:
+                var linked_id: String = str(linked_value)
+                if available_species.has(linked_id) and not result.has(linked_id):
+                    result.append(linked_id)
+        return
+
+    if bool(required.get("requires_player_choice", false)):
+        var choices_value: Variant = required.get("choices", [])
+        if not (choices_value is Array):
+            return
+        for choice_value: Variant in choices_value:
+            if not (choice_value is Dictionary):
+                continue
+            var choice: Dictionary = choice_value
+            if not bool(choice.get("target_available", false)):
+                continue
+            _append_generated_species_options(
+                str(choice.get("target_species_id", "")),
+                level,
+                available_species,
+                branch_visited,
+                result
+            )
+        return
+
+    _append_generated_species_options(
+        str(required.get("target_species_id", "")),
+        level,
+        available_species,
+        branch_visited,
+        result
+    )
+
+
+func _load_system_generated_evolution_links() -> void:
+    _system_nonlevel_family_links.clear()
+    var file := FileAccess.open(EVOLUTION_RULES_PATH, FileAccess.READ)
+    if file == null:
+        return
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    if not (parsed is Dictionary):
+        return
+    var links_value: Variant = (parsed as Dictionary).get("family_links_without_level_rule", {})
+    if links_value is Dictionary:
+        _system_nonlevel_family_links = (links_value as Dictionary).duplicate(true)
+
+
 func route_species_ids_for_level(level: int) -> Array:
     var result: Array = []
     for species_value: Variant in species_ids:
-        var resolved_id: String = route_resolve_species_for_level(str(species_value), level)
+        var resolved_id: String = route_resolve_generated_species_for_level(
+            str(species_value),
+            level
+        )
         if not resolved_id.is_empty() and not result.has(resolved_id):
             result.append(resolved_id)
     return result
@@ -30,14 +134,9 @@ func route_species_ids_for_level(level: int) -> Array:
 
 func route_species_ids_valid_through_level(max_level: int) -> Array:
     var result: Array = []
-    var runtime_species: Dictionary = _runtime_species()
     for species_value: Variant in species_ids:
         var species_id: String = str(species_value)
-        if _mandatory_evolution.family_is_available_through_level(
-            species_id,
-            maxi(1, max_level),
-            runtime_species
-        ):
+        if not route_generated_species_options_for_level(species_id, maxi(1, max_level)).is_empty():
             result.append(species_id)
     return result
 
@@ -90,13 +189,13 @@ func start_route_battle_party(team_state: Array, enemy_party: Array) -> void:
             continue
         var enemy: Dictionary = (enemy_value as Dictionary).duplicate(true)
         var level: int = maxi(1, int(enemy.get("level", 1)))
-        var resolved_id: String = route_resolve_species_for_level(
+        var resolved_id: String = route_resolve_generated_species_for_level(
             str(enemy.get("species_id", "")),
             level
         )
         if resolved_id.is_empty():
             push_warning(
-                "Begegnung verworfen: Für %s Lv.%d fehlt eine eindeutig auflösbare verpflichtende Entwicklungsform."
+                "Begegnung verworfen: Für %s Lv.%d konnte keine gültige System-Entwicklungsform bestimmt werden."
                 % [str(enemy.get("species_id", "")), level]
             )
             continue
