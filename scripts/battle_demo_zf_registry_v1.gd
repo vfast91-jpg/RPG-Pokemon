@@ -153,7 +153,10 @@ func _targets(actor: Dictionary, rule: String) -> Array:
         if not selected.is_empty() and bool(selected.get("alive", false)):
             if rule == "single_ally" and str(selected.get("side", "")) == str(actor.get("side", "")):
                 return [selected]
-            if rule == "enemy_highest_aggro" and str(selected.get("side", "")) != str(actor.get("side", "")):
+            if (
+                (rule == "enemy_highest_aggro" or rule == "single_enemy")
+                and str(selected.get("side", "")) != str(actor.get("side", ""))
+            ):
                 return [selected]
 
     if rule == "single_ally":
@@ -165,6 +168,13 @@ func _targets(actor: Dictionary, rule: String) -> Array:
             if bool(candidate.get("alive", false)) and str(candidate.get("id", "")) != str(actor.get("id", "")):
                 allies.append(candidate)
         return [] if allies.is_empty() else [allies.pick_random()]
+
+    if rule == "single_enemy":
+        var opponents: Array = []
+        for candidate_value: Variant in _living_opponents(actor):
+            if candidate_value is Dictionary:
+                opponents.append(candidate_value)
+        return [] if opponents.is_empty() else [opponents.pick_random()]
 
     if rule == "battlefield":
         return [actor]
