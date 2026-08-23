@@ -111,7 +111,7 @@ func _tf_make_current_landscape_card(landscape: Dictionary) -> Control:
 
     var hint := Label.new()
     hint.name = "CurrentLandscapeHint"
-    hint.text = "Bestimmt den Hintergrund der Kämpfe dieser Etappe."
+    hint.text = "Bestimmt den Kampfhintergrund und beeinflusst die Pokémon-Typen dieser Etappe."
     hint.add_theme_font_size_override("font_size", 8)
     hint.add_theme_color_override("font_color", Color("b8d3c7"))
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
