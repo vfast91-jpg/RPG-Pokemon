@@ -1,35 +1,28 @@
 # Kampfhintergründe – Format und Systematik
 
-Der aktive Kampfbereich ist **632 × 216 px** groß. Neue Hintergründe sollen deshalb immer exakt dieses Seitenverhältnis verwenden.
+Der aktive Kampfbereich ist **632 × 216 px** groß.
 
-## Empfohlenes Produktionsformat
-
-- Arbeits-/Exportgröße: **1264 × 432 px** (2× Spielauflösung)
-- Seitenverhältnis: **79:27** (ca. 2,926:1)
-- Geeignete Formate: `.svg`, `.webp` oder `.png`
-- Im Spiel werden die Bilder auf **632 × 216 px** dargestellt.
-- Keine Schrift, Rahmen oder HUD-Elemente in das Bild malen.
-
-## Bildaufbau
-
-- Der mittlere Bereich soll eher ruhig bleiben, damit Kampfanimationen lesbar sind.
-- Links und rechts dürfen mehr Umgebungsdetails liegen.
-- Wichtige Motive nicht direkt an den Rand setzen; dort stehen Pokémon und Statuskarten.
-- Perspektive möglichst als breite, leicht seitliche Kampffläche anlegen.
-- Helligkeit und Kontrast so wählen, dass helle und dunkle Pokémon erkennbar bleiben.
-
-## Landschaften
+## Aktuelle Landschaftsbilder
 
 Die 18 festen Landschaftsbilder liegen gesammelt unter:
 
 `assets/battle_backgrounds/landscapes/`
 
-Die verbindlichen Dateinamen stehen dort in `README.md`.
+Sie werden als **JPG** gespeichert. Die verbindlichen Dateinamen stehen dort in `README.md`; die technische Zuordnung von Landschafts-ID, Anzeigename und Bildpfad liegt in `res://data/landscapes_v1.json`.
+
+Die vorhandenen Landschafts-Originale sind bewusst **4:3**. Sie werden nicht verändert oder dauerhaft zugeschnitten. Im breiten Kampfbereich werden sie proportional mit `KEEP_ASPECT_COVERED` dargestellt; dabei darf für die Anzeige an den Rändern Bildinhalt abgeschnitten werden, ohne das Seitenverhältnis zu verzerren.
+
+## Bildaufbau
+
+- Keine Schrift, Rahmen oder HUD-Elemente in das Bild malen.
+- Der mittlere Bereich soll als gut lesbare Kampffläche funktionieren.
+- Helligkeit und Kontrast so wählen, dass helle und dunkle Pokémon erkennbar bleiben.
+- Wichtige Motive möglichst nicht ausschließlich an den äußersten Bildrändern platzieren, weil diese bei der breiten Kampfdarstellung beschnitten werden können.
 
 ## Einbindung
 
-Die Battle-Demo lädt standardmäßig:
+Der aktive Battle-Layer besitzt `set_battle_background(path)` und startet mit:
 
-`res://assets/battle_backgrounds/meadow_placeholder.svg`
+`res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg`
 
-Das aktive UI-Script besitzt außerdem `set_battle_background(path)`, sodass später pro Region, Route, Gebäude oder Wetterlage ein anderer Hintergrund gesetzt werden kann, ohne das Kampfsystem umzubauen.
+Die Route kann dadurch pro Etappe eine Landschaft setzen, ohne die Originalbilder zu verändern oder das Kampfsystem neu aufzubauen.
