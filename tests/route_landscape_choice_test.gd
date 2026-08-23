@@ -41,6 +41,29 @@ func _initialize() -> void:
     route._tf_landscape_prepared_stage = 95
     assert(not route._tf_should_offer_landscape_choice(), "Etappen 96-100 sind für feste Endgame-Landschaften reserviert.")
 
+    # Regression: Nach einem Kampf kann ein geerbter Route-Zustand den Wegbereich
+    # unsichtbar bzw. den Textbereich scrollbar/expandierend hinterlassen. Die
+    # Landschaftsauswahl muss diese UI-Zustände selbst reparieren, sonst sieht
+    # man zwar den Titel, aber keine der zwei anwählbaren Landschaftskarten.
+    route.path_box = VBoxContainer.new()
+    route.path_box.visible = false
+    route.event_label = RichTextLabel.new()
+    route.event_label.fit_content = false
+    route.event_label.scroll_active = true
+    route.event_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    route.progress_label = Label.new()
+    route.progress_label.visible = true
+
+    route._tf_prepare_route_choice_layout(true)
+    assert(route.path_box.visible, "Die Landschaftskarten müssen nach jedem Route-Zustand sichtbar geschaltet werden.")
+    assert(route.event_label.fit_content, "Der Landschaftstext muss vollständig in den Inhalt einpassen.")
+    assert(not route.event_label.scroll_active, "Die Landschaftsauswahl darf keine eigene Text-Scrollbar benötigen.")
+    assert(route.event_label.size_flags_vertical == Control.SIZE_FILL, "Der Landschaftstext darf den Kartenbereich nicht verdrängen.")
+    assert(not route.progress_label.visible, "Die redundante Fortschritts-Prozentzeile muss verborgen bleiben.")
+
+    route.path_box.free()
+    route.event_label.free()
+    route.progress_label.free()
     route.free()
     print("Route landscape choice test: OK")
     quit(0)
