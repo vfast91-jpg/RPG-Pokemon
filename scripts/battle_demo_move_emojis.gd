@@ -40,10 +40,30 @@ const MOVE_EMOJIS: Dictionary = {
     "sweet_kiss": "💋"
 }
 
+# Battlefield-changing moves share one visual language: the move emoji travels
+# from the user to the visual center of the combatants, expands there, remains
+# clearly readable for a short beat, and only then fades. Weather is
+# deliberately not part of this list; it has its own presentation category.
+const FIELD_ANIMATION_MOVE_IDS: Dictionary = {
+    "grassy_terrain": true,
+    "electric_terrain": true,
+    "misty_terrain": true,
+    "psychic_terrain": true,
+    "toxic_spikes": true,
+    "spikes": true,
+    "stealth_rock": true
+}
+
 const MOVE_EMOJI_SIZE: Vector2 = Vector2(44.0, 44.0)
 const MOVE_EMOJI_FONT_SIZE: int = 31
 const MOVE_EMOJI_TRAVEL_SECONDS: float = 0.34
 const MOVE_EMOJI_SELF_RISE: float = 30.0
+const FIELD_EMOJI_TRAVEL_SECONDS: float = 0.30
+const FIELD_EMOJI_GROW_SECONDS: float = 0.28
+const FIELD_EMOJI_HOLD_SECONDS: float = 0.30
+const FIELD_EMOJI_FADE_SECONDS: float = 0.22
+const FIELD_EMOJI_PEAK_SCALE: Vector2 = Vector2(4.6, 4.6)
+const FIELD_EMOJI_FADE_SCALE: Vector2 = Vector2(5.0, 5.0)
 
 var _visual_move_id: String = ""
 var _visual_move: Dictionary = {}
@@ -109,11 +129,16 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
 
     # Damaging moves normally animate from _damage(), just before damage is
     # calculated. This fallback covers status moves, buffs and charge
-    # preparations without duplicating the combat logic.
+    # preparations without duplicating the combat logic. Battlefield setup is
+    # deliberately animated exactly once at the field center rather than once
+    # per nominal target.
     if not move.is_empty() and _move_was_resolved(move_id, move):
-        for target_value: Variant in candidate_targets:
-            if target_value is Dictionary:
-                _animate_move_emoji_once(actor, target_value as Dictionary, move_id, move)
+        if _is_field_animation_move(move_id):
+            _animate_field_move_emoji_once(actor, move_id, move)
+        else:
+            for target_value: Variant in candidate_targets:
+                if target_value is Dictionary:
+                    _animate_move_emoji_once(actor, target_value as Dictionary, move_id, move)
 
     _visual_move_id = ""
     _visual_move = {}
@@ -169,12 +194,22 @@ func _move_was_resolved(move_id: String, move: Dictionary) -> bool:
     return resolved_log.contains("nutzt") and resolved_log.contains(move_name)
 
 
+func _is_field_animation_move(move_id: String) -> bool:
+    return FIELD_ANIMATION_MOVE_IDS.has(move_id)
+
+
 func _animate_move_emoji_once(
     actor: Dictionary,
     target: Dictionary,
     move_id: String,
     move: Dictionary
 ) -> void:
+    # Safety net for derived runtimes that call the generic animation helper
+    # directly. A terrain/hazard must never fall back to a self/target hit.
+    if _is_field_animation_move(move_id):
+        _animate_field_move_emoji_once(actor, move_id, move)
+        return
+
     if battle_panel == null:
         return
 
@@ -211,6 +246,95 @@ func _animate_move_emoji_once(
         _animate_self_emoji(emoji_label, start_center)
     else:
         _animate_travel_emoji(emoji_label, start_center, target_center)
+
+
+func _animate_field_move_emoji_once(
+    actor: Dictionary,
+    move_id: String,
+    move: Dictionary
+) -> void:
+    if battle_panel == null:
+        return
+
+    var actor_id: String = str(actor.get("id", ""))
+    if actor_id.is_empty():
+        return
+    var visual_key: String = "field:" + actor_id + ":" + move_id
+    if _visual_animated_targets.has(visual_key):
+        return
+
+    var actor_card: Control = _combatant_card(actor)
+    if actor_card == null:
+        return
+
+    _visual_animated_targets[visual_key] = true
+
+    var emoji_label: Label = Label.new()
+    emoji_label.text = _move_emoji(move_id, move)
+    emoji_label.size = MOVE_EMOJI_SIZE
+    emoji_label.custom_minimum_size = MOVE_EMOJI_SIZE
+    emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    emoji_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    emoji_label.add_theme_font_size_override("font_size", MOVE_EMOJI_FONT_SIZE)
+    emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    emoji_label.z_index = 210
+    emoji_label.pivot_offset = MOVE_EMOJI_SIZE * 0.5
+    battle_panel.add_child(emoji_label)
+
+    var start_center: Vector2 = actor_card.get_global_rect().get_center()
+    var field_center: Vector2 = _battlefield_visual_center()
+    emoji_label.global_position = start_center - MOVE_EMOJI_SIZE * 0.5
+    emoji_label.scale = Vector2(0.78, 0.78)
+    emoji_label.modulate.a = 1.0
+    _animate_field_emoji(emoji_label, start_center, field_center)
+
+
+func _animate_field_move_emoji_after_delay(
+    actor: Dictionary,
+    move_id: String,
+    move: Dictionary,
+    delay_seconds: float
+) -> void:
+    if get_tree() == null:
+        return
+    var move_copy: Dictionary = move.duplicate(true)
+    var timer: SceneTreeTimer = get_tree().create_timer(maxf(0.0, delay_seconds))
+    timer.timeout.connect(
+        _animate_field_move_emoji_once.bind(actor, move_id, move_copy)
+    )
+
+
+func _battlefield_visual_center() -> Vector2:
+    var found_card: bool = false
+    var min_corner: Vector2 = Vector2.ZERO
+    var max_corner: Vector2 = Vector2.ZERO
+
+    for entry_value: Variant in cards.values():
+        if not (entry_value is Dictionary):
+            continue
+        var card_value: Variant = (entry_value as Dictionary).get("card", null)
+        if not (card_value is Control):
+            continue
+        var card: Control = card_value as Control
+        if not card.visible:
+            continue
+        var rect: Rect2 = card.get_global_rect()
+        if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+            continue
+
+        if not found_card:
+            min_corner = rect.position
+            max_corner = rect.end
+            found_card = true
+        else:
+            min_corner.x = minf(min_corner.x, rect.position.x)
+            min_corner.y = minf(min_corner.y, rect.position.y)
+            max_corner.x = maxf(max_corner.x, rect.end.x)
+            max_corner.y = maxf(max_corner.y, rect.end.y)
+
+    if found_card:
+        return (min_corner + max_corner) * 0.5
+    return battle_panel.get_global_rect().get_center()
 
 
 func _combatant_card(combatant: Dictionary) -> Control:
@@ -260,9 +384,83 @@ func _animate_self_emoji(label: Label, center: Vector2) -> void:
     tween.finished.connect(label.queue_free)
 
 
+func _animate_field_emoji(label: Label, start_center: Vector2, field_center: Vector2) -> void:
+    var half_size: Vector2 = MOVE_EMOJI_SIZE * 0.5
+    var start_pos: Vector2 = start_center - half_size
+    var center_pos: Vector2 = field_center - half_size
+    var arc_height: float = minf(
+        38.0,
+        18.0 + start_center.distance_to(field_center) * 0.06
+    )
+    var mid_pos: Vector2 = (start_pos + center_pos) * 0.5 + Vector2(0.0, -arc_height)
+
+    label.global_position = start_pos
+    label.modulate.a = 1.0
+
+    var tween: Tween = create_tween()
+    tween.set_trans(Tween.TRANS_QUAD)
+    tween.set_ease(Tween.EASE_OUT)
+
+    # 1) The icon clearly leaves the user and jumps into the battlefield.
+    tween.tween_property(label, "scale", Vector2.ONE, 0.08)
+    tween.parallel().tween_property(
+        label,
+        "global_position",
+        mid_pos,
+        FIELD_EMOJI_TRAVEL_SECONDS * 0.45
+    )
+    tween.tween_property(
+        label,
+        "global_position",
+        center_pos,
+        FIELD_EMOJI_TRAVEL_SECONDS * 0.55
+    ).set_ease(Tween.EASE_IN)
+    tween.parallel().tween_property(
+        label,
+        "scale",
+        Vector2(1.15, 1.15),
+        FIELD_EMOJI_TRAVEL_SECONDS * 0.55
+    )
+
+    # 2) Grow while fully opaque. The user must be able to perceive the field
+    #    expansion before any fading begins.
+    tween.tween_property(
+        label,
+        "scale",
+        FIELD_EMOJI_PEAK_SCALE,
+        FIELD_EMOJI_GROW_SECONDS
+    ).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+    # 3) Hold the fully visible large icon for a deliberate beat.
+    tween.tween_interval(FIELD_EMOJI_HOLD_SECONDS)
+
+    # 4) Only now fade softly; a tiny final expansion keeps the disappearance
+    #    from feeling like a hard cut.
+    tween.tween_property(
+        label,
+        "modulate:a",
+        0.0,
+        FIELD_EMOJI_FADE_SECONDS
+    ).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+    tween.parallel().tween_property(
+        label,
+        "scale",
+        FIELD_EMOJI_FADE_SCALE,
+        FIELD_EMOJI_FADE_SECONDS
+    ).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    tween.finished.connect(label.queue_free)
+
+
 func _move_emoji(move_id: String, move: Dictionary) -> String:
     if MOVE_EMOJIS.has(move_id):
         return str(MOVE_EMOJIS[move_id])
+
+    # Newer database packs carry the approved move-specific emoji directly.
+    # Prefer it before the generic mechanic/category fallback so Felsaxt,
+    # Terrains and hazards display their actual icon rather than a generic one.
+    var configured_emoji: String = str(move.get("emoji", "")).strip_edges()
+    if not configured_emoji.is_empty():
+        return configured_emoji
 
     var mechanics_value: Variant = move.get("mechanics", [])
     if mechanics_value is Array:
