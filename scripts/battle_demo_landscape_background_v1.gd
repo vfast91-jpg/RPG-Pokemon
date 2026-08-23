@@ -55,3 +55,17 @@ func set_battle_background(path: String) -> bool:
 
 func battle_background_path() -> String:
     return _tf_landscape_background_path
+
+
+func route_species_types(species_id: String) -> Array:
+    # Die Route fragt hier bewusst die bereits aufgelöste Spezies ab. So gilt
+    # die Landschaft für die tatsächliche Entwicklungsform der Begegnung und
+    # nicht pauschal für den Typ der Familien-Basisform.
+    var species_value: Variant = data.get("species", {})
+    if not (species_value is Dictionary):
+        return []
+    var entry_value: Variant = (species_value as Dictionary).get(species_id, {})
+    if not (entry_value is Dictionary):
+        return []
+    var types_value: Variant = (entry_value as Dictionary).get("types", [])
+    return (types_value as Array).duplicate() if types_value is Array else []
