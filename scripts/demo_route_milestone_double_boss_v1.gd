@@ -6,6 +6,10 @@ extends "res://scripts/demo_route_endgame_v1.gd"
 #   mandatory stage fight already provides the boss encounter.
 # - Milestone bosses reuse the existing standard boss profile and the normal
 #   route victory / XP / stage progression flow.
+# - Species selection deliberately stays routed through
+#   _weighted_encounter_species(). Higher route layers can therefore combine
+#   the existing rarity curve with the currently selected landscape without
+#   duplicating boss logic here.
 
 const MilestoneBossRules = preload("res://scripts/route_boss_rules.gd")
 const MILESTONE_DOUBLE_BOSS_STAGES: Array[int] = [20, 40, 60, 80]
@@ -48,9 +52,23 @@ func _milestone_double_boss_party(current_stage: int) -> Array:
         return []
 
     var party: Array = []
-    for _index: int in range(MILESTONE_DOUBLE_BOSS_COUNT):
+    for boss_index: int in range(MILESTONE_DOUBLE_BOSS_COUNT):
+        # The active landscape layer overrides _weighted_encounter_species().
+        # This means every boss pick receives the same rarity × landscape rule
+        # as other route encounters: x3 preferred, x1 neutral, x0 excluded.
+        var species_id: String = _weighted_encounter_species(candidates)
+        if species_id.is_empty():
+            push_error(
+                "Demo-Route: Doppelboss %d auf Etappe %d konnte wegen der aktiven Begegnungsgewichtung nicht bestimmt werden."
+                % [boss_index + 1, current_stage]
+            )
+            # Never create a malformed boss with an empty species_id. In
+            # particular, this keeps landscape x0 exclusions strict instead of
+            # silently bypassing them with a random fallback.
+            return []
+
         party.append({
-            "species_id": _weighted_encounter_species(candidates),
+            "species_id": species_id,
             "level": boss_level,
             "boss": true,
             "hp_multiplier": maxf(1.0, float(profile.get("hp_multiplier", 2.0))),
