@@ -346,7 +346,7 @@ func _f40_flinch_on_damage(
 
 
 func _f40_meditate(actor: Dictionary) -> float:
-    var ratio: float = _status_ratio(actor)
+    var ratio: float = _status_ratio(float(actor.get("special", 0.0)))
     var multiplier: float = clampf(1.0 + ratio, 1.0, 2.0)
     actor["f40_physical_output_mult"] = multiplier
     # The casting action itself advances action_serial once, therefore +4
@@ -487,7 +487,7 @@ func _f40_enforce_bind_aggro_floors() -> void:
 func _f40_acid_spray_on_damage(actor: Dictionary, target: Dictionary) -> float:
     if _zf_actual_damage(target) <= 0:
         return 0.0
-    var ratio: float = _status_ratio(actor)
+    var ratio: float = _status_ratio(float(actor.get("special", 0.0)))
     var multiplier: float = clampf(1.0 - ratio, 0.25, 1.0)
     target["f40_special_output_mult"] = multiplier
     target["f40_special_output_expires_before_serial"] = int(target.get("action_serial", 0)) + 3
