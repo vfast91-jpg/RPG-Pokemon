@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/main_menu_adventure_v1.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/battle_demo_ad_final_v1.gd" id="2_battle"]
-[ext_resource type="Script" path="res://scripts/demo_route_endgame_legendary_landscapes_v1.gd" id="3_route"]
+[ext_resource type="Script" path="res://scripts/demo_route_global_pokemon_choice_ui_v1.gd" id="3_route"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
