@@ -82,10 +82,17 @@ func pvp_catalog(level: int) -> Array:
     if not (species_value is Dictionary):
         return result
 
-    var all_species: Dictionary = species_value
-    for species_id_value: Variant in all_species.keys():
-        var species_id: String = str(species_id_value)
-        if not _pvp_species_is_available_at_level(species_id, bounded_level):
+    # PvP drafts one concrete form per family. Linear families resolve normally;
+    # branching families get one random valid branch for this catalog build.
+    # This keeps Eevee-like families from being weighted eight times just because
+    # they have more possible endpoints.
+    var added_species: Dictionary = {}
+    for root_value: Variant in species_ids:
+        var species_id: String = route_resolve_generated_species_for_level(
+            str(root_value),
+            bounded_level
+        )
+        if species_id.is_empty() or added_species.has(species_id):
             continue
 
         var combatant: Dictionary = _make_combatant(
@@ -97,6 +104,7 @@ func pvp_catalog(level: int) -> Array:
         if normal_moves.is_empty():
             continue
 
+        added_species[species_id] = true
         var types_value: Variant = combatant.get("types", [])
         var types: Array = types_value.duplicate() if types_value is Array else []
         result.append({
@@ -379,46 +387,10 @@ func _check_end() -> void:
 
 
 func _pvp_species_is_available_at_level(species_id: String, level: int) -> bool:
-    var canonical_species_value: Variant = _canonical_pack.get("species", {})
-    if not (canonical_species_value is Dictionary):
-        return true
-
-    var canonical_species: Dictionary = canonical_species_value
     var root_id: String = _database_family_root(species_id)
     if root_id.is_empty():
-        return true
-
-    var current_id: String = root_id
-    var minimum_level: int = 1
-    for _hop: int in range(8):
-        var current_value: Variant = canonical_species.get(current_id, {})
-        if not (current_value is Dictionary):
-            return false
-        var current: Dictionary = current_value
-
-        if current_id == species_id:
-            if level < minimum_level:
-                return false
-            var own_evolution_value: Variant = current.get("evolution", {})
-            if own_evolution_value is Dictionary:
-                var own_evolution: Dictionary = own_evolution_value
-                var own_level: int = int(own_evolution.get("evolution_level", 0))
-                if bool(own_evolution.get("mandatory", true)) and own_level > 0 and level >= own_level:
-                    return false
-            return true
-
-        var evolution_value: Variant = current.get("evolution", {})
-        if not (evolution_value is Dictionary):
-            return false
-        var evolution: Dictionary = evolution_value
-        var target_id: String = str(evolution.get("evolves_into", ""))
-        var evolution_level: int = int(evolution.get("evolution_level", 0))
-        if target_id.is_empty() or evolution_level <= 0:
-            return false
-        if level < evolution_level:
-            return false
-
-        minimum_level = maxi(minimum_level, evolution_level)
-        current_id = target_id
-
-    return false
+        return route_species_is_available(species_id)
+    return route_generated_species_options_for_level(
+        root_id,
+        clampi(level, 1, 100)
+    ).has(species_id)
