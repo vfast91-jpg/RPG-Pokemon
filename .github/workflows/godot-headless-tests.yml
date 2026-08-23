@@ -121,6 +121,8 @@ jobs:
         run: ./godot --headless --path . --script tests/route_fixed_legendary_endgame_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
+      - name: Complete Gen1 runtime roster integrity test
+        run: ./godot --headless --path . --script tests/gen1_runtime_roster_integrity_test.gd
       - name: Fluffeluff starting moves regression test
         run: ./godot --headless --path . --script tests/igglybuff_start_moves_regression_test.gd
       - name: Fluffeluff family runtime behavior test
