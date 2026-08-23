@@ -115,6 +115,8 @@ jobs:
         run: ./godot --headless --path . --script tests/route_landscape_weighting_test.gd
       - name: Route milestone landscape boss regression test
         run: ./godot --headless --path . --script tests/route_milestone_landscape_boss_test.gd
+      - name: Route fixed legendary endgame regression test
+        run: ./godot --headless --path . --script tests/route_fixed_legendary_endgame_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
       - name: Fluffeluff starting moves regression test
