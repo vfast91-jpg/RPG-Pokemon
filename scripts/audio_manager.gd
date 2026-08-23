@@ -55,7 +55,7 @@ const EVENT_VOLUME_DB: float = -4.0
 const SFX_VOLUME_DB: float = -5.0
 const SFX_FAINT_VOLUME_DB: float = -11.0
 const SFX_HEAL_VOLUME_DB: float = -10.0
-const SFX_LANDSCAPE_TRAVEL_VOLUME_DB: float = -13.0
+const SFX_LANDSCAPE_TRAVEL_VOLUME_DB: float = 0.0
 const SFX_POOL_SIZE: int = 4
 
 var current_battle_kind: String = "normal"
@@ -177,7 +177,6 @@ func play_evolution_success() -> void:
 
 func play_pokemon_obtained() -> void:
     _play_event(STINGER_POKEMON)
-
 
 func play_attack_sfx() -> void:
     _play_sfx(SFX_ATTACK, SFX_VOLUME_DB)
