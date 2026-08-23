@@ -17,16 +17,24 @@ static func bounded_ratio(status_value: float, weight: float = 1.0) -> float:
     return clampf(maxf(0.0, weight) * ratio(status_value), 0.0, 1.0)
 
 
+# Any genuinely positive effect that must resolve to whole units keeps a
+# minimum impact of 1. True zeroes stay zero (e.g. no damage, no Status share).
+static func positive_int(value: float) -> int:
+    if value <= 0.0:
+        return 0
+    return maxi(1, int(floor(value)))
+
+
 static func max_hp_heal(max_hp: int, status_value: float, weight: float = 1.0) -> int:
     if max_hp <= 0:
         return 0
-    return maxi(0, int(floor(float(max_hp) * bounded_ratio(status_value, weight))))
+    return positive_int(float(max_hp) * bounded_ratio(status_value, weight))
 
 
 static func drain_heal(actual_hp_damage: int, status_value: float, weight: float = 1.0) -> int:
     if actual_hp_damage <= 0:
         return 0
-    return maxi(0, int(floor(float(actual_hp_damage) * bounded_ratio(status_value, weight))))
+    return positive_int(float(actual_hp_damage) * bounded_ratio(status_value, weight))
 
 
 static func damage_reduction_multiplier(status_value: float, weight: float = 1.0) -> float:
