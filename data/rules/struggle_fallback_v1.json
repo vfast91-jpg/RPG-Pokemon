@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fallback_move_id": "struggle",
+  "trigger": "no_runtime_usable_regular_moves",
+  "excluded_system_actions": [
+    "wait",
+    "warten",
+    "forward",
+    "front",
+    "vorne",
+    "vorne!"
+  ],
+  "move": {
+    "id": "struggle",
+    "name": "Verzweifler",
+    "description": "Typneutraler Notfallangriff. Nur verfügbar, wenn keine reguläre Attacke nutzbar ist. Verursacht keinen Rückstoß.",
+    "emoji": "💢",
+    "type": "normal",
+    "category": "physical",
+    "power": 50,
+    "accuracy": null,
+    "original_pp": null,
+    "ap": 4,
+    "target": "enemy_highest_aggro",
+    "area": false,
+    "contact": true,
+    "priority": 0,
+    "opening": false,
+    "mechanics": [
+      {
+        "kind": "damage"
+      }
+    ],
+    "status_scaling": {
+      "enabled": false
+    },
+    "aggro": {
+      "mode": "damage"
+    },
+    "special_rules": [
+      "System-Fallback: nicht lernbar und nicht dauerhaft Teil einer Attackenliste.",
+      "Warten und Vorne! zählen nicht als reguläre Attacken.",
+      "Der Schaden wird unabhängig von der Typenmatrix typneutral aufgelöst.",
+      "Verzweifler verursacht in Pokemon Timeflow ausdrücklich keinen Rückstoß."
+    ],
+    "required_behavior_tests": [
+      "Keine regulär nutzbare Attacke -> Verzweifler verfügbar.",
+      "Mindestens eine regulär nutzbare Attacke -> Verzweifler nicht verfügbar.",
+      "Warten/Vorne! verhindern den Fallback nicht.",
+      "Fehlende Attacken-IDs verhindern den Fallback nicht.",
+      "Verzweifler besitzt keine Rückstoßmechanik.",
+      "Verzweifler-Schaden wird typneutral aufgelöst."
+    ],
+    "runtime": {
+      "runtime_supported": true,
+      "partial": false,
+      "typeless_damage": true,
+      "fallback_only": true
+    }
+  }
+}
