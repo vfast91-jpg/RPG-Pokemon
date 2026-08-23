@@ -1,4 +1,4 @@
-name: Remaining Gen1 Species Tests
+name: Complete Gen1 Family Tests
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  remaining-gen1-species:
+  complete-gen1-families:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -32,5 +32,5 @@ jobs:
       - name: Parse project headless
         run: ./godot --headless --path . --editor --quit
 
-      - name: Validate Zubat through Mewtwo species registry
+      - name: Validate complete Gen1 family registry
         run: ./godot --headless --path . --script tests/gen1_remaining_species_data_test.gd

@@ -1,13 +1,16 @@
 extends "res://scripts/battle_demo_struggle_fallback_v1.gd"
 
-# Final species-only registry layer for the remaining Gen-1 Pokédex.
-# Zubat (#041) through Mewtwo (#150) are loaded from the authoritative
-# 2026-08-22 Pokémon workbook snapshot. Attack definitions/mechanics are
-# intentionally NOT added here; the established runtime filter hides move IDs
-# that do not have a runtime definition yet.
+# Complete Gen-1-family species registry.
+# "Gen 1" means the full evolution families of the original 151: all Kanto
+# species plus later-added pre-evolutions/evolutions from the authoritative
+# workbook. Attack definitions/mechanics are intentionally NOT added here.
+# Missing runtime move IDs stay stored in the species source data and are
+# filtered by the established runtime until the attack batch implements them.
 
-const REMAINING_GEN1_MANIFEST_PATH: String = "res://data/gen1_database_manifest_v7.json"
+const REMAINING_GEN1_MANIFEST_PATH: String = "res://data/gen1_database_manifest_v8.json"
 const REMAINING_PACK_MAX_BYTES: int = 2_000_000
+
+var _remaining_tm_move_universe: Dictionary = {}
 
 
 func _load_data() -> void:
@@ -18,19 +21,19 @@ func _load_data() -> void:
 func _remaining_load_expanded_species_registry() -> void:
 	var manifest: Dictionary = _remaining_read_json_dictionary(REMAINING_GEN1_MANIFEST_PATH)
 	if manifest.is_empty():
-		push_error("Erweitertes Gen-1-Datenbank-Manifest fehlt: " + REMAINING_GEN1_MANIFEST_PATH)
+		push_error("Vollständiges Gen-1-Familien-Manifest fehlt: " + REMAINING_GEN1_MANIFEST_PATH)
 		return
 
 	var meta_path: String = str(manifest.get("species_meta_file", ""))
 	var meta: Dictionary = _remaining_read_json_dictionary(meta_path)
 	if meta.is_empty():
-		push_error("Erweiterte Gen-1-Metadaten fehlen: " + meta_path)
+		push_error("Vollständige Gen-1-Familien-Metadaten fehlen: " + meta_path)
 		return
 
 	var merged_species: Dictionary = {}
 	var species_files_value: Variant = manifest.get("species_files", [])
 	if not (species_files_value is Array):
-		push_error("Erweitertes Gen-1-Manifest braucht species_files.")
+		push_error("Gen-1-Familien-Manifest braucht species_files.")
 		return
 
 	for path_value: Variant in species_files_value:
@@ -77,14 +80,18 @@ func _remaining_load_expanded_species_registry() -> void:
 	var roots_value: Variant = meta.get("route_roots", [])
 	species_ids = (roots_value as Array).duplicate() if roots_value is Array else []
 	data["species_order"] = species_ids.duplicate()
-	lab_species_ids = species_ids.duplicate()
+
+	# The route continues to use one root per complete family, while the combat
+	# lab can directly select every registered form for testing.
+	lab_species_ids = merged_species.keys()
+	_remaining_rebuild_tm_move_universe()
 
 	if runtime_species.size() != int(manifest.get("species_count", runtime_species.size())):
-		push_error("Erweiterte Gen-1-Datenbank: Pokémon-Anzahl stimmt nicht mit Manifest überein.")
+		push_error("Gen-1-Familien-Datenbank: Pokémon-Anzahl stimmt nicht mit Manifest überein.")
 	if runtime_moves.size() != int(manifest.get("move_count", runtime_moves.size())):
-		push_error("Erweiterte Gen-1-Datenbank: Attackenzahl wurde unerwartet verändert.")
+		push_error("Gen-1-Familien-Datenbank: Attackenzahl wurde unerwartet verändert.")
 	if species_ids.size() != int(manifest.get("route_root_count", species_ids.size())):
-		push_error("Erweiterte Gen-1-Datenbank: Basislinien-Anzahl stimmt nicht mit Manifest überein.")
+		push_error("Gen-1-Familien-Datenbank: Familienanzahl stimmt nicht mit Manifest überein.")
 
 	_audit_canonical_database()
 
@@ -127,6 +134,74 @@ func _canonical_species_runtime(source: Dictionary) -> Dictionary:
 	return result
 
 
+func _database_family_root(species_id: String) -> String:
+	if species_id.is_empty():
+		return ""
+
+	var family_members_value: Variant = _canonical_pack.get("family_members", {})
+	if family_members_value is Dictionary:
+		var family_members: Dictionary = family_members_value
+		for root_value: Variant in species_ids:
+			var root_id: String = str(root_value)
+			var members_value: Variant = family_members.get(root_id, [])
+			if members_value is Array and (members_value as Array).has(species_id):
+				return root_id
+
+	return super._database_family_root(species_id)
+
+
+func _remaining_rebuild_tm_move_universe() -> void:
+	_remaining_tm_move_universe.clear()
+	var species_value: Variant = _canonical_pack.get("species", {})
+	if not (species_value is Dictionary):
+		return
+
+	for entry_value: Variant in (species_value as Dictionary).values():
+		if not (entry_value is Dictionary):
+			continue
+		var learnset_value: Variant = (entry_value as Dictionary).get("learnset", {})
+		if not (learnset_value is Dictionary):
+			continue
+		var tm_value: Variant = (learnset_value as Dictionary).get("tm_hm", [])
+		if tm_value is Dictionary:
+			for move_value: Variant in (tm_value as Dictionary).values():
+				var move_id: String = str(move_value)
+				if not move_id.is_empty() and move_id != "tera_blast":
+					_remaining_tm_move_universe[move_id] = true
+		elif tm_value is Array:
+			for move_value: Variant in tm_value:
+				var move_id: String = str(move_value)
+				if not move_id.is_empty() and move_id != "tera_blast":
+					_remaining_tm_move_universe[move_id] = true
+
+
+func species_can_receive_tm_move(species_id: String, move_id: String) -> bool:
+	if species_id.is_empty() or move_id.is_empty() or move_id == "tera_blast":
+		return false
+
+	var species_value: Variant = _canonical_pack.get("species", {})
+	if not (species_value is Dictionary):
+		return false
+	var entry_value: Variant = (species_value as Dictionary).get(species_id, {})
+	if not (entry_value is Dictionary):
+		return false
+
+	var learnset_value: Variant = (entry_value as Dictionary).get("learnset", {})
+	if not (learnset_value is Dictionary):
+		return false
+	var learnset: Dictionary = learnset_value
+
+	if str(learnset.get("tm_rule", "")) == "all_gen9_tm_minus_tera":
+		return _remaining_tm_move_universe.has(move_id)
+
+	var tm_value: Variant = learnset.get("tm_hm", [])
+	if tm_value is Dictionary:
+		return (tm_value as Dictionary).values().has(move_id)
+	if tm_value is Array:
+		return (tm_value as Array).has(move_id)
+	return false
+
+
 func _lab_available_tm_moves(species_id: String) -> Array:
 	var species_value: Variant = data.get("species", {})
 	if not (species_value is Dictionary):
@@ -138,8 +213,17 @@ func _lab_available_tm_moves(species_id: String) -> Array:
 	var learnset_value: Variant = (entry_value as Dictionary).get("source_learnset", {})
 	if not (learnset_value is Dictionary):
 		return []
+	var learnset: Dictionary = learnset_value
 
-	var tm_value: Variant = (learnset_value as Dictionary).get("tm_hm", {})
+	if str(learnset.get("tm_rule", "")) == "all_gen9_tm_minus_tera":
+		var all_tm_candidates: Array = []
+		for move_id_value: Variant in _remaining_tm_move_universe.keys():
+			var move_id: String = str(move_id_value)
+			if _runtime_has_move(move_id) and not all_tm_candidates.has(move_id):
+				all_tm_candidates.append(move_id)
+		return _database_normal_battle_moves(all_tm_candidates)
+
+	var tm_value: Variant = learnset.get("tm_hm", {})
 	if tm_value is Dictionary:
 		return super._lab_available_tm_moves(species_id)
 	if not (tm_value is Array):
