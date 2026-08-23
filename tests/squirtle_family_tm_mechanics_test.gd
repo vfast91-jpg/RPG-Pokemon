@@ -1,6 +1,7 @@
 extends SceneTree
 
 const CombatLab = preload("res://scripts/battle_demo_squirtle_family.gd")
+const FinalCombatLab = preload("res://scripts/battle_demo_binding_feedback_fix_v1.gd")
 const NEW_MOVE_IDS: Array[String] = [
     "chilling_water","icy_wind","mud_shot","zen_headbutt","ice_punch",
     "liquidation","surf","ice_spinner","ice_beam","blizzard",
@@ -19,6 +20,7 @@ func _initialize() -> void:
     _assert_body_press(lab)
     _assert_grounded(lab)
     _assert_underwater_targeting(lab)
+    _assert_whirlpool_binding_runtime()
     _assert_pledges(lab)
     print("Schiggy-Familie TM mechanics test: PASS")
     lab.queue_free()
@@ -105,6 +107,62 @@ func _assert_underwater_targeting(lab) -> void:
     var whirlpool_targets: Array = lab._targets(actor,"enemy_highest_aggro")
     assert(whirlpool_targets.size() == 1 and str((whirlpool_targets[0] as Dictionary).get("id", "")) == str(submerged.get("id", "")), "Whirlpool muss ein Unterwasserziel weiterhin auswählen dürfen.")
     lab._semi_targeting_move_id = ""
+
+func _assert_whirlpool_binding_runtime() -> void:
+    var lab = FinalCombatLab.new()
+    root.add_child(lab)
+
+    var actor: Dictionary = lab._make_combatant("player",0,{"species_id":"squirtle","level":35})
+    var target: Dictionary = lab._make_combatant("enemy",0,{"species_id":"pikachu","level":35})
+    actor["alive"] = true
+    target["alive"] = true
+    target["max_hp"] = 160
+    target["hp"] = 160
+    lab.player_team = [actor]
+    lab.enemy_team = [target]
+    lab.combatants = [actor,target]
+
+    var whirlpool: Dictionary = lab._move_data("whirlpool")
+    assert(not whirlpool.is_empty(), "Whirlpool muss im finalen Runtime-Bestand vorhanden sein.")
+
+    var binding_mechanic: Dictionary = {}
+    var mechanics_value: Variant = whirlpool.get("mechanics", [])
+    if mechanics_value is Array:
+        for mechanic_value: Variant in mechanics_value:
+            if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == "binding":
+                binding_mechanic = (mechanic_value as Dictionary).duplicate(true)
+                break
+    assert(not binding_mechanic.is_empty(), "Whirlpool muss eine echte Binding-Mechanik besitzen.")
+
+    lab._active_special_move = whirlpool
+    seed(20260824)
+    var binding_aggro: float = lab._apply_binding(actor,target,binding_mechanic)
+    lab._active_special_move = {}
+    assert(binding_aggro > 0.0, "Whirlpool muss die Fesselung beim ersten Treffer anwenden.")
+
+    var binding: Dictionary = target.get("binding_effect", {})
+    var ticks: int = int(binding.get("ticks_left", 0))
+    assert(ticks >= 4 and ticks <= 5, "Whirlpool muss exakt 4–5 eigene Zielaktionen fesseln.")
+    assert(is_equal_approx(float(binding.get("damage_fraction", 0.0)), 0.125), "Whirlpool muss pro Zielaktion 1/8 Max-KP verursachen.")
+    assert(str(binding.get("source_move_id", "")) == "whirlpool", "Die Fesselung muss Whirlpool als Quellattacke behalten.")
+    assert(str(binding.get("tick_label", "")) == "🌀 WHIRLPOOL", "Whirlpool-Ticks dürfen nicht mehr als Wickel beschriftet sein.")
+
+    var ticks_before_recast: int = ticks
+    var second_apply: float = lab._apply_binding(actor,target,binding_mechanic)
+    assert(is_equal_approx(second_apply, 0.0), "Whirlpool darf eine aktive Fesselung nicht stapeln.")
+    assert(int((target.get("binding_effect", {}) as Dictionary).get("ticks_left", 0)) == ticks_before_recast, "Erneutes Whirlpool darf die laufende Dauer nicht heimlich auffrischen.")
+
+    var expected_hp: int = 160
+    for _tick: int in range(ticks):
+        expected_hp -= 20
+        lab._resolve_binding_tick(target)
+        assert(int(target.get("hp", 0)) == expected_hp, "Jeder Whirlpool-Tick muss exakt 1/8 Max-KP abziehen.")
+
+    assert((target.get("binding_effect", {}) as Dictionary).is_empty(), "Whirlpool-Fesselung muss nach dem 4. oder 5. Tick enden.")
+    lab._resolve_binding_tick(target)
+    assert(int(target.get("hp", 0)) == expected_hp, "Nach Ende der Whirlpool-Fesselung darf kein weiterer Tick entstehen.")
+
+    lab.queue_free()
 
 func _assert_pledges(lab) -> void:
     assert(lab._cf_pledge_combo_kind("grass","water") == "swamp", "Pflanze+Wasser muss Sumpf ergeben.")
