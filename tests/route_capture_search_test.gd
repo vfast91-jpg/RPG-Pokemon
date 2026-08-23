@@ -16,15 +16,21 @@ func _initialize() -> void:
     route.stage = 40
 
     _check(route.CAPTURE_SEARCH_MAX == 3, "Eine Fangwiese muss exakt drei Suchen erlauben.")
-    _check(route._capture_level_for_stage(40) == 15, "Basis-Fanglevel bei Teammaximum Lv.18 muss Lv.15 sein.")
-    _check(route._capture_level_for_search(1) == 15, "Suche 1 muss 100% des Basis-Fanglevels verwenden.")
-    _check(route._capture_level_for_search(2) == 11, "Suche 2 muss 75% des Basis-Fanglevels abrunden: 15 -> 11.")
-    _check(route._capture_level_for_search(3) == 7, "Suche 3 muss 50% des Basis-Fanglevels abrunden: 15 -> 7.")
+    _check(route.CAPTURE_SEARCH_LEVEL_OFFSETS == [1, 3, 5], "Fangwiese muss die festen Levelabstände -1/-3/-5 verwenden.")
+    _check(route._capture_level_for_stage(40) == 17, "Basis-Fanglevel bei Teammaximum Lv.18 muss Lv.17 sein.")
+    _check(route._capture_level_for_search(1) == 17, "Suche 1 muss ein Level unter dem höchsten Team-Pokémon liegen.")
+    _check(route._capture_level_for_search(2) == 15, "Suche 2 muss drei Level unter dem höchsten Team-Pokémon liegen.")
+    _check(route._capture_level_for_search(3) == 13, "Suche 3 muss fünf Level unter dem höchsten Team-Pokémon liegen.")
 
     route.team = [{"species_id": "starter", "level": 5, "hp": 20, "max_hp": 20}]
-    _check(route._capture_level_for_stage(1) == 2, "Starter Lv.5 muss ein Basis-Fanglevel von Lv.2 erzeugen.")
-    _check(route._capture_level_for_search(2) == 1, "Niedrige Fanglevel müssen bei Suche 2 auf mindestens Lv.1 begrenzt werden.")
-    _check(route._capture_level_for_search(3) == 1, "Niedrige Fanglevel müssen bei Suche 3 auf mindestens Lv.1 begrenzt werden.")
+    _check(route._capture_level_for_stage(1) == 4, "Starter Lv.5 muss bei Suche 1 ein Fanglevel von Lv.4 erzeugen.")
+    _check(route._capture_level_for_search(2) == 2, "Starter Lv.5 muss bei Suche 2 ein Fanglevel von Lv.2 erzeugen.")
+    _check(route._capture_level_for_search(3) == 1, "Suche 3 muss bei niedrigen Teamleveln auf mindestens Lv.1 begrenzt werden.")
+
+    route.team = [{"species_id": "starter", "level": 3, "hp": 20, "max_hp": 20}]
+    _check(route._capture_level_for_search(1) == 2, "Teammaximum Lv.3 muss bei Suche 1 Lv.2 ergeben.")
+    _check(route._capture_level_for_search(2) == 1, "Teammaximum Lv.3 muss bei Suche 2 auf Lv.1 begrenzt werden.")
+    _check(route._capture_level_for_search(3) == 1, "Teammaximum Lv.3 muss bei Suche 3 auf Lv.1 begrenzt werden.")
 
     _check(route.ROUTE_RARITY_MAX_STAGE == 100, "Die Seltenheitskurve muss auf das spätere Maximum von 100 Etappen normiert sein.")
     _check_close(route._route_rarity_progress_for_stage(1), 0.0, 0.000001, "Seltenheitsfortschritt Etappe 1")
@@ -48,7 +54,8 @@ func _initialize() -> void:
     _check_close(route._family_catch_rate("bulbasaur"), 45.0, 0.000001, "Bisasam-Familien-Fangrate")
     _check_close(route._family_catch_rate("rattata"), 191.0, 0.000001, "Rattfratz-Familien-Fangrate")
 
-    # Etappe 1 muss exakt die bisherige Drei-Suchen-Formel behalten.
+    # Die Seltenheits-Gambling-Kurve bleibt unverändert; nur die Fanglevel wurden
+    # auf die neuen festen Abstände -1/-3/-5 angehoben.
     route.stage = 1
     var common_1: float = route._capture_family_weight("rattata", 1)
     var rare_1: float = route._capture_family_weight("bulbasaur", 1)
