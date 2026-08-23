@@ -34,3 +34,6 @@ jobs:
 
       - name: Validate complete Gen1 family registry
         run: ./godot --headless --path . --script tests/gen1_remaining_species_data_test.gd
+
+      - name: Validate Zubat-to-Poliwag attack block
+        run: ./godot --headless --path . --script tests/zubat_to_poliwag_moves_runtime_test.gd
