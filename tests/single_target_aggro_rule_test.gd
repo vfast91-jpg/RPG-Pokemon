@@ -14,6 +14,7 @@ func _initialize() -> void:
     _assert_status_miss_does_not_halve(lab)
     _assert_spread_damage_does_not_halve(lab, 1)
     _assert_spread_damage_does_not_halve(lab, 2)
+    _assert_all_others_spread_preserves_ally_aggro(lab)
 
     print("Central single-target Aggro rule test: PASS")
     lab.queue_free()
@@ -135,6 +136,28 @@ func _assert_spread_damage_does_not_halve(lab, enemy_count: int) -> void:
             ),
             "Flaechenschaden darf Ziel-Aggro nicht halbieren; das gilt auch bei nur einem lebenden Ziel."
         )
+
+
+func _assert_all_others_spread_preserves_ally_aggro(lab) -> void:
+    var actor: Dictionary = _combatant(lab, "player", 0)
+    var ally: Dictionary = _combatant(lab, "player", 1)
+    var enemy: Dictionary = _combatant(lab, "enemy", 0)
+    ally["aggro"] = 90.0
+    enemy["aggro"] = 140.0
+    _install_teams(lab, [actor, ally], [enemy])
+
+    var original: Dictionary = _force_accuracy(lab, "earthquake", null)
+    lab._execute_move(actor, "earthquake")
+    _restore_move(lab, "earthquake", original)
+
+    assert(
+        is_equal_approx(float(ally.get("aggro", 0.0)), 90.0),
+        "Eine all-others-Flaechenattacke darf auch die Aggro eines getroffenen Verbuendeten nicht halbieren."
+    )
+    assert(
+        is_equal_approx(float(enemy.get("aggro", 0.0)), 140.0),
+        "Eine all-others-Flaechenattacke darf die Aggro eines getroffenen Gegners nicht halbieren."
+    )
 
 
 func _combatant(lab, side: String, index: int) -> Dictionary:
