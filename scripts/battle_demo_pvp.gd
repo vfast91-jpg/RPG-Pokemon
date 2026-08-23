@@ -130,6 +130,37 @@ func pvp_catalog(level: int) -> Array:
     return result
 
 
+func _randomize_setup() -> void:
+    if species_ids.is_empty():
+        return
+
+    var player_amount: int = randi_range(1, TEAM_MAX)
+    var enemy_amount: int = randi_range(1, TEAM_MAX)
+    player_setup.clear()
+    enemy_setup.clear()
+
+    for _index: int in range(player_amount):
+        var level: int = randi_range(1, DATABASE_LEVEL_MAX)
+        var root_id: String = str(species_ids.pick_random())
+        var generated_id: String = route_resolve_generated_species_for_level(root_id, level)
+        player_setup.append({
+            "species_id": generated_id if not generated_id.is_empty() else root_id,
+            "level": level
+        })
+    for _index: int in range(enemy_amount):
+        var level: int = randi_range(1, DATABASE_LEVEL_MAX)
+        var root_id: String = str(species_ids.pick_random())
+        var generated_id: String = route_resolve_generated_species_for_level(root_id, level)
+        enemy_setup.append({
+            "species_id": generated_id if not generated_id.is_empty() else root_id,
+            "level": level
+        })
+
+    player_count.set_value_no_signal(float(player_amount))
+    enemy_count.set_value_no_signal(float(enemy_amount))
+    _refresh_setup()
+
+
 func pvp_species_texture(species_id: String) -> Texture2D:
     return _species_texture(_species_name(species_id))
 
