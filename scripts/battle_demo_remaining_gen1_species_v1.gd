@@ -1,21 +1,22 @@
 extends "res://scripts/battle_demo_struggle_fallback_v1.gd"
 
-# Complete Gen-1-family species registry.
+# Global Pokemon species registry.
 #
-# The playable roster has exactly one authority: species_master_file in the v8
-# manifest. It contains all 185 Pokemon identities/core stats. Detail files may
-# enrich those entries with learnsets, TM compatibility and source metadata, but
-# they can never add/remove Pokemon and can never make a Pokemon unavailable.
+# The playable roster has exactly one authority: species_master_file in the
+# generation-neutral manifest. It contains every Pokemon that exists in the
+# game, regardless of origin generation. Detail files may enrich those entries
+# with learnsets, TM compatibility and source metadata, but they can never
+# add/remove Pokemon and can never make a Pokemon unavailable.
 # Missing/deferred attacks likewise never remove a Pokemon; the global
 # Verzweifler fallback keeps it combat-capable until regular moves are available.
 #
-# The registry is fail-closed only for the roster contract itself: if the single
-# master, the 185 identities or the 78-family metadata are broken, no inherited
-# partial roster is allowed to leak into PvP, route, capture or combat lab.
+# There is one global species pool and one global runtime move pool. Generation
+# is metadata only. Cross-generation evolution families share the same family
+# graph. The registry is fail-closed for the roster contract itself: if the
+# single master or family metadata are broken, no inherited partial roster may
+# leak into PvP, route, capture or combat lab.
 
-const REMAINING_GEN1_MANIFEST_PATH: String = "res://data/gen1_database_manifest_v8.json"
-const REMAINING_EXPECTED_SPECIES_COUNT: int = 185
-const REMAINING_EXPECTED_ROUTE_ROOT_COUNT: int = 78
+const REMAINING_GEN1_MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.json"
 const REMAINING_SENTINEL_SPECIES: Array[String] = [
 	"lapras",
 	"snorlax",
@@ -48,27 +49,44 @@ func _remaining_load_expanded_species_registry() -> void:
 	var manifest: Dictionary = _remaining_read_json_dictionary(REMAINING_GEN1_MANIFEST_PATH)
 	if manifest.is_empty():
 		_remaining_fail_registry(
-			"Vollständiges Gen-1-Familien-Manifest fehlt: " + REMAINING_GEN1_MANIFEST_PATH
+			"Globales Pokémon-Datenbank-Manifest fehlt: " + REMAINING_GEN1_MANIFEST_PATH
 		)
 		return
 
-	if int(manifest.get("species_count", -1)) != REMAINING_EXPECTED_SPECIES_COUNT:
-		_remaining_fail_registry(
-			"Gen-1-Familien-Manifest muss exakt %d Pokémon deklarieren."
-			% REMAINING_EXPECTED_SPECIES_COUNT
-		)
+	var expected_species_count: int = int(manifest.get("species_count", -1))
+	var expected_route_root_count: int = int(manifest.get("route_root_count", -1))
+	if expected_species_count <= 0:
+		_remaining_fail_registry("Globales Pokémon-Manifest braucht eine positive species_count.")
 		return
-	if int(manifest.get("route_root_count", -1)) != REMAINING_EXPECTED_ROUTE_ROOT_COUNT:
-		_remaining_fail_registry(
-			"Gen-1-Familien-Manifest muss exakt %d Familien deklarieren."
-			% REMAINING_EXPECTED_ROUTE_ROOT_COUNT
-		)
+	if expected_route_root_count <= 0:
+		_remaining_fail_registry("Globales Pokémon-Manifest braucht eine positive route_root_count.")
+		return
+
+	var pool_policy_value: Variant = manifest.get("pool_policy", {})
+	if not (pool_policy_value is Dictionary):
+		_remaining_fail_registry("Globales Pokémon-Manifest braucht eine eindeutige Pool-Richtlinie.")
+		return
+	var pool_policy: Dictionary = pool_policy_value
+	if str(pool_policy.get("species", "")) != "single_global_pool":
+		_remaining_fail_registry("Pokémon müssen aus genau einem globalen Pool stammen.")
+		return
+	if str(pool_policy.get("moves", "")) != "single_global_pool":
+		_remaining_fail_registry("Attacken müssen aus genau einem globalen Pool stammen.")
+		return
+	if not bool(pool_policy.get("generation_is_metadata_only", false)):
+		_remaining_fail_registry("Generationen dürfen die Runtime-Pools nicht trennen.")
+		return
+	if not bool(pool_policy.get("availability_never_gated_by_generation", false)):
+		_remaining_fail_registry("Pokémon-Verfügbarkeit darf niemals von einer Generation gefiltert werden.")
+		return
+	if not bool(pool_policy.get("cross_generation_families_share_one_family_graph", false)):
+		_remaining_fail_registry("Generationsübergreifende Entwicklungen müssen eine gemeinsame Familie bleiben.")
 		return
 
 	var meta_path: String = str(manifest.get("species_meta_file", ""))
 	var meta: Dictionary = _remaining_read_json_dictionary(meta_path)
 	if meta.is_empty():
-		_remaining_fail_registry("Vollständige Gen-1-Familien-Metadaten fehlen: " + meta_path)
+		_remaining_fail_registry("Globale Pokémon-Familienmetadaten fehlen: " + meta_path)
 		return
 
 	# Exactly one master owns roster membership. species_files is kept as a
@@ -80,12 +98,12 @@ func _remaining_load_expanded_species_registry() -> void:
 
 	var species_files_value: Variant = manifest.get("species_files", [])
 	if not (species_files_value is Array):
-		_remaining_fail_registry("Gen-1-Familien-Manifest braucht species_files.")
+		_remaining_fail_registry("Globales Pokémon-Manifest braucht species_files.")
 		return
 	var species_files: Array = species_files_value
 	if species_files.size() != 1 or str(species_files[0]) != master_path:
 		_remaining_fail_registry(
-			"species_files muss ausschließlich auf die eine Pokémon-Masterdatei verweisen."
+			"species_files muss ausschließlich auf die eine globale Pokémon-Masterdatei verweisen."
 		)
 		return
 
@@ -94,8 +112,10 @@ func _remaining_load_expanded_species_registry() -> void:
 	if not (master_entries_value is Dictionary):
 		_remaining_fail_registry("Pokémon-Masterdatei ist ungültig: " + master_path)
 		return
-	if int(master_pack.get("species_count", REMAINING_EXPECTED_SPECIES_COUNT)) != REMAINING_EXPECTED_SPECIES_COUNT:
-		_remaining_fail_registry("Pokémon-Masterdatei deklariert nicht exakt 185 Pokémon.")
+	if int(master_pack.get("species_count", expected_species_count)) != expected_species_count:
+		_remaining_fail_registry(
+			"Pokémon-Masterdatei und Manifest deklarieren unterschiedliche Pokémon-Anzahlen."
+		)
 		return
 
 	var master_species: Dictionary = {}
@@ -113,7 +133,12 @@ func _remaining_load_expanded_species_registry() -> void:
 			return
 		master_species[species_id] = entry
 
-	var master_error: String = _remaining_validate_master_contract(meta, master_species)
+	var master_error: String = _remaining_validate_master_contract(
+		meta,
+		master_species,
+		expected_species_count,
+		expected_route_root_count
+	)
 	if not master_error.is_empty():
 		_remaining_fail_registry(master_error)
 		return
@@ -142,7 +167,7 @@ func _remaining_load_expanded_species_registry() -> void:
 				var species_id: String = str(species_id_value)
 				if not master_species.has(species_id):
 					push_warning(
-						"Pokémon-Detailpaket enthält eine nicht im Master registrierte ID und wird dafür ignoriert: "
+						"Pokémon-Detailpaket enthält eine nicht im globalen Master registrierte ID und wird dafür ignoriert: "
 						+ species_id
 					)
 					continue
@@ -156,9 +181,9 @@ func _remaining_load_expanded_species_registry() -> void:
 					detail_value as Dictionary
 				)
 
-	# Move definitions are also non-gating for Pokemon availability. Load every
-	# valid plain JSON pack that exists, preserve inherited/runtime-only entries,
-	# and warn instead of deleting Pokemon when an attack batch is incomplete.
+	# All move definition files merge into one runtime Dictionary. Physical source
+	# files may stay modular for maintenance, but there is never a Gen-1/Gen-2/etc.
+	# move pool at runtime and no generation filter is applied here.
 	var runtime_moves_value: Variant = data.get("moves", {})
 	var runtime_moves: Dictionary = (
 		(runtime_moves_value as Dictionary).duplicate(true)
@@ -214,7 +239,11 @@ func _remaining_load_expanded_species_registry() -> void:
 		if source_value is Dictionary:
 			runtime_species[species_id] = _canonical_species_runtime(source_value as Dictionary)
 
-	var runtime_error: String = _remaining_validate_runtime_contract(master_species, runtime_species)
+	var runtime_error: String = _remaining_validate_runtime_contract(
+		master_species,
+		runtime_species,
+		expected_species_count
+	)
 	if not runtime_error.is_empty():
 		_remaining_fail_registry(runtime_error)
 		return
@@ -237,41 +266,46 @@ func _remaining_load_expanded_species_registry() -> void:
 
 	_remaining_registry_ready = true
 	print(
-		"Pokémon-Datenbank OK: %d Pokémon · %d Familien"
+		"Pokémon-Datenbank OK: %d Pokémon · %d Familien · ein globaler Attackenpool"
 		% [runtime_species.size(), species_ids.size()]
 	)
 	_audit_canonical_database()
 
 
-func _remaining_validate_master_contract(meta: Dictionary, master_species: Dictionary) -> String:
-	if master_species.size() != REMAINING_EXPECTED_SPECIES_COUNT:
+func _remaining_validate_master_contract(
+	meta: Dictionary,
+	master_species: Dictionary,
+	expected_species_count: int,
+	expected_route_root_count: int
+) -> String:
+	if master_species.size() != expected_species_count:
 		return (
 			"Pokémon-Masterdatei unvollständig: %d/%d Pokémon."
-			% [master_species.size(), REMAINING_EXPECTED_SPECIES_COUNT]
+			% [master_species.size(), expected_species_count]
 		)
 
 	var roots_value: Variant = meta.get("route_roots", [])
 	if not (roots_value is Array):
-		return "Gen-1-Familien-Metadaten besitzen keine route_roots-Liste."
+		return "Pokémon-Familienmetadaten besitzen keine route_roots-Liste."
 	var roots: Array = roots_value
-	if roots.size() != REMAINING_EXPECTED_ROUTE_ROOT_COUNT:
+	if roots.size() != expected_route_root_count:
 		return (
-			"Gen-1-Familien-Datenbank unvollständig: %d/%d Familien."
-			% [roots.size(), REMAINING_EXPECTED_ROUTE_ROOT_COUNT]
+			"Pokémon-Familiendatenbank unvollständig: %d/%d Familien."
+			% [roots.size(), expected_route_root_count]
 		)
 
 	var seen_roots: Dictionary = {}
 	for root_value: Variant in roots:
 		var root_id: String = str(root_value)
 		if root_id.is_empty() or seen_roots.has(root_id):
-			return "Gen-1-Familien-Metadaten enthalten eine leere oder doppelte Familienwurzel."
+			return "Pokémon-Familienmetadaten enthalten eine leere oder doppelte Familienwurzel."
 		seen_roots[root_id] = true
 		if not master_species.has(root_id):
 			return "Familienwurzel fehlt in der Pokémon-Masterdatei: " + root_id
 
 	var family_members_value: Variant = meta.get("family_members", {})
 	if not (family_members_value is Dictionary):
-		return "Gen-1-Familien-Metadaten besitzen kein family_members-Dictionary."
+		return "Pokémon-Familienmetadaten besitzen kein family_members-Dictionary."
 	var family_members: Dictionary = family_members_value
 	var family_species: Dictionary = {}
 	for root_value: Variant in roots:
@@ -285,15 +319,15 @@ func _remaining_validate_master_contract(meta: Dictionary, master_species: Dicti
 				return "Familie enthält eine leere Pokémon-ID: " + root_id
 			family_species[member_id] = true
 
-	if family_species.size() != REMAINING_EXPECTED_SPECIES_COUNT:
+	if family_species.size() != expected_species_count:
 		return (
 			"Familien-Metadaten decken nur %d/%d Pokémon ab."
-			% [family_species.size(), REMAINING_EXPECTED_SPECIES_COUNT]
+			% [family_species.size(), expected_species_count]
 		)
 	for species_id_value: Variant in master_species.keys():
 		var species_id: String = str(species_id_value)
 		if not family_species.has(species_id):
-			return "Pokémon ist keiner vollständigen Gen-1-Familie zugeordnet: " + species_id
+			return "Pokémon ist keiner globalen Familie zugeordnet: " + species_id
 	for member_id_value: Variant in family_species.keys():
 		var member_id: String = str(member_id_value)
 		if not master_species.has(member_id):
@@ -301,7 +335,7 @@ func _remaining_validate_master_contract(meta: Dictionary, master_species: Dicti
 
 	for sentinel_id: String in REMAINING_SENTINEL_SPECIES:
 		if not master_species.has(sentinel_id):
-			return "Spätes/legendäres Pflicht-Pokémon fehlt im Master: " + sentinel_id
+			return "Bestehendes Pflicht-Pokémon fehlt im Master: " + sentinel_id
 
 	for species_id_value: Variant in master_species.keys():
 		var species_id: String = str(species_id_value)
@@ -325,12 +359,13 @@ func _remaining_validate_master_contract(meta: Dictionary, master_species: Dicti
 
 func _remaining_validate_runtime_contract(
 	master_species: Dictionary,
-	runtime_species: Dictionary
+	runtime_species: Dictionary,
+	expected_species_count: int
 ) -> String:
-	if runtime_species.size() != REMAINING_EXPECTED_SPECIES_COUNT:
+	if runtime_species.size() != expected_species_count:
 		return (
-			"Gen-1-Familien-Datenbank unvollständig: %d/%d Pokémon in der Runtime."
-			% [runtime_species.size(), REMAINING_EXPECTED_SPECIES_COUNT]
+			"Globale Pokémon-Datenbank unvollständig: %d/%d Pokémon in der Runtime."
+			% [runtime_species.size(), expected_species_count]
 		)
 
 	for species_id_value: Variant in master_species.keys():
@@ -357,7 +392,7 @@ func _remaining_validate_runtime_contract(
 
 	for sentinel_id: String in REMAINING_SENTINEL_SPECIES:
 		if not runtime_species.has(sentinel_id):
-			return "Spätes/legendäres Pflicht-Pokémon fehlt in der Runtime: " + sentinel_id
+			return "Bestehendes Pflicht-Pokémon fehlt in der Runtime: " + sentinel_id
 	return ""
 
 
