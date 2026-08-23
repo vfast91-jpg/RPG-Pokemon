@@ -97,8 +97,17 @@ func _tf_apply_current_landscape_background() -> void:
     if background_path.is_empty():
         push_warning("Für Landschaft '%s' fehlt ein Hintergrundpfad." % current_landscape_id)
         return
-    if not active_battle_demo.has_method("set_battle_background"):
-        push_warning("BattleDemo unterstützt set_battle_background noch nicht.")
+
+    var framing_value: Variant = landscape.get("battle_framing", {})
+    var framing: Dictionary = framing_value as Dictionary if framing_value is Dictionary else {}
+
+    # Neue BattleDemo-Layer bekommen Bild und Kamera-Framing gemeinsam. Ältere
+    # Layer bleiben über den bisherigen einfachen Setter weiterhin kompatibel.
+    if active_battle_demo.has_method("set_battle_background_framed"):
+        active_battle_demo.call("set_battle_background_framed", background_path, framing)
+        return
+    if active_battle_demo.has_method("set_battle_background"):
+        active_battle_demo.call("set_battle_background", background_path)
         return
 
-    active_battle_demo.call("set_battle_background", background_path)
+    push_warning("BattleDemo unterstützt noch keinen Landschafts-Kampfhintergrund.")
