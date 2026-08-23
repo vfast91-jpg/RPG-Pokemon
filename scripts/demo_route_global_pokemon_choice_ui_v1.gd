@@ -11,8 +11,52 @@ extends "res://scripts/demo_route_endgame_legendary_landscapes_v1.gd"
 # This deliberately sits at the active top of the route inheritance chain so
 # later feature layers cannot accidentally fall back to the old plain text rows.
 
+const RouteBossRules = preload("res://scripts/route_boss_rules.gd")
 const POKEMON_CHOICE_CARD_HEIGHT: float = 58.0
 const POKEMON_CHOICE_SPRITE_SIZE: Vector2 = Vector2(44.0, 44.0)
+
+
+func start_route() -> void:
+    super.start_route()
+
+    # This rule is deliberately limited to the single Lv.5 starter generated
+    # when a new route begins. Legendary capture encounters and the fixed
+    # legendary endgame bosses keep their existing behavior unchanged.
+    if battle_demo == null or team.is_empty():
+        return
+
+    var starter_value: Variant = team[0]
+    if not (starter_value is Dictionary):
+        return
+
+    var starter: Dictionary = starter_value as Dictionary
+    var starter_id: String = str(starter.get("species_id", "")).strip_edges()
+    if starter_id.is_empty() or not RouteBossRules.is_legendary_species(starter_id):
+        return
+
+    var non_legendary_ids: Array = []
+    for id_value: Variant in battle_demo.route_species_ids():
+        var candidate_id: String = str(id_value).strip_edges()
+        if candidate_id.is_empty() or RouteBossRules.is_legendary_species(candidate_id):
+            continue
+        non_legendary_ids.append(id_value)
+
+    if non_legendary_ids.is_empty():
+        push_error("Demo-Route: Kein nicht-legendäres Start-Pokémon verfügbar.")
+        return
+
+    var replacement_id: String = str(non_legendary_ids.pick_random())
+    team[0] = battle_demo.route_new_member(replacement_id, 5)
+    _show_stage_choices(
+        "Deine Route beginnt mit [b]%s Lv.5[/b].\nWähle deinen ersten Weg."
+        % battle_demo.route_species_name(replacement_id)
+    )
+
+
+func _show_stage_choices(message: String = "") -> void:
+    super._show_stage_choices(message)
+    if title_label != null:
+        title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
 
 
 func _make_route_pokemon_choice_card(
