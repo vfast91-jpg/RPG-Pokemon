@@ -1,7 +1,9 @@
 extends "res://scripts/battle_demo_move_info_standard_v1.gd"
 
 # Final V22 runtime completion layer. This sits above the presentation layer so
-# newer UI work on main remains active while late runtime gaps are closed.
+# newer UI work on main remains active while late runtime gaps are closed. As the
+# active top layer it also applies the final player-facing vocabulary guard to
+# status cards, detail view, floating feedback and battle protocol.
 
 const V22_ROOTED_BLOCKED_PAUSE_MOVE_IDS: Array[String] = ["roar", "whirlwind"]
 
@@ -272,4 +274,82 @@ func _status_tokens(combatant: Dictionary) -> Array[String]:
     var tokens: Array[String] = super._status_tokens(combatant)
     if _v22_is_rooted(combatant):
         tokens.append("🌱 VERWURZELT")
-    return tokens
+    return _v22_standardize_status_tokens(tokens)
+
+
+func _detail_info(combatant: Dictionary) -> String:
+    return _v22_standardize_player_text(super._detail_info(combatant))
+
+
+func _feedback_result(target: Dictionary, before: Dictionary) -> Dictionary:
+    var result: Dictionary = super._feedback_result(target, before)
+    result["text"] = _v22_standardize_player_text(str(result.get("text", "")))
+    return result
+
+
+func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) -> void:
+    var player_text: String = _v22_standardize_player_text(text)
+
+    # Historical type-immunity labels may still be emitted by older specialist
+    # layers. For direct-damage moves, the central TypeSystem is authoritative.
+    # A non-zero multiplier can therefore never be displayed as "wirkungslos".
+    var upper: String = player_text.to_upper()
+    var looks_like_old_type_immunity: bool = (
+        upper.contains("WIRKUNGSLOS")
+        or upper == "KEINE WIRKUNG"
+        or upper == "KEINE WIRKUNG."
+    )
+    if looks_like_old_type_immunity and _tf_current_move_is_direct_damage():
+        var move: Dictionary = _move_data(_feedback_active_move_id)
+        var move_type: String = str(move.get("type", ""))
+        if TypeSystem.is_known_type(move_type):
+            var multiplier: float = TypeSystem.get_multiplier(
+                move_type,
+                _type_array(combatant.get("types", []))
+            )
+            if not is_zero_approx(multiplier):
+                var central_feedback: String = TypeSystem.get_feedback_text(multiplier).strip_edges()
+                if central_feedback.is_empty():
+                    return
+                player_text = central_feedback.trim_suffix(".").trim_suffix("!").to_upper()
+
+    if player_text.strip_edges().is_empty():
+        return
+    super._spawn_feedback_label(combatant, player_text, color)
+
+
+func _append_protocol_action(actor: Dictionary, action_text: String, results: Array[String]) -> void:
+    var standardized_results: Array[String] = []
+    for result_text: String in results:
+        standardized_results.append(_v22_standardize_player_text(result_text))
+    super._append_protocol_action(
+        actor,
+        _v22_standardize_player_text(action_text),
+        standardized_results
+    )
+
+
+func _v22_standardize_status_tokens(source: Array[String]) -> Array[String]:
+    var result: Array[String] = []
+    for token: String in source:
+        var normalized: String = _v22_standardize_player_text(token).strip_edges()
+        if normalized.is_empty() or result.has(normalized):
+            continue
+        result.append(normalized)
+    return result
+
+
+func _v22_standardize_player_text(source: String) -> String:
+    var text: String = source
+
+    # One vocabulary on every combat surface. "Schutz" is reserved for actual
+    # shield/protect mechanics; the combat stat is always "Verteidigung".
+    text = text.replace("SCHUTZ ↓", "VERTEIDIGUNG ↓")
+    text = text.replace("SCHUTZ ↑", "VERTEIDIGUNG ↑")
+    text = text.replace("Schutz ↓", "Verteidigung ↓")
+    text = text.replace("Schutz ↑", "Verteidigung ↑")
+
+    # Normalize the legacy spelling without touching legitimate special labels
+    # such as Schutzschild, Rundumschutz or Schutzblockade.
+    text = text.replace("KEIN EFFEKT!", "KEIN EFFEKT")
+    return text
