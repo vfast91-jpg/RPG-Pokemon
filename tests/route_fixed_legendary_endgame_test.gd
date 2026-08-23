@@ -4,11 +4,11 @@ const RouteScript = preload("res://scripts/demo_route_endgame_legendary_landscap
 const BossRules = preload("res://scripts/route_boss_rules.gd")
 
 const EXPECTED: Dictionary = {
-    96: {"species_id": "articuno", "display_name": "Arktos", "landscape_id": "glacier"},
-    97: {"species_id": "zapdos", "display_name": "Zapdos", "landscape_id": "industry"},
-    98: {"species_id": "moltres", "display_name": "Lavados", "landscape_id": "volcano"},
-    99: {"species_id": "mew", "display_name": "Mew", "landscape_id": "mystic"},
-    100: {"species_id": "mewtwo", "display_name": "Mewtu", "landscape_id": "cave"}
+    96: {"species_id": "articuno", "display_name": "Arktos", "landscape_id": "glacier", "background": "res://assets/battle_backgrounds/landscapes/17_glacier_ice_lake.jpg"},
+    97: {"species_id": "zapdos", "display_name": "Zapdos", "landscape_id": "industry", "background": "res://assets/battle_backgrounds/landscapes/14_industry_powerplant.jpg"},
+    98: {"species_id": "moltres", "display_name": "Lavados", "landscape_id": "volcano", "background": "res://assets/battle_backgrounds/landscapes/11_volcano_lavafield.jpg"},
+    99: {"species_id": "mew", "display_name": "Mew", "landscape_id": "mystic", "background": "res://assets/battle_backgrounds/landscapes/16_mystic_place.jpg"},
+    100: {"species_id": "mewtwo", "display_name": "Mewtu", "landscape_id": "cave", "background": "res://assets/battle_backgrounds/landscapes/12_cave.jpg"}
 }
 
 
@@ -16,13 +16,14 @@ class FakeBattleDemo:
     extends Node
 
     var last_background_path: String = ""
+    var available_legendaries: Array[String] = ["articuno", "zapdos", "moltres", "mew", "mewtwo"]
 
     func set_battle_background(path: String) -> bool:
         last_background_path = path
         return true
 
     func route_species_is_available(species_id: String) -> bool:
-        return ["articuno", "zapdos", "moltres", "mew", "mewtwo"].has(species_id)
+        return available_legendaries.has(species_id)
 
     func route_species_ids_for_level(_level: int) -> Array:
         # Für einen festen Endgame-Boss darf dieser Fallback nie gebraucht werden.
@@ -52,6 +53,14 @@ func _initialize() -> void:
     )
     assert(route.current_landscape_id == "meadow", "Etappe 95 darf die Landschaft nicht verändern.")
 
+    # Die normale Zwei-Landschaften-Auswahl endet weiterhin mit Etappe 95.
+    route.stage = 96
+    route._tf_landscape_prepared_stage = 95
+    assert(
+        not route._tf_should_offer_landscape_choice(),
+        "Etappe 96 darf keine zufällige Zwei-Landschaften-Auswahl mehr anbieten."
+    )
+
     for stage_value: int in [96, 97, 98, 99, 100]:
         var expected: Dictionary = EXPECTED[stage_value]
         var profile: Dictionary = BossRules.boss_profile_for_stage(stage_value)
@@ -72,12 +81,21 @@ func _initialize() -> void:
         assert(route.current_landscape_id == str(expected.get("landscape_id", "")), "Aktive Landschaft stimmt auf Etappe %d nicht." % stage_value)
 
         var landscape: Dictionary = route.route_current_landscape()
-        var expected_background: String = str(landscape.get("background", ""))
-        assert(not expected_background.is_empty(), "Feste Landschaft auf Etappe %d braucht einen Hintergrund." % stage_value)
+        var expected_background: String = str(expected.get("background", ""))
+        assert(str(landscape.get("background", "")) == expected_background, "Landschaftsbild stimmt auf Etappe %d nicht." % stage_value)
         assert(battle_demo.last_background_path == expected_background, "Kampfhintergrund stimmt auf Etappe %d nicht." % stage_value)
 
         var resolved_species: String = route._endgame_species_for_profile(profile, 77)
         assert(resolved_species == str(expected.get("species_id", "")), "Fester Boss darf auf Etappe %d nicht durch Zufallsgewichtung ersetzt werden." % stage_value)
+
+    # Fehlt ein festgelegtes Legendäres, muss die Route leer zurückgeben statt
+    # einen zufälligen nicht-legendären Ersatzboss zu ziehen.
+    var stage96_profile: Dictionary = BossRules.boss_profile_for_stage(96)
+    battle_demo.available_legendaries.clear()
+    assert(
+        route._endgame_species_for_profile(stage96_profile, 77).is_empty(),
+        "Ein fehlendes Arktos darf nicht durch einen Zufallsboss ersetzt werden."
+    )
 
     route.free()
     battle_demo.free()
