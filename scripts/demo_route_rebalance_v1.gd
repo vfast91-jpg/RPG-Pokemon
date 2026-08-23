@@ -167,6 +167,20 @@ func _begin_capture_event() -> void:
     _offer_capture_search()
 
 
+func _resolve_capture_species_for_root(root_id: String, capture_level: int) -> String:
+    if battle_demo == null:
+        return ""
+    if battle_demo.has_method("route_resolve_generated_species_for_level"):
+        return str(
+            battle_demo.call(
+                "route_resolve_generated_species_for_level",
+                root_id,
+                capture_level
+            )
+        )
+    return str(battle_demo.call("route_resolve_species_for_level", root_id, capture_level))
+
+
 func _offer_capture_search() -> void:
     _clear_container(capture_actions)
     continue_button.visible = false
@@ -195,9 +209,9 @@ func _offer_capture_search() -> void:
     if not _capture_seen_families.has(family_id):
         _capture_seen_families.append(family_id)
 
-    var species_id: String = battle_demo.route_resolve_species_for_level(root_id, capture_level)
+    var species_id: String = _resolve_capture_species_for_root(root_id, capture_level)
     if species_id.is_empty():
-        event_label.text = "Diese Begegnung wurde verworfen, weil die notwendige Entwicklungsform nicht eindeutig auflösbar ist."
+        event_label.text = "Diese Begegnung wurde verworfen, weil keine gültige System-Entwicklungsform bestimmt werden konnte."
         continue_button.visible = true
         return
 
