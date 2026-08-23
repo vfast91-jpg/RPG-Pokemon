@@ -1,0 +1,41 @@
+name: Single Target Aggro Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/battle/single_target_aggro_rules.gd"
+      - "scripts/battle_demo_lab_family_refresh_v1.gd"
+      - "tests/single_target_aggro_rule_test.gd"
+      - ".github/workflows/single-target-aggro-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  single-target-aggro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output godot.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.7.2-stable_linux.x86_64 godot
+          chmod +x godot
+          ./godot --version
+
+      - name: Parse project headless
+        run: ./godot --headless --path . --editor --quit
+
+      - name: Single-target Aggro regression test
+        run: ./godot --headless --path . --script tests/single_target_aggro_rule_test.gd
