@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_families_31_40_runtime_v1.gd"
+extends "res://scripts/battle_demo_families_41_64_runtime_v1.gd"
 
 # Topmost local-PvP guard for the currently active battle stack.
 #
