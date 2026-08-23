@@ -1,13 +1,16 @@
 extends "res://scripts/demo_route_landscape_overview_v1.gd"
 
-# Schritt 5 des Landschaftssystems:
-# Landschaften modifizieren die bereits bestehende Seltenheitsgewichtung, ohne
-# sie zu ersetzen. Bevorzugte Typen erhalten x3, ausgeschlossene Typen x0 und
-# alle übrigen Typen x1. Bei Doppeltypen hat x0 Vorrang; x3 stapelt nie zu x9.
-# Fangwiese und normale Zufalls-/Boss-Selektoren benutzen dieselbe Typregel.
+# Landschaften modifizieren die bestehende Seltenheitsgewichtung, ohne sie zu
+# ersetzen. Stark bevorzugte Typen erhalten x8, normale Typen x1, seltene/
+# untypische Typen x0.2 und ausgeschlossene Typen x0.
+#
+# Für die Landschaftskorrelation zählt bei Doppeltypen ausschließlich Typ 1.
+# Typ 2 wird vollständig ignoriert. Fangwiese und normale Zufalls-/Boss-
+# Selektoren benutzen dieselbe Typ-1-Regel und dieselben Multiplikatoren.
 
-const LANDSCAPE_PREFERRED_MULTIPLIER: float = 3.0
+const LANDSCAPE_PREFERRED_MULTIPLIER: float = 8.0
 const LANDSCAPE_DEFAULT_MULTIPLIER: float = 1.0
+const LANDSCAPE_RARE_MULTIPLIER: float = 0.2
 const LANDSCAPE_EXCLUDED_MULTIPLIER: float = 0.0
 
 var _tf_capture_generated_species_by_root: Dictionary = {}
@@ -22,27 +25,28 @@ func route_landscape_type_multiplier(species_types: Array, landscape_id: String 
     if landscape.is_empty():
         return LANDSCAPE_DEFAULT_MULTIPLIER
 
+    # Nur Typ 1 bestimmt die Landschaftskorrelation. Die Reihenfolge in
+    # species_types ist daher spielmechanisch relevant und darf hier nicht
+    # normalisiert, sortiert oder mit Typ 2 kombiniert werden.
+    if species_types.is_empty():
+        return LANDSCAPE_DEFAULT_MULTIPLIER
+    var primary_type: String = str(species_types[0]).strip_edges().to_lower()
+    if primary_type.is_empty():
+        return LANDSCAPE_DEFAULT_MULTIPLIER
+
     var preferred_value: Variant = landscape.get("preferred_types", [])
+    var rare_value: Variant = landscape.get("rare_types", [])
     var excluded_value: Variant = landscape.get("excluded_types", [])
     var preferred: Array = preferred_value if preferred_value is Array else []
+    var rare: Array = rare_value if rare_value is Array else []
     var excluded: Array = excluded_value if excluded_value is Array else []
 
-    var normalized_types: Array[String] = []
-    for type_value: Variant in species_types:
-        var type_id: String = str(type_value).strip_edges().to_lower()
-        if not type_id.is_empty() and not normalized_types.has(type_id):
-            normalized_types.append(type_id)
-
-    # Ein ausgeschlossener Typ schlägt immer einen gleichzeitig bevorzugten
-    # Zweittyp. Dadurch kann ein Dualtyp nie über x3 einen x0-Ausschluss umgehen.
-    for type_id: String in normalized_types:
-        if excluded.has(type_id):
-            return LANDSCAPE_EXCLUDED_MULTIPLIER
-
-    for type_id: String in normalized_types:
-        if preferred.has(type_id):
-            return LANDSCAPE_PREFERRED_MULTIPLIER
-
+    if excluded.has(primary_type):
+        return LANDSCAPE_EXCLUDED_MULTIPLIER
+    if rare.has(primary_type):
+        return LANDSCAPE_RARE_MULTIPLIER
+    if preferred.has(primary_type):
+        return LANDSCAPE_PREFERRED_MULTIPLIER
     return LANDSCAPE_DEFAULT_MULTIPLIER
 
 
