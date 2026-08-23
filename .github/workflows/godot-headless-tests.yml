@@ -121,8 +121,10 @@ jobs:
         run: ./godot --headless --path . --script tests/route_fixed_legendary_endgame_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
-      - name: Complete Gen1 master data contract test
+      - name: Current global Pokemon master data contract test
         run: ./godot --headless --path . --script tests/gen1_remaining_species_data_test.gd
+      - name: Future-generation single-pool contract test
+        run: ./godot --headless --path . --script tests/global_pokemon_pool_contract_test.gd
       - name: Complete Gen1 runtime roster integrity test
         run: ./godot --headless --path . --script tests/gen1_runtime_roster_integrity_test.gd
       - name: Fluffeluff starting moves regression test
