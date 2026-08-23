@@ -1,6 +1,6 @@
 extends SceneTree
 
-const PvpBattleScript = preload("res://scripts/battle_demo_pvp.gd")
+const PvpBattleScript = preload("res://scripts/battle_demo_pvp_active_v1.gd")
 
 var failures: int = 0
 
@@ -87,13 +87,47 @@ func _initialize() -> void:
         _finish(lab)
         return
 
+    # PvP has no encounter/catch rarity weighting. Every fully playable species
+    # that is valid at the selected level must occur exactly once in the flat
+    # draft catalog; main_pvp.gd then uses an unweighted shuffle.
+    var catalog_ids: Dictionary = {}
     for entry_value: Variant in catalog:
         _check(entry_value is Dictionary, "Jeder PvP-Katalogeintrag muss ein Dictionary sein.")
         if not (entry_value is Dictionary):
             continue
         var entry: Dictionary = entry_value
+        var entry_id: String = str(entry.get("id", ""))
+        _check(not entry_id.is_empty(), "Jeder PvP-Katalogeintrag braucht eine Pokémon-ID.")
+        _check(not catalog_ids.has(entry_id), "Jedes Pokémon darf im PvP-Katalog nur einmal vorkommen: %s" % entry_id)
+        catalog_ids[entry_id] = true
         var moves_value: Variant = entry.get("moves", [])
         _check(moves_value is Array and not (moves_value as Array).is_empty(), "Jeder angebotene PvP-Kandidat braucht mindestens eine normale Kampfattacke.")
+
+    var expected_catalog_ids: Dictionary = {}
+    if all_species_value is Dictionary:
+        var all_species_for_catalog: Dictionary = all_species_value
+        for species_id_value: Variant in all_species_for_catalog.keys():
+            var species_id: String = str(species_id_value)
+            if not lab._pvp_species_is_available_at_level(species_id, 50):
+                continue
+            var probe: Dictionary = lab._make_combatant(
+                "player",
+                0,
+                {"species_id": species_id, "level": 50}
+            )
+            var normal_moves: Array = lab._database_normal_battle_moves(probe.get("moves", []))
+            if normal_moves.is_empty():
+                continue
+            expected_catalog_ids[species_id] = true
+
+    _check(
+        catalog_ids.size() == expected_catalog_ids.size(),
+        "PvP muss auf Level 50 jedes spielbare Pokémon genau einmal und damit ohne Seltenheitsgewicht in den Draft-Pool aufnehmen: %d/%d."
+        % [catalog_ids.size(), expected_catalog_ids.size()]
+    )
+    for expected_id_value: Variant in expected_catalog_ids.keys():
+        var expected_id: String = str(expected_id_value)
+        _check(catalog_ids.has(expected_id), "Spielbares Pokémon fehlt im gleichgewichteten PvP-Pool: %s" % expected_id)
 
     var team_one: Array = []
     var team_two: Array = []
@@ -122,8 +156,8 @@ func _initialize() -> void:
     var enemy_actor: Dictionary = lab.enemy_team[0]
     enemy_actor["atb"] = 100.0
     lab._enemy_act(enemy_actor)
-    _check(lab.paused, "Im PvP muss Spieler 2 den Timeflow während seiner Auswahl pausieren.")
-    _check(str(lab.selected_actor.get("id", "")) == str(enemy_actor.get("id", "")), "Die Gegenseite muss im PvP als menschlich gesteuerter aktiver Akteur ausgewählt werden.")
+    _check(lab.paused, "Im aktiven PvP muss Spieler 2 den Timeflow während seiner Auswahl pausieren.")
+    _check(str(lab.selected_actor.get("id", "")) == str(enemy_actor.get("id", "")), "Die Gegenseite muss im aktiven PvP als menschlich gesteuerter Akteur ausgewählt werden.")
 
     # Runde 0 darf die zweite Seite nicht per KI entscheiden. Nach Spieler 1
     # muss stattdessen zuerst ein neutraler Übergabebildschirm erscheinen.
