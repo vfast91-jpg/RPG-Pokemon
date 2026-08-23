@@ -5,6 +5,8 @@ extends "res://scripts/battle_demo_double_boss_feedback_v1.gd"
 # Verzweifler ist nicht lernbar, wird nicht dauerhaft am Pokémon gespeichert und
 # verschwindet automatisch wieder, sobald mindestens eine echte Runtime-Attacke
 # verfügbar ist. In Timeflow verursacht Verzweifler bewusst KEINEN Rückstoß.
+# Die Verfügbarkeit eines Pokémon selbst hängt niemals davon ab, ob seine
+# regulären Attacken bereits vollständig implementiert sind.
 
 const STRUGGLE_RULE_PATH: String = "res://data/rules/struggle_fallback_v1.json"
 const STRUGGLE_DEFAULT_ID: String = "struggle"
@@ -160,6 +162,18 @@ func _tf_regular_move_available(move_id: String) -> bool:
         return false
     if _tf_is_system_action(str(move.get("name", ""))):
         return false
+
+    # A move definition may already exist in the database while its combat
+    # runtime is still intentionally deferred. Such a move is not selectable
+    # and therefore must not suppress Verzweifler.
+    var runtime_value: Variant = move.get("runtime", {})
+    if runtime_value is Dictionary:
+        var runtime: Dictionary = runtime_value
+        if runtime.has("runtime_supported") and not bool(runtime.get("runtime_supported", true)):
+            return false
+        if runtime.has("normal_battle_available") and not bool(runtime.get("normal_battle_available", true)):
+            return false
+
     return true
 
 
