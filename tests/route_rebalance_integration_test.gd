@@ -1,7 +1,7 @@
 extends SceneTree
 
-const ActiveRouteScript = preload("res://scripts/demo_route_cleanup_v1.gd")
-const ActiveBattleScript = preload("res://scripts/battle_demo_route_vitamins_v1.gd")
+const ActiveRouteScript = preload("res://scripts/demo_route_endgame_legendary_landscapes_v1.gd")
+const ActiveBattleScript = preload("res://scripts/battle_demo_landscape_background_v1.gd")
 
 var failures: int = 0
 
@@ -11,8 +11,8 @@ func _initialize() -> void:
     _check(main_file != null, "main.tscn konnte nicht gelesen werden.")
     if main_file != null:
         var main_text: String = main_file.get_as_text()
-        _check(main_text.contains("demo_route_cleanup_v1.gd"), "main.tscn muss den finalen Route-Cleanup-Layer verwenden.")
-        _check(main_text.contains("battle_demo_route_vitamins_v1.gd"), "main.tscn muss den Vitamin-fähigen Route-Kampflayer verwenden.")
+        _check(main_text.contains("demo_route_endgame_legendary_landscapes_v1.gd"), "main.tscn muss den aktiven Landschafts-/Endgame-Route-Layer verwenden.")
+        _check(main_text.contains("battle_demo_landscape_background_v1.gd"), "main.tscn muss den aktiven Landschafts-Kampflayer verwenden.")
 
     var route = ActiveRouteScript.new()
     route.team = [
@@ -46,11 +46,12 @@ func _initialize() -> void:
     _check(route._route_stage_xp(10) == 316, "Etappe 10 muss 316 EP verwenden.")
     _check(route._route_stage_xp(90) == 13396, "Etappe 90 muss 13396 EP verwenden.")
 
-    # Fangwiese.
-    _check(route._capture_level_for_stage(11) == 15, "Fangwiesen-Basislevel muss höchstes Teamlevel -3 sein.")
-    _check(route._capture_level_for_search(1) == 15, "Fangwiese Suche 1 muss 100% verwenden.")
-    _check(route._capture_level_for_search(2) == 11, "Fangwiese Suche 2 muss 75% abgerundet verwenden.")
-    _check(route._capture_level_for_search(3) == 7, "Fangwiese Suche 3 muss 50% abgerundet verwenden.")
+    # Fangwiese: direktes Gambling gegen das höchste eigene Pokémon.
+    _check(route.CAPTURE_SEARCH_LEVEL_OFFSETS == [1, 3, 5], "Fangwiese muss -1/-3/-5 als feste Suchabstände verwenden.")
+    _check(route._capture_level_for_stage(11) == 17, "Fangwiesen-Basislevel muss höchstes Teamlevel -1 sein.")
+    _check(route._capture_level_for_search(1) == 17, "Fangwiese Suche 1 muss höchstes Level -1 verwenden.")
+    _check(route._capture_level_for_search(2) == 15, "Fangwiese Suche 2 muss höchstes Level -3 verwenden.")
+    _check(route._capture_level_for_search(3) == 13, "Fangwiese Suche 3 muss höchstes Level -5 verwenden.")
     _check(route.CAPTURE_SEARCH_MAX == 3, "Fangwiese darf maximal drei Suchen besitzen.")
 
     # Encounter family weighting is shared by capture and ordinary enemies.
