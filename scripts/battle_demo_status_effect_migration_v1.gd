@@ -191,7 +191,10 @@ func _resolve_seed_tick(target: Dictionary) -> void:
     ))
     var heal_fraction: float = clampf(2.0 * stored_ratio, 0.0, 1.0)
     var missing_hp: int = maxi(0, int(source.get("max_hp", 0)) - int(source.get("hp", 0)))
-    var healed: int = mini(missing_hp, int(floor(float(actual) * heal_fraction)))
+    var healed: int = mini(
+        missing_hp,
+        StatusEffects.positive_int(float(actual) * heal_fraction)
+    )
     if healed > 0:
         source["hp"] = int(source.get("hp", 0)) + healed
         _spawn_feedback_label(source, "🌱 +" + str(healed) + " KP", Color("8fe39b"))
@@ -226,9 +229,8 @@ func _bulba_grassy_pulse(source: Dictionary) -> void:
         var missing: int = maxi(0, int(combatant.get("max_hp", 1)) - int(combatant.get("hp", 0)))
         if missing <= 0:
             continue
-        var requested: int = maxi(
-            0,
-            int(floor(float(combatant.get("max_hp", 1)) * 0.125 * stored_ratio))
+        var requested: int = StatusEffects.positive_int(
+            float(combatant.get("max_hp", 1)) * 0.125 * stored_ratio
         )
         var healed: int = mini(missing, requested)
         if healed <= 0:
