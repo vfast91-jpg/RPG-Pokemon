@@ -11,6 +11,8 @@ const RANDOM_LANDSCAPE_FIRST_STAGE: int = 2
 const RANDOM_LANDSCAPE_LAST_STAGE: int = 95
 const LANDSCAPE_CHOICE_COUNT: int = 2
 const LANDSCAPE_CARD_IMAGE_SIZE: Vector2 = Vector2(168.0, 126.0)
+const ROUTE_EVENT_LABEL_MIN_HEIGHT: float = 58.0
+const LANDSCAPE_EVENT_LABEL_MIN_HEIGHT: float = 72.0
 
 var _tf_landscape_prepared_stage: int = 1
 var _tf_landscape_choice_active: bool = false
@@ -33,12 +35,37 @@ func _show_stage_choices(message: String = "") -> void:
         _tf_queue_landscape_choice(message)
         return
     super._show_stage_choices(message)
+    _tf_prepare_route_choice_layout(false)
 
 
 func _tf_should_offer_landscape_choice() -> bool:
     if stage < RANDOM_LANDSCAPE_FIRST_STAGE or stage > RANDOM_LANDSCAPE_LAST_STAGE:
         return false
     return stage != _tf_landscape_prepared_stage
+
+
+func _tf_prepare_route_choice_layout(landscape_choice: bool) -> void:
+    # Die Etappenzahl steht bereits prominent im Titel. Die zusätzliche
+    # Prozent-/Fortschrittszeile nimmt nur Platz weg und bleibt deshalb verborgen.
+    if progress_label != null:
+        progress_label.visible = false
+
+    # path_box kann von spezialisierten Route-Zuständen ausgeblendet worden sein.
+    # Für normale Weg- und insbesondere Landschaftsauswahlen muss er sicher
+    # sichtbar sein, sonst existieren die Buttons zwar, sind aber nicht spielbar.
+    if path_box != null:
+        path_box.visible = true
+
+    # Routentexte sollen vollständig im Layout stehen statt in einem kleinen
+    # RichTextLabel-Fenster mit eigener Scrollbar zu verschwinden.
+    if event_label != null:
+        event_label.fit_content = true
+        event_label.scroll_active = false
+        event_label.size_flags_vertical = Control.SIZE_FILL
+        event_label.custom_minimum_size = Vector2(
+            0.0,
+            LANDSCAPE_EVENT_LABEL_MIN_HEIGHT if landscape_choice else ROUTE_EVENT_LABEL_MIN_HEIGHT
+        )
 
 
 func _tf_queue_landscape_choice(message: String) -> void:
@@ -55,8 +82,8 @@ func _tf_queue_landscape_choice(message: String) -> void:
     continue_button.visible = false
     _clear_container(path_box)
     _clear_container(capture_actions)
+    _tf_prepare_route_choice_layout(true)
     title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
-    progress_label.text = _progress_text()
     event_label.text = message
 
     _tf_wait_for_progression_then_show_landscapes(sequence_id)
@@ -86,6 +113,7 @@ func _tf_show_landscape_choice_cards() -> void:
         push_error("Landschaftsauswahl benötigt genau zwei gültige Landschaften.")
         _tf_landscape_prepared_stage = stage
         super._show_stage_choices(_tf_landscape_pending_message)
+        _tf_prepare_route_choice_layout(false)
         return
 
     _tf_landscape_choice_active = true
@@ -94,9 +122,9 @@ func _tf_show_landscape_choice_cards() -> void:
     continue_button.visible = false
     _clear_container(path_box)
     _clear_container(capture_actions)
+    _tf_prepare_route_choice_layout(true)
 
     title_label.text = "LANDSCHAFT WÄHLEN · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
-    progress_label.text = _progress_text()
 
     var intro: String = "[b]Wohin führt dein Weg?[/b]\nWähle die Landschaft für Etappe %d." % stage
     if not _tf_landscape_pending_message.is_empty():
@@ -108,6 +136,7 @@ func _tf_show_landscape_choice_cards() -> void:
     row.name = "LandscapeChoiceRow"
     row.alignment = BoxContainer.ALIGNMENT_CENTER
     row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     row.add_theme_constant_override("separation", 10)
     path_box.add_child(row)
 
@@ -184,6 +213,7 @@ func _tf_select_landscape(landscape_id: String) -> void:
     _tf_landscape_pending_message = ""
 
     super._show_stage_choices(next_message)
+    _tf_prepare_route_choice_layout(false)
 
 
 func _tf_random_landscape_choice_ids() -> Array[String]:
