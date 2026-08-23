@@ -11,16 +11,17 @@ extends "res://scripts/battle_demo_adaptive_family_ui.gd"
 const STAT_PROFILE_PATH: String = "res://data/gen1_species_stat_profiles_v4.json"
 const STAT_KEYS: Array[String] = ["hp", "attack", "defense", "special", "speed"]
 const ACTIVE_BATTLE_BACKGROUND_PATH: String = "res://assets/battle_backgrounds/landscapes/01_meadow_grassland.jpg"
-# Keep every landscape width-fitted, but spend roughly the upper third of its
-# vertical overflow above the visible arena. This leaves only a modest amount of
-# sky while preserving substantially more ground for the Pokemon rows.
+# Most landscape pictures look best with a modest upward crop. Some compositions
+# have their playable ground much lower in the source image and therefore opt in
+# to a stronger per-landscape ratio through landscapes_v1.json.
 const BATTLE_BG_OVERFLOW_UPSHIFT_RATIO: float = 0.30
 const DEFAULT_BATTLE_FRAMING: Dictionary = {
     "zoom": 1.0,
     "focus_x": 0.5,
     "focus_y": 0.0,
     "offset_x": 0.0,
-    "offset_y": 0.0
+    "offset_y": 0.0,
+    "overflow_upshift_ratio": BATTLE_BG_OVERFLOW_UPSHIFT_RATIO
 }
 
 var _active_battle_background_layer: Control = null
@@ -109,6 +110,11 @@ func _normalized_battle_framing(framing: Dictionary) -> Dictionary:
     result["focus_y"] = 0.0
     result["offset_x"] = 0.0
     result["offset_y"] = float(result.get("offset_y", 0.0))
+    result["overflow_upshift_ratio"] = clampf(
+        float(result.get("overflow_upshift_ratio", BATTLE_BG_OVERFLOW_UPSHIFT_RATIO)),
+        0.0,
+        1.0
+    )
     return result
 
 
@@ -145,13 +151,19 @@ func _layout_battle_background(texture: Texture2D) -> void:
         return
 
     # Preserve the source aspect ratio and make the image exactly as wide as the
-    # full battle window. Instead of centering vertically, shift a controlled
-    # share of the excess height above the arena. This keeps the side edges flush
-    # while showing much less sky and more useful ground behind the Pokemon.
+    # full battle window. The default composition shifts 30% of the excess height
+    # above the arena. Landscapes whose usable floor sits lower in the source can
+    # request a stronger ratio without changing scale or horizontal alignment.
     var width_scale: float = area_size.x / texture_size.x
     var render_size: Vector2 = texture_size * width_scale
     var vertical_overflow: float = maxf(0.0, render_size.y - area_size.y)
-    var automatic_upshift: float = vertical_overflow * BATTLE_BG_OVERFLOW_UPSHIFT_RATIO
+    var upshift_ratio: float = float(
+        _battle_background_framing.get(
+            "overflow_upshift_ratio",
+            BATTLE_BG_OVERFLOW_UPSHIFT_RATIO
+        )
+    )
+    var automatic_upshift: float = vertical_overflow * upshift_ratio
     var manual_offset: float = float(_battle_background_framing.get("offset_y", 0.0))
     var vertical_offset: float = clampf(
         -automatic_upshift + manual_offset,
