@@ -44,6 +44,11 @@ func _initialize() -> void:
     _check(scyther_options.has("scizor"), "Scherox muss über den vollständigen Sichlor-Familienlink systemgenerierbar sein.")
     _check(scyther_options.has("kleavor"), "Axantor muss über den vollständigen Sichlor-Familienlink systemgenerierbar sein.")
 
+    # The global Gen-1-family registry is independent from move implementation.
+    # Every family remains registered even while later move batches are still
+    # incomplete; actual combat falls back to Verzweifler where necessary.
+    _check(lab.species_ids.size() == 78, "Der globale Roster muss alle 78 vollständigen Gen-1-Familien enthalten.")
+
     # Across the complete Level 1-100 range every registered species must be a
     # possible concrete system result of one route family. This catches future
     # branch/data additions that would otherwise silently disappear from enemy,
@@ -82,15 +87,18 @@ func _initialize() -> void:
     _check(lab._pvp_species_is_available_at_level("sylveon", 50), "Feelinara muss als möglicher Evoli-Systemzweig im PvP erreichbar sein.")
 
     var catalog: Array = lab.pvp_catalog(50)
-    _check(catalog.size() >= 6, "PvP braucht auf Level 50 mindestens sechs spielbare Pokémon, damit jeder Pick drei unterschiedliche Optionen behalten kann.")
+    _check(catalog.size() >= 6, "PvP braucht auf Level 50 mindestens sechs Pokémon, damit jeder Pick drei unterschiedliche Optionen behalten kann.")
     if catalog.size() < 6:
         _finish(lab)
         return
 
-    # PvP has no encounter/catch rarity weighting. Every fully playable species
-    # that is valid at the selected level must occur exactly once in the flat
-    # draft catalog; main_pvp.gd then uses an unweighted shuffle.
+    # PvP has no encounter/catch rarity weighting. Every registered species form
+    # that is valid at the selected level must occur exactly once, regardless of
+    # whether its regular move implementation is complete. Missing usable moves
+    # are represented by the global Verzweifler fallback instead of filtering
+    # the Pokemon out of the catalog.
     var catalog_ids: Dictionary = {}
+    var catalog_moves_by_id: Dictionary = {}
     for entry_value: Variant in catalog:
         _check(entry_value is Dictionary, "Jeder PvP-Katalogeintrag muss ein Dictionary sein.")
         if not (entry_value is Dictionary):
@@ -101,15 +109,20 @@ func _initialize() -> void:
         _check(not catalog_ids.has(entry_id), "Jedes Pokémon darf im PvP-Katalog nur einmal vorkommen: %s" % entry_id)
         catalog_ids[entry_id] = true
         var moves_value: Variant = entry.get("moves", [])
-        _check(moves_value is Array and not (moves_value as Array).is_empty(), "Jeder angebotene PvP-Kandidat braucht mindestens eine normale Kampfattacke.")
+        _check(moves_value is Array and not (moves_value as Array).is_empty(), "Jeder angebotene PvP-Kandidat braucht mindestens eine effektive Kampfattacke oder Verzweifler.")
+        catalog_moves_by_id[entry_id] = (moves_value as Array).duplicate() if moves_value is Array else []
 
     var expected_catalog_ids: Dictionary = {}
+    var expected_struggle_ids: Dictionary = {}
     if all_species_value is Dictionary:
         var all_species_for_catalog: Dictionary = all_species_value
         for species_id_value: Variant in all_species_for_catalog.keys():
             var species_id: String = str(species_id_value)
             if not lab._pvp_species_is_available_at_level(species_id, 50):
                 continue
+
+            expected_catalog_ids[species_id] = true
+
             var probe: Dictionary = lab._make_combatant(
                 "player",
                 0,
@@ -117,17 +130,25 @@ func _initialize() -> void:
             )
             var normal_moves: Array = lab._database_normal_battle_moves(probe.get("moves", []))
             if normal_moves.is_empty():
-                continue
-            expected_catalog_ids[species_id] = true
+                expected_struggle_ids[species_id] = true
 
     _check(
         catalog_ids.size() == expected_catalog_ids.size(),
-        "PvP muss auf Level 50 jedes spielbare Pokémon genau einmal und damit ohne Seltenheitsgewicht in den Draft-Pool aufnehmen: %d/%d."
+        "PvP muss auf Level 50 jedes levelgültige Pokémon genau einmal aufnehmen, unabhängig vom Attacken-Implementierungsstand: %d/%d."
         % [catalog_ids.size(), expected_catalog_ids.size()]
     )
     for expected_id_value: Variant in expected_catalog_ids.keys():
         var expected_id: String = str(expected_id_value)
-        _check(catalog_ids.has(expected_id), "Spielbares Pokémon fehlt im gleichgewichteten PvP-Pool: %s" % expected_id)
+        _check(catalog_ids.has(expected_id), "Levelgültiges Pokémon fehlt im gleichgewichteten PvP-Pool: %s" % expected_id)
+
+    for fallback_id_value: Variant in expected_struggle_ids.keys():
+        var fallback_id: String = str(fallback_id_value)
+        var listed_moves_value: Variant = catalog_moves_by_id.get(fallback_id, [])
+        var listed_moves: Array = listed_moves_value if listed_moves_value is Array else []
+        _check(
+            listed_moves == ["Verzweifler"],
+            "Pokémon ohne regulär nutzbare Attacke muss im PvP mit Verzweifler bleiben: %s" % fallback_id
+        )
 
     var team_one: Array = []
     var team_two: Array = []
