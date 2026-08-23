@@ -5,7 +5,9 @@ const RouteScript = preload("res://scripts/demo_route_milestone_double_boss_v1.g
 var failures: int = 0
 
 
-class BattleStub extends Node:
+class BattleStub:
+    extends Node
+
     func route_species_ids_for_level(_level: int) -> Array:
         return ["bulbasaur", "rattata", "caterpie"]
 
