@@ -36,6 +36,16 @@
       "duration_seconds": 50.0,
       "duration_mode": "active_battle_time",
       "damage_type_strength_coefficients": {}
+    },
+    "snow": {
+      "display_name": "Schnee",
+      "emoji": "❄️",
+      "start_message": "❄️ Es beginnt zu schneien!",
+      "end_message": "❄️ Der Schnee lässt nach.",
+      "effect_strength_percent": 0.0,
+      "duration_seconds": 50.0,
+      "duration_mode": "active_battle_time",
+      "damage_type_strength_coefficients": {}
     }
   }
 }
