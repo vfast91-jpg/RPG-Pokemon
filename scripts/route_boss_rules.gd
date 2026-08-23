@@ -1,9 +1,9 @@
 extends RefCounted
 
 # Central, data-driven route boss policy.
-# The current playable route remains unchanged. The planned stages 91-100 live
-# in data/route_boss_rules_v1.json with enabled=false until the endgame is
-# deliberately activated in a later implementation step.
+# The 100-stage endgame is active. Stages 91-95 keep their random non-legendary
+# superboss profiles, while stages 96-100 are fixed legendary bosses defined in
+# data/route_boss_rules_v1.json.
 
 const RULES_PATH: String = "res://data/route_boss_rules_v1.json"
 
