@@ -19,12 +19,20 @@ func start_route() -> void:
 
 
 func _start_stage_battle() -> void:
-    # Vor dem ersten Etappenkampf wird die Startlandschaft noch einmal gesetzt,
-    # damit kein zuvor geöffneter Demo-/Testkampf den Hintergrund überschreiben kann.
+    # Die aktuell gewählte Landschaft ist für JEDEN Etappenkampf verbindlich.
+    # Etappe 1 beginnt fest auf der Wiese; ab Etappe 2 bleibt exakt die Landschaft
+    # erhalten, die der Spieler zuvor in der Landschaftsauswahl gewählt hat.
     if stage == 1:
         current_landscape_id = START_LANDSCAPE_ID
-        _tf_apply_current_landscape_background()
+
+    # Vor dem Start setzen, damit der Kampf bereits mit dem richtigen Bild öffnet.
+    _tf_apply_current_landscape_background()
     super._start_stage_battle()
+
+    # Einige geerbte Präsentations-Layer aktualisieren beim Kampfstart ihren HUD-
+    # Zustand. Danach noch einmal die Route als autoritative Quelle anwenden, damit
+    # kein Fallback-Hintergrund (insbesondere die Wiese) die Auswahl überschreibt.
+    _tf_apply_current_landscape_background()
 
 
 func route_current_landscape_id() -> String:
