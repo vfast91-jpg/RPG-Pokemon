@@ -44,6 +44,36 @@ func _initialize() -> void:
     _check(scyther_options.has("scizor"), "Scherox muss über den vollständigen Sichlor-Familienlink systemgenerierbar sein.")
     _check(scyther_options.has("kleavor"), "Axantor muss über den vollständigen Sichlor-Familienlink systemgenerierbar sein.")
 
+    # Across the complete Level 1-100 range every registered species must be a
+    # possible concrete system result of one route family. This catches future
+    # branch/data additions that would otherwise silently disappear from enemy,
+    # capture and PvP generation.
+    var generated_reachable: Dictionary = {}
+    for generated_level: int in range(1, 101):
+        for root_value: Variant in lab.species_ids:
+            var generated_options: Array = lab.route_generated_species_options_for_level(
+                str(root_value),
+                generated_level
+            )
+            for option_value: Variant in generated_options:
+                generated_reachable[str(option_value)] = true
+
+    var all_species_value: Variant = lab.data.get("species", {})
+    _check(all_species_value is Dictionary, "Die vollständige Speziesdatenbank muss für den Erreichbarkeitstest geladen sein.")
+    if all_species_value is Dictionary:
+        var all_species: Dictionary = all_species_value
+        _check(
+            generated_reachable.size() == all_species.size(),
+            "Systemgenerierung muss über Level 1-100 alle registrierten Pokémon erreichen können: %d/%d."
+            % [generated_reachable.size(), all_species.size()]
+        )
+        for species_id_value: Variant in all_species.keys():
+            var registered_id: String = str(species_id_value)
+            _check(
+                generated_reachable.has(registered_id),
+                "Registriertes Pokémon ist für Gegner/Fang/PvP nicht systemgenerierbar: %s" % registered_id
+            )
+
     _check(lab._pvp_species_is_available_at_level("bulbasaur", 15), "Bisasam muss bis Level 15 im PvP-Pool erlaubt sein.")
     _check(not lab._pvp_species_is_available_at_level("bulbasaur", 16), "Bisasam darf ab seiner Pflichtentwicklung auf Level 16 nicht mehr angeboten werden.")
     _check(lab._pvp_species_is_available_at_level("ivysaur", 16), "Bisaknosp muss ab Level 16 im PvP-Pool erlaubt sein.")
