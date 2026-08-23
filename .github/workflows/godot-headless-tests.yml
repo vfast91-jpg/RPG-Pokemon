@@ -111,6 +111,8 @@ jobs:
         run: ./godot --headless --path . --script tests/route_landscape_choice_test.gd
       - name: Route landscape overview regression test
         run: ./godot --headless --path . --script tests/route_landscape_overview_test.gd
+      - name: Route landscape weighting regression test
+        run: ./godot --headless --path . --script tests/route_landscape_weighting_test.gd
       - name: Gen1 database integration test
         run: ./godot --headless --path . --script tests/gen1_database_integration_test.gd
       - name: Fluffeluff starting moves regression test
