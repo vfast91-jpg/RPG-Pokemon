@@ -43,6 +43,30 @@ func _initialize() -> void:
         "Nur fehlende/unimplementierte Attacken-IDs müssen ebenfalls Verzweifler auslösen."
     )
 
+    var runtime_moves_value: Variant = battle.data.get("moves", {})
+    if runtime_moves_value is Dictionary:
+        var runtime_moves: Dictionary = runtime_moves_value
+        runtime_moves["deferred_runtime_test"] = {
+            "id": "deferred_runtime_test",
+            "name": "Später implementierte Attacke",
+            "runtime": {"runtime_supported": false}
+        }
+        runtime_moves["normal_battle_blocked_test"] = {
+            "id": "normal_battle_blocked_test",
+            "name": "Nicht im normalen Kampf verfügbar",
+            "runtime": {"runtime_supported": true, "normal_battle_available": false}
+        }
+        battle.data["moves"] = runtime_moves
+
+    _check(
+        battle._tf_effective_combat_moves({}, ["deferred_runtime_test"]) == ["struggle"],
+        "Eine bereits registrierte, aber noch nicht runtime-unterstützte Attacke darf Verzweifler nicht verhindern."
+    )
+    _check(
+        battle._tf_effective_combat_moves({}, ["normal_battle_blocked_test"]) == ["struggle"],
+        "Eine im normalen Kampf gesperrte Attacke darf Verzweifler nicht verhindern."
+    )
+
     var regular_move_id: String = ""
     var moves_value: Variant = battle.data.get("moves", {})
     if moves_value is Dictionary:
