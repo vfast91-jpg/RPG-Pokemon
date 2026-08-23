@@ -1,6 +1,6 @@
 extends SceneTree
 
-const BattleScript = preload("res://scripts/battle_demo_v22_runtime_completion_v1.gd")
+const BattleScript = preload("res://scripts/battle_demo_infobox_final_v2.gd")
 const V22MoveCatalog = preload("res://scripts/battle/v22_move_catalog.gd")
 
 const EXPECTED_TARGET_LABELS: Dictionary = {
@@ -104,10 +104,11 @@ func _initialize() -> void:
             )
 
     _test_representative_boxes(battle, moves)
+    _test_responsive_layout_contract(battle)
 
     battle.free()
     if failures == 0:
-        print("V22 move infobox standard test: PASS (479 Attacken)")
+        print("V22 move infobox standard test: PASS (479 Attacken + responsive Layout)")
         quit(0)
     push_error("V22 move infobox standard test: %d Fehler" % failures)
     quit(1)
@@ -167,6 +168,21 @@ func _test_representative_boxes(battle, moves: Dictionary) -> void:
             pause_lower.contains("atb") and (pause_lower.contains("paus") or pause_lower.contains("stoppt")),
             move_id + ": besondere ATB-Pause wird nicht verständlich erklärt."
         )
+
+
+func _test_responsive_layout_contract(battle) -> void:
+    _check(
+        is_equal_approx(battle._infobox_shown_text_height(30.0), 54.0),
+        "Kurze Infoboxen unterschreiten die kompakte Mindesthöhe."
+    )
+    _check(
+        is_equal_approx(battle._infobox_shown_text_height(82.0), 82.0),
+        "Mittellange Infoboxen dürfen nicht unnötig gekappt werden."
+    )
+    _check(
+        is_equal_approx(battle._infobox_shown_text_height(180.0), 112.0),
+        "Sehr lange Sonderfälle müssen am Layout-Limit in den Scrollmodus wechseln."
+    )
 
 
 func _move(moves: Dictionary, move_id: String) -> Dictionary:
