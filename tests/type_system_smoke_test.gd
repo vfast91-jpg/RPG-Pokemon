@@ -8,9 +8,11 @@ func _initialize() -> void:
 
     _assert_close(type_system.get_multiplier("electric", ["electric"]), 0.5, "Elektro gegen Elektro")
     _assert_close(type_system.get_multiplier("electric", ["water"]), 2.0, "Elektro gegen Wasser")
-    _assert_close(type_system.get_multiplier("electric", ["ground"]), 0.0, "Elektro gegen Boden")
-    _assert_close(type_system.get_multiplier("normal", ["ghost"]), 0.0, "Normal gegen Geist")
+    _assert_close(type_system.get_multiplier("electric", ["ground"]), 0.25, "Elektro gegen Boden")
+    _assert_close(type_system.get_multiplier("normal", ["ghost"]), 0.25, "Normal gegen Geist")
+    _assert_close(type_system.get_multiplier("ghost", ["normal"]), 0.25, "Geist gegen Normal")
     _assert_close(type_system.get_multiplier("fire", ["grass", "steel"]), 4.0, "Feuer gegen Pflanze/Stahl")
+    _assert_close(type_system.get_multiplier("normal", ["ghost", "rock"]), 0.125, "Normal gegen Geist/Gestein")
 
     _assert_close(type_system.get_same_type_damage_multiplier("electric", ["electric"]), 1.5, "STAB Elektro")
     _assert_close(type_system.get_same_type_damage_multiplier("normal", ["electric"]), 1.0, "Kein STAB für Normal bei Elektro")
@@ -24,6 +26,22 @@ func _initialize() -> void:
     var pikachu_result: Dictionary = type_system.evaluate("electric", ["electric"])
     assert(pikachu_result["feedback_key"] == "resisted", "Pikachu-Spiegelkampf muss resisted melden.")
     assert(pikachu_result["feedback_text"] == "Nicht sehr effektiv.", "Pikachu-Spiegelkampf muss sichtbares Effektivitätsfeedback liefern.")
+
+    var ground_result: Dictionary = type_system.evaluate("electric", ["ground"])
+    assert(ground_result["feedback_key"] == "super_ineffective", "Elektro gegen Boden muss super_ineffective melden.")
+    assert(ground_result["feedback_text"] == "Super ineffektiv!", "0,25x muss sichtbares Super-ineffektiv-Feedback liefern.")
+
+    var dual_result: Dictionary = type_system.evaluate("normal", ["ghost", "rock"])
+    assert(dual_result["feedback_key"] == "super_ineffective", "0,125x bei Doppeltyp muss ebenfalls super_ineffective melden.")
+
+    for attack_type_value: Variant in type_system._chart.get("types", []):
+        var attack_type: String = str(attack_type_value)
+        for defender_type_value: Variant in type_system._chart.get("types", []):
+            var defender_type: String = str(defender_type_value)
+            assert(
+                type_system.get_multiplier(attack_type, [defender_type]) > 0.0,
+                "%s gegen %s darf in Timeflow keine 0x-Typenimmunität mehr haben." % [attack_type, defender_type]
+            )
 
     print("TypeSystem smoke tests: OK")
     quit(0)
