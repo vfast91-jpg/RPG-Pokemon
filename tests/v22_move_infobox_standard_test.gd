@@ -27,7 +27,15 @@ const FORBIDDEN_PLAYER_TEXT: Array[String] = [
     "runtime_supported",
     "multiplier_from_special",
     "duration_actions",
-    "res://"
+    "res://",
+    "db ",
+    "v22 ",
+    "f30 ",
+    "f40 ",
+    "f64 ",
+    "zf ",
+    "bulba ",
+    "tf "
 ]
 
 var failures: int = 0
@@ -163,7 +171,7 @@ func _test_representative_boxes(battle, moves: Dictionary) -> void:
 
 func _move(moves: Dictionary, move_id: String) -> Dictionary:
     var value: Variant = moves.get(move_id, {})
-    return value as Dictionary if value is Dictionary else {}
+    return (value as Dictionary) if value is Dictionary else {}
 
 
 func _check(condition: bool, message: String) -> void:
