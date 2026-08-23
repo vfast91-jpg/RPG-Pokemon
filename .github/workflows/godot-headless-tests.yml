@@ -79,6 +79,8 @@ jobs:
         run: ./godot --headless --path . --script tests/miss_atb_recovery_test.gd
       - name: Player attack text regression test
         run: ./godot --headless --path . --script tests/player_attack_text_test.gd
+      - name: V22 move infobox standard audit
+        run: ./godot --headless --path . --script tests/v22_move_infobox_standard_test.gd
       - name: Flinch ATB reset regression test
         run: ./godot --headless --path . --script tests/flinch_rule_test.gd
       - name: V22 final attack runtime regression test
