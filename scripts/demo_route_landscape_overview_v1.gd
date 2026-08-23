@@ -25,7 +25,10 @@ func _show_stage_choices(message: String = "") -> void:
 
 
 func _tf_select_landscape(landscape_id: String) -> void:
+    var had_active_choice: bool = _tf_landscape_choice_active
     super._tf_select_landscape(landscape_id)
+    if had_active_choice and not _tf_landscape_choice_active:
+        AudioManager.play_landscape_travel_sfx()
     if _tf_landscape_choice_active or _tf_landscape_choice_waiting:
         return
     _tf_show_current_landscape_card()
