@@ -2,6 +2,8 @@ extends SceneTree
 
 const BattleScript = preload("res://scripts/battle_demo_pvp_active_v1.gd")
 
+const MANIFEST_PATH: String = "res://data/gen1_database_manifest_v8.json"
+const EXPECTED_MASTER_PATH: String = "res://data/gen1_species_roster_master_v8.json"
 const EXPECTED_SPECIES_COUNT: int = 185
 const EXPECTED_FAMILY_COUNT: int = 78
 const SENTINEL_SPECIES: Array[String] = [
@@ -30,6 +32,8 @@ var failures: int = 0
 
 
 func _initialize() -> void:
+    _check_single_master_storage_contract()
+
     var battle = BattleScript.new()
     root.add_child(battle)
 
@@ -56,6 +60,11 @@ func _initialize() -> void:
         % [EXPECTED_FAMILY_COUNT, battle.species_ids.size()]
     )
     _check(
+        battle.lab_species_ids.size() == EXPECTED_SPECIES_COUNT,
+        "Das aktive Kampflabor muss alle %d registrierten Pokémon direkt auswählbar machen, nicht nur die 78 Routenwurzeln."
+        % EXPECTED_SPECIES_COUNT
+    )
+    _check(
         battle.route_species_ids_valid_through_level(100).size() == EXPECTED_FAMILY_COUNT,
         "Alle 78 Familien müssen für die globale Systemgenerierung grundsätzlich erreichbar bleiben."
     )
@@ -64,6 +73,10 @@ func _initialize() -> void:
         _check(
             species.has(sentinel_id),
             "Spätes/legendäres Pflicht-Pokémon fehlt in der aktiven Runtime: %s" % sentinel_id
+        )
+        _check(
+            battle.lab_species_ids.has(sentinel_id),
+            "Spätes/legendäres Pflicht-Pokémon fehlt im Kampflabor: %s" % sentinel_id
         )
 
     # Every registered Pokemon must be structurally usable and capable of
@@ -86,6 +99,7 @@ func _initialize() -> void:
             var stats: Dictionary = stats_value
             for stat_key: String in ["hp", "attack", "defense", "special", "speed"]:
                 _check(stats.has(stat_key), "Runtime-Basiswert %s fehlt bei %s" % [stat_key, species_id])
+                _check(float(stats.get(stat_key, 0.0)) > 0.0, "Runtime-Basiswert %s ist ungültig bei %s" % [stat_key, species_id])
 
         var combatant: Dictionary = battle._make_combatant(
             "player",
@@ -160,6 +174,48 @@ func _initialize() -> void:
     _finish(battle)
 
 
+func _check_single_master_storage_contract() -> void:
+    var manifest: Dictionary = _read_json(MANIFEST_PATH)
+    _check(not manifest.is_empty(), "Das v8-Roster-Manifest muss lesbar sein.")
+    if manifest.is_empty():
+        return
+
+    var master_path: String = str(manifest.get("species_master_file", ""))
+    _check(master_path == EXPECTED_MASTER_PATH, "Der Roster muss genau die festgelegte Masterdatei benutzen.")
+
+    var species_files_value: Variant = manifest.get("species_files", [])
+    _check(species_files_value is Array, "species_files muss eine Liste sein.")
+    if species_files_value is Array:
+        var species_files: Array = species_files_value
+        _check(
+            species_files.size() == 1 and str(species_files[0]) == EXPECTED_MASTER_PATH,
+            "Für Roster-Mitgliedschaft darf es exakt eine Pokémon-Masterdatei geben."
+        )
+
+    var master: Dictionary = _read_json(master_path)
+    var master_species_value: Variant = master.get("species", {})
+    _check(master_species_value is Dictionary, "Die Pokémon-Masterdatei braucht ein species-Dictionary.")
+    if master_species_value is Dictionary:
+        var master_species: Dictionary = master_species_value
+        _check(
+            master_species.size() == EXPECTED_SPECIES_COUNT,
+            "Die eine Masterdatei muss exakt %d Pokémon enthalten, gefunden wurden %d."
+            % [EXPECTED_SPECIES_COUNT, master_species.size()]
+        )
+        for sentinel_id: String in SENTINEL_SPECIES:
+            _check(master_species.has(sentinel_id), "Pflicht-Pokémon fehlt in der Masterdatei: %s" % sentinel_id)
+
+    for list_key: String in ["species_files", "species_detail_files", "move_files"]:
+        var paths_value: Variant = manifest.get(list_key, [])
+        if not (paths_value is Array):
+            continue
+        for path_value: Variant in paths_value:
+            _check(
+                not str(path_value).to_lower().ends_with(".gz"),
+                "Im aktiven v8-Datenpfad darf keine GZIP-Datei mehr vorkommen: %s" % str(path_value)
+            )
+
+
 func _catalog_ids(catalog: Array) -> Dictionary:
     var result: Dictionary = {}
     for entry_value: Variant in catalog:
@@ -168,6 +224,16 @@ func _catalog_ids(catalog: Array) -> Dictionary:
             if not species_id.is_empty():
                 result[species_id] = true
     return result
+
+
+func _read_json(path: String) -> Dictionary:
+    if path.is_empty():
+        return {}
+    var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+    if file == null:
+        return {}
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    return parsed if parsed is Dictionary else {}
 
 
 func _finish(battle: Node) -> void:
