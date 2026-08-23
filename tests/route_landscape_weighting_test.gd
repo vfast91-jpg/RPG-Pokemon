@@ -1,6 +1,7 @@
 extends SceneTree
 
 const RouteScript = preload("res://scripts/demo_route_landscape_weighting_v1.gd")
+const BattleScript = preload("res://scripts/battle_demo_pvp.gd")
 const LANDSCAPE_DATA_PATH: String = "res://data/landscapes_v1.json"
 const CANONICAL_TYPES: Array[String] = [
     "normal", "fire", "water", "electric", "grass", "ice", "fighting",
@@ -88,6 +89,21 @@ func _initialize() -> void:
     assert(is_equal_approx(route.route_landscape_combined_weight(7.5, ["grass"], "meadow"), 22.5), "x3 muss die bestehende Seltenheitsgewichtung multiplizieren.")
     assert(is_equal_approx(route.route_landscape_combined_weight(7.5, ["ghost"], "meadow"), 0.0), "x0 muss einen Kandidaten strikt ausschließen.")
 
+    var battle = BattleScript.new()
+    root.add_child(battle)
+    route.battle_demo = battle
+    var generated_eevee: String = route._tf_generated_capture_species("eevee", 30)
+    assert(not generated_eevee.is_empty(), "Fangwiese muss einen konkreten Evoli-Systemzweig erzeugen können.")
+    assert(
+        battle.route_generated_species_options_for_level("eevee", 30).has(generated_eevee),
+        "Der Fangwiesen-Zweig muss eine gültige Evoli-Entwicklung sein."
+    )
+    assert(
+        route._resolve_capture_species_for_root("eevee", 30) == generated_eevee,
+        "Landschaftsgewichtung und anschließendes Fangangebot müssen exakt denselben Entwicklungszweig verwenden."
+    )
+
+    battle.queue_free()
     route.free()
     print("Route landscape weighting test: OK")
     quit(0)
