@@ -2,24 +2,44 @@ extends "res://scripts/battle_demo_rattata_family.gd"
 
 # Route-result reentrancy guard + visible victory handoff.
 #
-# The inherited route end handler deliberately keeps `route_mode` active while
-# the short SIEG/RESERVE/NIEDERLAGE result delay is shown. During that await,
-# multiple gameplay callbacks can reach `_check_end()` again and start another
-# copy of the same asynchronous route resolution. Each copy would later emit
-# `route_battle_finished`, causing one victory to be processed more than once.
+# Victory is deliberately split into two moments:
+# - battle resolution locks gameplay immediately when the last opponent falls;
+# - the visible victory beat starts only after the current action feedback has
+#   actually left the scene, followed by a short quiet beat.
 #
-# Victory has one additional presentation requirement: the route layer waits
-# 0.65 seconds after `route_battle_finished` before XP/level-up/route music
-# continue. Previously BattleDemo hid itself before emitting that signal, so the
-# same 0.65 seconds exposed the empty viewport as a grey screen. We now emit the
-# result while the SIEG panel and battlefield are still visible, keep them on
-# screen for that existing settle window, and only then hide BattleDemo. The
-# total timing stays the same; only the grey gap becomes a visible victory beat.
+# This keeps the final attack/K.o. presentation readable instead of covering it
+# with the SIEG panel. The top-level audio bridge observes
+# `battle_end_presentation_ready`, so the victory jingle starts together with the
+# visible SIEG moment rather than when `battle_active` first becomes false.
+#
+# Route victory still emits `route_battle_finished` before BattleDemo is hidden.
+# The established 0.65 s route settle window therefore remains useful, but is now
+# included inside the five-second visible victory hold instead of extending it.
 
-const ROUTE_VICTORY_RESULT_SECONDS: float = 0.75
+const VICTORY_QUIET_BEAT_SECONDS: float = 0.35
+const VICTORY_RESULT_SECONDS: float = 5.0
 const ROUTE_VICTORY_HANDOFF_HOLD_SECONDS: float = 0.65
+const ROUTE_VICTORY_PRE_HANDOFF_SECONDS: float = (
+    VICTORY_RESULT_SECONDS - ROUTE_VICTORY_HANDOFF_HOLD_SECONDS
+)
 
 var _route_result_resolution_pending: bool = false
+var _standard_victory_resolution_pending: bool = false
+var _battle_presentation_generation: int = 0
+var _active_battle_feedback_labels: int = 0
+
+# Public presentation gate read by main_audio.gd. `battle_active == false` means
+# gameplay is already locked; this flag means the final visual presentation is
+# finished and the major victory cue/result may begin.
+var battle_end_presentation_ready: bool = false
+
+
+func _start_battle() -> void:
+    _battle_presentation_generation += 1
+    _active_battle_feedback_labels = 0
+    _standard_victory_resolution_pending = false
+    battle_end_presentation_ready = false
+    super._start_battle()
 
 
 func start_route_battle(team_state: Array, enemy_species_id: String, enemy_level: int) -> void:
@@ -37,67 +57,174 @@ func _route_begin_wave() -> void:
     super._route_begin_wave()
 
 
+func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) -> void:
+    # Track the actual lifetime of transient battle-feedback labels. Their tween
+    # is the longest part of the established action presentation (2.5 s), so
+    # waiting for tree_exited also guarantees the shorter move-emoji animation
+    # has completed. This avoids guessing an attack-animation duration here.
+    var previous_children: Dictionary = {}
+    if battle_panel != null:
+        for child: Node in battle_panel.get_children():
+            previous_children[child.get_instance_id()] = true
+
+    super._spawn_feedback_label(combatant, text, color)
+
+    if battle_panel == null:
+        return
+
+    var generation: int = _battle_presentation_generation
+    for child: Node in battle_panel.get_children():
+        if previous_children.has(child.get_instance_id()):
+            continue
+        if not (child is Label):
+            continue
+        _active_battle_feedback_labels += 1
+        child.tree_exited.connect(_on_battle_feedback_label_exited.bind(generation), CONNECT_ONE_SHOT)
+
+
+func _on_battle_feedback_label_exited(generation: int) -> void:
+    # A stale label from an older battle must never decrement the counter of a
+    # newly started battle.
+    if generation != _battle_presentation_generation:
+        return
+    _active_battle_feedback_labels = maxi(0, _active_battle_feedback_labels - 1)
+
+
 func _check_end() -> void:
-    if not route_mode:
-        super._check_end()
-        return
-
-    if _route_result_resolution_pending:
-        return
-
-    var own_alive: bool = false
-    var enemy_alive: bool = false
-
-    for combatant_value: Variant in player_team:
-        if combatant_value is Dictionary and bool((combatant_value as Dictionary).get("alive", false)):
-            own_alive = true
-            break
-
-    for combatant_value: Variant in enemy_team:
-        if combatant_value is Dictionary and bool((combatant_value as Dictionary).get("alive", false)):
-            enemy_alive = true
-            break
+    var own_alive: bool = _battle_end_team_has_living_member(player_team)
+    var enemy_alive: bool = _battle_end_team_has_living_member(enemy_team)
 
     if own_alive and enemy_alive:
         return
 
-    # Set this BEFORE any asynchronous result delay starts. Duplicate
-    # `_check_end()` calls during the presentation are ignored.
-    _route_result_resolution_pending = true
+    if route_mode:
+        if _route_result_resolution_pending:
+            return
 
-    # Only victory needs the custom handoff. Reserve and defeat keep the mature
-    # inherited behavior unchanged.
-    if not enemy_alive:
-        _resolve_route_victory_with_visible_handoff()
+        # Set this BEFORE any asynchronous result delay starts. Duplicate
+        # `_check_end()` calls during the presentation are ignored.
+        _route_result_resolution_pending = true
+
+        # Preserve the established route rule: once the enemy side is empty,
+        # this encounter is a route victory. Reserve/defeat continue through the
+        # mature inherited route handler unchanged.
+        if not enemy_alive:
+            _resolve_route_victory_with_visible_handoff()
+            return
+
+        super._check_end()
+        return
+
+    # Normal/lab victories use the same presentation ordering without changing
+    # the existing defeat path.
+    if own_alive and not enemy_alive:
+        if _standard_victory_resolution_pending:
+            return
+        _standard_victory_resolution_pending = true
+        _resolve_standard_victory_outro()
         return
 
     super._check_end()
 
 
-func _resolve_route_victory_with_visible_handoff() -> void:
+func _battle_end_team_has_living_member(team: Array) -> bool:
+    for combatant_value: Variant in team:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        if bool(combatant.get("alive", false)) and int(combatant.get("hp", 0)) > 0:
+            return true
+    return false
+
+
+func _lock_battle_for_victory() -> void:
+    # Logical battle end happens immediately. No new ATB tick, player input or
+    # AI action may begin while the final presentation is still finishing.
     battle_active = false
     paused = false
     selected_actor = {}
     _force_hide_info()
     _clear_actions()
-    _route_store_current_state()
+    battle_end_presentation_ready = false
+    if result_panel != null:
+        result_panel.visible = false
 
+
+func _wait_for_battle_presentation(generation: int) -> void:
+    # Give deferred feedback from the resolving move one frame to enter the tree
+    # before deciding whether presentation is idle.
+    await get_tree().process_frame
+
+    while (
+        generation == _battle_presentation_generation
+        and _active_battle_feedback_labels > 0
+    ):
+        await get_tree().process_frame
+
+    # Require one clean frame after the last tracked label exits. This catches
+    # feedback that was itself queued by a deferred combat callback.
+    if generation == _battle_presentation_generation:
+        await get_tree().process_frame
+
+
+func _show_victory_result() -> void:
+    if result_panel == null or result_title == null:
+        return
     result_title.text = "SIEG!"
     result_panel.visible = true
+    # Set the audio gate only after the panel is visible, so picture and music
+    # begin as one reward beat (within the audio bridge's 50 ms poll interval).
+    battle_end_presentation_ready = true
 
-    # Keep the established first victory beat. The top-level audio bridge starts
-    # the victory music after 0.55 s, so the player already hears it here.
-    await get_tree().create_timer(ROUTE_VICTORY_RESULT_SECONDS).timeout
 
-    # Start the route-side 0.65 s settle timer while BattleDemo is STILL visible.
-    # Route handlers therefore prepare the return in parallel instead of leaving
-    # an empty grey viewport between battle and route.
+func _resolve_standard_victory_outro() -> void:
+    var generation: int = _battle_presentation_generation
+    _lock_battle_for_victory()
+
+    await _wait_for_battle_presentation(generation)
+    if generation != _battle_presentation_generation:
+        return
+
+    await get_tree().create_timer(VICTORY_QUIET_BEAT_SECONDS).timeout
+    if generation != _battle_presentation_generation:
+        return
+
+    _show_victory_result()
+    await get_tree().create_timer(VICTORY_RESULT_SECONDS).timeout
+    if generation != _battle_presentation_generation:
+        return
+
+    open_config()
+
+
+func _resolve_route_victory_with_visible_handoff() -> void:
+    var generation: int = _battle_presentation_generation
+    _lock_battle_for_victory()
+    _route_store_current_state()
+
+    await _wait_for_battle_presentation(generation)
+    if generation != _battle_presentation_generation:
+        return
+
+    await get_tree().create_timer(VICTORY_QUIET_BEAT_SECONDS).timeout
+    if generation != _battle_presentation_generation:
+        return
+
+    _show_victory_result()
+
+    # Hold most of the five-second victory beat before starting the route-side
+    # settle work. The final 0.65 s run in parallel while BattleDemo remains
+    # visible, preserving the existing no-grey-screen handoff.
+    await get_tree().create_timer(ROUTE_VICTORY_PRE_HANDOFF_SECONDS).timeout
+    if generation != _battle_presentation_generation:
+        return
+
     route_mode = false
     route_battle_finished.emit(true, _route_team_state.duplicate(true))
 
-    # Reuse the old settle duration as an explicit victory hold on the battlefield.
-    # The SIEG panel remains visible while the victory music gets its moment.
     await get_tree().create_timer(ROUTE_VICTORY_HANDOFF_HOLD_SECONDS).timeout
+    if generation != _battle_presentation_generation:
+        return
 
     result_panel.visible = false
     battle_panel.visible = false
