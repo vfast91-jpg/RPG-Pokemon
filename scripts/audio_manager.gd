@@ -54,7 +54,7 @@ const EVENT_RELEASE_SECONDS: float = 0.35
 const EVENT_VOLUME_DB: float = -4.0
 const SFX_VOLUME_DB: float = -5.0
 const SFX_FAINT_VOLUME_DB: float = -11.0
-const SFX_HEAL_VOLUME_DB: float = -10.0
+const SFX_HEAL_VOLUME_DB: float = -7.0
 const SFX_LANDSCAPE_TRAVEL_VOLUME_DB: float = 0.0
 const SFX_POOL_SIZE: int = 4
 
