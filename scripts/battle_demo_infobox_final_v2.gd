@@ -19,6 +19,16 @@ func _build_battle(root: Control) -> void:
     _fit_attack_infobox_to_content()
 
 
+func _build_result(root: Control) -> void:
+    super._build_result(root)
+
+    # Result overlays must always sit above battle-only cues such as the white
+    # active-Pokemon triangle (z=30). Keep the victory/defeat panel decisively
+    # in front so no battle marker can bleed into the result window.
+    if result_panel != null:
+        result_panel.z_index = 1000
+
+
 func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = false) -> void:
     super._preview_move(move_id, move, touch_confirm)
     _fit_attack_infobox_to_content()
