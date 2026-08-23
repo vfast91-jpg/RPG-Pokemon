@@ -133,11 +133,13 @@ func _single_target_aggro_finalize(
     # Legacy base behavior already halves Aggro for every damaged target. Undo
     # exactly that legacy half for spread damage, including the important case
     # where only one valid target remains. Structurally it is still a spread move.
+    # This applies to every spread target, including allies hit by all-others
+    # moves such as Surf or Earthquake: area damage never receives target relief.
     if spread:
         if direct_damage:
             for target_id_value: Variant in target_ids:
                 var spread_target: Dictionary = _single_target_aggro_find(str(target_id_value))
-                if spread_target.is_empty() or not SingleTargetAggroRules.is_hostile(actor, spread_target):
+                if spread_target.is_empty():
                     continue
                 var spread_id: String = str(spread_target.get("id", ""))
                 if not aggro_before.has(spread_id):
