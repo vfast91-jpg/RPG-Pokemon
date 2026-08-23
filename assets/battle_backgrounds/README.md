@@ -18,19 +18,13 @@ Der aktive Kampfbereich ist **632 × 216 px** groß. Neue Hintergründe sollen d
 - Perspektive möglichst als breite, leicht seitliche Kampffläche anlegen.
 - Helligkeit und Kontrast so wählen, dass helle und dunkle Pokémon erkennbar bleiben.
 
-## Dateinamen
+## Landschaften
 
-Empfohlen:
+Die 18 festen Landschaftsbilder liegen gesammelt unter:
 
-`<region>_<ort>_<variante>.<format>`
+`assets/battle_backgrounds/landscapes/`
 
-Beispiele:
-
-- `kanto_route_01_day.webp`
-- `kanto_viridian_forest_day.webp`
-- `kanto_pewter_city_evening.webp`
-
-Der aktuelle Platzhalter ist `meadow_placeholder.svg`.
+Die verbindlichen Dateinamen stehen dort in `README.md`.
 
 ## Einbindung
 
