@@ -19,7 +19,7 @@ static func is_spread_move(move: Dictionary, resolved_target_rule: String = "") 
         return true
     if rule.begins_with("all_"):
         return true
-    return rule in ["field", "battlefield", "all_active", "all_others"]
+    return rule in ["field", "battlefield", "all_active", "all_others", "all_other_active_pokemon"]
 
 
 static func is_hostile(actor: Dictionary, target: Dictionary) -> bool:
@@ -53,6 +53,17 @@ static func is_direct_damage_move(move: Dictionary) -> bool:
     if power_value is String and (power_value as String).is_valid_float():
         return float(power_value) > 0.0
     return false
+
+
+static func declares_damage_result(move: Dictionary) -> bool:
+    var aggro_value: Variant = move.get("aggro", {})
+    if not (aggro_value is Dictionary):
+        return false
+    return bool((aggro_value as Dictionary).get("from_damage", false))
+
+
+static func is_damage_resolution_move(move: Dictionary) -> bool:
+    return is_direct_damage_move(move) or declares_damage_result(move)
 
 
 static func resolved_successfully(
