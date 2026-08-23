@@ -9,6 +9,9 @@ extends "res://scripts/battle_demo_v22_charge_integrity_v1.gd"
 # - Ordinary effects use canonical wording (especially guaranteed/chance status).
 # - Complex/special mechanics keep the detailed inherited summary instead of
 #   being squeezed into a generic template.
+# - If a newer special mechanic has no dedicated presentation yet, the box falls
+#   back to its player-facing description/special rules instead of exposing an
+#   internal runtime id.
 # - Additional inherited preview lines (Runde 0, charge rules, etc.) are kept.
 #
 # Combat logic and move data are untouched; this layer changes presentation only.
@@ -18,6 +21,50 @@ const StandardEffectRegistry = preload("res://scripts/battle/move_effect_registr
 const INFOBOX_MIN_TEXT_HEIGHT: float = 54.0
 const INFOBOX_MIN_COMMAND_HEIGHT: float = 154.0
 const INFOBOX_FONT_SIZE: int = 11
+
+# Canonical target vocabulary for the complete V22 move set. Keeping this here
+# makes the combat surface independent from whichever historical layer first
+# introduced a target rule.
+const STANDARD_TARGET_LABELS: Dictionary = {
+    "enemy_highest_aggro": "höchste Aggro",
+    "all_enemies": "alle Gegner",
+    "self": "Anwender",
+    "all_allies": "alle Verbündeten",
+    "all_other_active_pokemon": "alle anderen aktiven Pokémon",
+    "enemy_field": "gegnerische Feldseite",
+    "global_battlefield": "gesamtes Kampffeld",
+    "battlefield": "gesamtes Kampffeld",
+    "single_ally": "gewählter Verbündeter",
+    "single_enemy": "gewählter Gegner",
+    "all_others": "alle anderen Pokémon",
+    "enemy_highest_aggro_or_single_ally": "höchste Aggro oder gewählter Verbündeter",
+    "all_allies_except_self": "alle anderen Verbündeten",
+    "all_combatants": "alle aktiven Pokémon",
+    "self_or_single_ally": "Anwender oder gewählter Verbündeter"
+}
+
+const INTERNAL_INFOBOX_TOKENS: Array[String] = [
+    "db_", "db ",
+    "v22_", "v22 ",
+    "f30_", "f30 ",
+    "f40_", "f40 ",
+    "f64_", "f64 ",
+    "zf_", "zf ",
+    "bulba_", "bulba ",
+    "tf_", "tf ",
+    "effect_source", "runtime_supported", "multiplier_from_special",
+    "duration_actions", "res://"
+]
+
+const RUNTIME_PRESENTATION_METADATA_KEYS: Array[String] = [
+    "runtime_supported",
+    "strict_contract",
+    "contract_validated",
+    "contract_errors",
+    "partial",
+    "notes",
+    "normal_battle_available"
+]
 
 
 func _build_battle(root: Control) -> void:
@@ -137,6 +184,19 @@ func _standardized_move_info_text(move: Dictionary, touch_confirm: bool = false)
     return "\n".join(lines)
 
 
+func _target_name(rule: String) -> String:
+    if STANDARD_TARGET_LABELS.has(rule):
+        return str(STANDARD_TARGET_LABELS[rule])
+
+    # Preserve a future parent-layer translation if it already knows the rule.
+    # Otherwise never expose snake_case to the player.
+    var inherited: String = super._target_name(rule).strip_edges()
+    if not inherited.is_empty() and inherited != rule and not inherited.contains("_"):
+        return inherited
+    var fallback: String = rule.replace("_", " ").strip_edges()
+    return fallback if not fallback.is_empty() else "gültiges Ziel"
+
+
 func _standard_time_cost_text(ap: int) -> String:
     var multiplier: float = _ap_cycle(ap)
     var delta: int = int(round((multiplier - 1.0) * 100.0))
@@ -179,26 +239,154 @@ func _standard_feature_bits(move: Dictionary) -> Array[String]:
 
 func _standardize_effect_summary(move: Dictionary, source: String) -> String:
     var text: String = source.strip_edges()
-    if text.is_empty():
-        return text
 
     # One canonical damage word. Details after it (variable power, multi-hit,
     # conditions, etc.) remain untouched.
     text = text.replace("direkter Schaden", "Schaden")
 
     var mechanics_value: Variant = move.get("mechanics", move.get("effects", []))
-    if not (mechanics_value is Array):
-        return _space_percentages(text)
+    if mechanics_value is Array:
+        var segments: PackedStringArray = text.split(" · ")
+        var normalized: Array[String] = []
 
-    var segments: PackedStringArray = text.split(" · ")
-    var normalized: Array[String] = []
+        for segment_value: String in segments:
+            var segment: String = segment_value.strip_edges()
+            if segment.is_empty():
+                continue
+            var replacement: String = _normalized_status_segment(segment, mechanics_value as Array)
+            normalized.append(replacement if not replacement.is_empty() else segment)
 
-    for segment_value: String in segments:
-        var segment: String = segment_value.strip_edges()
-        var replacement: String = _normalized_status_segment(segment, mechanics_value as Array)
-        normalized.append(replacement if not replacement.is_empty() else segment)
+        text = " · ".join(normalized)
 
-    return _space_percentages(" · ".join(normalized))
+    text = _space_percentages(text)
+
+    # The inherited stack contains hundreds of bespoke summaries. Keep those
+    # whenever they are already good. Only fall back when a new mechanic leaks
+    # an implementation name, or when a genuinely complex/status move would
+    # otherwise be represented by a cryptic one-word label.
+    if _summary_needs_player_fallback(move, text):
+        return _player_fallback_effect_summary(move, text)
+
+    return text
+
+
+func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
+    if _contains_internal_infobox_token(text):
+        return true
+    if text.is_empty():
+        return _move_requires_effect_line(move)
+    if (
+        text.length() <= 24
+        and _move_has_complex_player_rule(move)
+        and _has_player_special_rules(move)
+    ):
+        return true
+    return false
+
+
+func _move_requires_effect_line(move: Dictionary) -> bool:
+    if str(move.get("category", "")) == "status":
+        return true
+    if move.get("power", null) == null:
+        return true
+
+    var mechanics_value: Variant = move.get("mechanics", move.get("effects", []))
+    if mechanics_value is Array:
+        for mechanic_value: Variant in mechanics_value:
+            if not (mechanic_value is Dictionary):
+                continue
+            if str((mechanic_value as Dictionary).get("kind", "")) != "damage":
+                return true
+    return false
+
+
+func _move_has_complex_player_rule(move: Dictionary) -> bool:
+    if _move_requires_effect_line(move):
+        return true
+
+    var runtime_value: Variant = move.get("runtime", {})
+    if not (runtime_value is Dictionary):
+        return false
+    var runtime: Dictionary = runtime_value
+    for key_value: Variant in runtime.keys():
+        var key: String = str(key_value)
+        if RUNTIME_PRESENTATION_METADATA_KEYS.has(key):
+            continue
+        if key.begins_with("contract_"):
+            continue
+        return true
+    return false
+
+
+func _player_fallback_effect_summary(move: Dictionary, source: String) -> String:
+    var parts: Array[String] = []
+
+    var description: String = _clean_player_fallback_fragment(str(move.get("description", "")))
+    if not description.is_empty():
+        parts.append(description)
+
+    for rule: String in _player_special_rule_fragments(move):
+        var duplicate: bool = false
+        for existing: String in parts:
+            if existing == rule or existing.contains(rule) or rule.contains(existing):
+                duplicate = true
+                break
+        if not duplicate:
+            parts.append(rule)
+
+    if not parts.is_empty():
+        return " · ".join(parts)
+
+    # Last-resort safety for a future move that has no description yet: keep any
+    # already readable segments but drop implementation identifiers entirely.
+    var safe_segments: Array[String] = []
+    for segment_value: String in source.split(" · "):
+        var segment: String = _clean_player_fallback_fragment(segment_value)
+        if not segment.is_empty():
+            safe_segments.append(segment)
+    if not safe_segments.is_empty():
+        return " · ".join(safe_segments)
+    return "Spezialwirkung"
+
+
+func _has_player_special_rules(move: Dictionary) -> bool:
+    return not _player_special_rule_fragments(move).is_empty()
+
+
+func _player_special_rule_fragments(move: Dictionary) -> Array[String]:
+    var result: Array[String] = []
+    var rules_value: Variant = move.get("special_rules", [])
+
+    if rules_value is Array:
+        for rule_value: Variant in rules_value:
+            var clean: String = _clean_player_fallback_fragment(str(rule_value))
+            if not clean.is_empty():
+                result.append(clean)
+    elif rules_value is String:
+        var clean: String = _clean_player_fallback_fragment(str(rules_value))
+        if not clean.is_empty():
+            result.append(clean)
+
+    return result
+
+
+func _clean_player_fallback_fragment(source: String) -> String:
+    var text: String = source.replace("\n", " ").replace("\r", " ").strip_edges()
+    while text.contains("  "):
+        text = text.replace("  ", " ")
+    if text.is_empty():
+        return ""
+    if text.contains("_") or _contains_internal_infobox_token(text):
+        return ""
+    return _space_percentages(text)
+
+
+func _contains_internal_infobox_token(source: String) -> bool:
+    var lower: String = source.to_lower()
+    for token: String in INTERNAL_INFOBOX_TOKENS:
+        if lower.contains(token):
+            return true
+    return false
 
 
 func _normalized_status_segment(segment: String, mechanics: Array) -> String:
