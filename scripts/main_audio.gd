@@ -155,15 +155,41 @@ func _audio_handle_battle_end(session: int) -> void:
     if not own_alive and enemy_alive and _audio_route_has_living_reserve():
         return
 
-    # Let the K.o. effect breathe before the major victory/defeat cue takes over.
-    await get_tree().create_timer(BATTLE_END_CUE_DELAY_SECONDS).timeout
-    if session != _audio_battle_session or _audio_battle_is_active():
+    if own_alive and not enemy_alive:
+        # Gameplay locks as soon as the final K.o. is known, but the battle layer
+        # keeps the current action feedback visible until its real tween has
+        # finished. Wait for that explicit presentation gate so the victory music
+        # and SIEG panel begin together instead of interrupting the last attack.
+        await _audio_wait_for_victory_presentation(session)
+        if session != _audio_battle_session or _audio_battle_is_active():
+            return
+        if not _audio_victory_presentation_ready():
+            return
+        AudioManager.play_victory(AudioManager.current_battle_kind)
         return
 
-    if own_alive and not enemy_alive:
-        AudioManager.play_victory(AudioManager.current_battle_kind)
-    elif not own_alive:
+    if not own_alive:
+        # Defeat was not part of the victory-outro change. Preserve the mature
+        # 0.55 s K.o. breathing room and existing defeat cue behavior.
+        await get_tree().create_timer(BATTLE_END_CUE_DELAY_SECONDS).timeout
+        if session != _audio_battle_session or _audio_battle_is_active():
+            return
         AudioManager.play_defeat()
+
+
+func _audio_wait_for_victory_presentation(session: int) -> void:
+    while (
+        session == _audio_battle_session
+        and not _audio_battle_is_active()
+        and not _audio_victory_presentation_ready()
+    ):
+        await get_tree().create_timer(AUDIO_POLL_SECONDS).timeout
+
+
+func _audio_victory_presentation_ready() -> bool:
+    if battle_demo == null:
+        return false
+    return bool(battle_demo.get("battle_end_presentation_ready"))
 
 
 func _audio_route_has_living_reserve() -> bool:
