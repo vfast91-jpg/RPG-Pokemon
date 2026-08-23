@@ -1,6 +1,7 @@
 extends Node
 
 const TYPE_CHART_PATH := "res://data/rules/type_chart.json"
+const SUPER_INEFFECTIVE_MAX_MULTIPLIER := 0.25
 
 var _chart: Dictionary = {}
 var _effectiveness: Dictionary = {}
@@ -89,6 +90,8 @@ func get_same_type_status_multiplier(attack_type: String, attacker_types: Array)
 func get_feedback_key(multiplier: float) -> String:
     if is_zero_approx(multiplier):
         return "immune"
+    if multiplier <= SUPER_INEFFECTIVE_MAX_MULTIPLIER + 0.0001:
+        return "super_ineffective"
     if multiplier < 1.0:
         return "resisted"
     if multiplier > 1.0:
