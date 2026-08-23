@@ -32,5 +32,8 @@ jobs:
       - name: Parse active project
         run: ./godot --headless --path . --editor --quit
 
+      - name: Test route milestone double bosses
+        run: ./godot --headless --path . --script tests/route_milestone_double_boss_test.gd
+
       - name: Test 100-stage superboss endgame
         run: ./godot --headless --path . --script tests/route_endgame_100_test.gd
