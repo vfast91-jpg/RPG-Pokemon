@@ -30,7 +30,9 @@ func _ditto_apply_transform(actor: Dictionary, target: Dictionary) -> float:
         _spawn_feedback_label(target, "🪆 DELEGATOR BLOCKIERT", Color("d9c9a5"))
         return 0.0
 
-    var target_name: String = _actor_name(target)
+    # Keep the battle-form name free of UI decoration. _actor_name() already
+    # appends the level and therefore must not be stored back into actor["name"].
+    var target_name: String = str(target.get("name", "Pokémon"))
     if not actor.has("f64_original_name"):
         actor["f64_original_name"] = str(actor.get("name", "Ditto"))
     actor["f64_transform_target_id"] = str(target.get("id", ""))
@@ -74,7 +76,12 @@ func _ditto_refresh_transform_visuals(actor: Dictionary) -> void:
 
     var texture_value: Variant = ui.get("texture", null)
     if texture_value is TextureRect:
-        (texture_value as TextureRect).texture = _species_texture(_actor_name(actor))
+        # Sprite lookup needs the plain species/form name, never the level-decorated
+        # _actor_name() string (for example "Mampfaxo Lv.4").
+        var form_name: String = str(
+            actor.get("f64_transform_target_name", actor.get("name", ""))
+        )
+        (texture_value as TextureRect).texture = _species_texture(form_name)
 
     var card_value: Variant = ui.get("card", null)
     if card_value is Control:
@@ -82,9 +89,8 @@ func _ditto_refresh_transform_visuals(actor: Dictionary) -> void:
 
         var name_node: Node = card.find_child("Name", true, false)
         if name_node is Label:
-            (name_node as Label).text = (
-                _actor_name(actor) + " Lv." + str(actor.get("level", 1))
-            )
+            # _actor_name() already renders exactly one level suffix.
+            (name_node as Label).text = _actor_name(actor)
 
         var type_node: Node = card.find_child("Types", true, false)
         if type_node is Label:
