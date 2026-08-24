@@ -6,6 +6,13 @@ extends "res://scripts/demo_route_viewport_guard_v1.gd"
 
 const AUTOSAVE_SECONDS: float = 4.0
 
+# These three values are intentionally regular script variables so the save
+# manager can persist an already rolled special encounter without serializing
+# the live battle itself.
+var saved_special_battle_kind: String = ""
+var saved_special_enemy_party: Array = []
+var saved_special_battle_heading: String = ""
+
 var _run_save_restoring: bool = false
 var _run_save_finished: bool = false
 var _autosave_timer: Timer
@@ -21,6 +28,7 @@ func _ready() -> void:
 func start_route() -> void:
     # Starting a new adventure deliberately replaces the one existing run slot.
     RunSaveManager.clear_run_save()
+    _clear_saved_special_battle()
     _run_save_finished = false
     _run_save_restoring = true
     super.start_route()
@@ -33,6 +41,7 @@ func continue_saved_route() -> void:
         start_route()
         return
 
+    var checkpoint: String = RunSaveManager.saved_checkpoint()
     _run_save_finished = false
     _run_save_restoring = true
     var restored: bool = RunSaveManager.restore_route(self)
@@ -44,14 +53,30 @@ func continue_saved_route() -> void:
         return
 
     visible = true
-    _show_stage_choices(
-        "[b]Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
-    )
+    match checkpoint:
+        "pending_capture":
+            _show_pending_capture_resume()
+        "before_battle", "ready_for_battle":
+            _show_ready_battle_resume()
+        "before_special_battle":
+            if saved_special_enemy_party.is_empty():
+                _show_stage_choices(
+                    "[b]Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
+                )
+            else:
+                _show_special_battle_resume()
+        _:
+            _show_stage_choices(
+                "[b]Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
+            )
+
     _run_save_restoring = false
-    _autosave_run("continued")
+    _autosave_run(checkpoint if not checkpoint.is_empty() else "continued")
 
 
 func _show_stage_choices(message: String = "") -> void:
+    if not _run_save_restoring:
+        _clear_saved_special_battle()
     super._show_stage_choices(message)
     _autosave_run("stage_checkpoint")
 
@@ -69,7 +94,11 @@ func _start_stage_battle() -> void:
 
 
 func _start_special_battle(kind: String, enemy_party: Array, heading: String) -> void:
-    # Dangerous paths, rare encounters and superbosses use this battle path.
+    # Dangerous paths, rare encounters and superbosses keep their already rolled
+    # opponent party so reloading cannot reroll the encounter.
+    saved_special_battle_kind = kind
+    saved_special_enemy_party = enemy_party.duplicate(true)
+    saved_special_battle_heading = heading
     _autosave_run("before_special_battle")
     super._start_special_battle(kind, enemy_party, heading)
 
@@ -118,7 +147,98 @@ func _autosave_run(checkpoint: String = "autosave") -> void:
         return
     if team.is_empty() or stage <= 0:
         return
-    RunSaveManager.save_route(self, checkpoint)
+
+    var effective_checkpoint: String = checkpoint
+    if not pending_capture.is_empty():
+        effective_checkpoint = "pending_capture"
+    elif (
+        visible
+        and continue_button != null
+        and continue_button.visible
+        and checkpoint in ["autosave", "team_change", "main_menu", "application_close", "continued"]
+    ):
+        # The path reward/capture/heal is already committed. Resume directly at
+        # the battle button instead of allowing the same route reward twice.
+        effective_checkpoint = "ready_for_battle"
+
+    RunSaveManager.save_route(self, effective_checkpoint)
+
+
+func _show_ready_battle_resume() -> void:
+    _prepare_resume_surface()
+    path_box.visible = false
+    continue_button.visible = true
+    event_label.text = (
+        "[b]Spielstand geladen.[/b]\n"
+        + "Deine Wegentscheidung und alle bisherigen Änderungen dieser Etappe wurden übernommen.\n\n"
+        + "Du kannst den Etappenkampf jetzt fortsetzen."
+    )
+    _refresh_team_panel()
+
+
+func _show_pending_capture_resume() -> void:
+    _prepare_resume_surface()
+    path_box.visible = false
+    continue_button.visible = false
+    event_label.text = "[b]Spielstand geladen.[/b]\nDer gefangene Kandidat wartet weiter auf deine Entscheidung."
+    _begin_capture_event_again()
+    _refresh_team_panel()
+
+
+func _show_special_battle_resume() -> void:
+    _prepare_resume_surface()
+    path_box.visible = true
+    continue_button.visible = false
+
+    var enemy_lines: Array[String] = []
+    for enemy_value: Variant in saved_special_enemy_party:
+        if not (enemy_value is Dictionary):
+            continue
+        var enemy: Dictionary = enemy_value as Dictionary
+        var species_name: String = str(enemy.get("species_id", "Pokémon"))
+        if battle_demo != null:
+            species_name = battle_demo.route_species_name(str(enemy.get("species_id", "")))
+        enemy_lines.append("%s Lv.%d" % [species_name, int(enemy.get("level", 1))])
+
+    event_label.text = (
+        "[b]Spielstand geladen.[/b]\n"
+        + "%s wartet weiter auf dich.\nGegner: %s"
+    ) % [saved_special_battle_heading, ", ".join(enemy_lines)]
+
+    var resume_button := Button.new()
+    resume_button.text = "KAMPF FORTSETZEN  →"
+    resume_button.custom_minimum_size = Vector2(330, 44)
+    resume_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    resume_button.pressed.connect(_resume_saved_special_battle)
+    path_box.add_child(resume_button)
+    _refresh_team_panel()
+
+
+func _resume_saved_special_battle() -> void:
+    if saved_special_enemy_party.is_empty():
+        _show_stage_choices("Der gespeicherte Spezialkampf konnte nicht wiederhergestellt werden.")
+        return
+    _start_special_battle(
+        saved_special_battle_kind,
+        saved_special_enemy_party.duplicate(true),
+        saved_special_battle_heading
+    )
+
+
+func _prepare_resume_surface() -> void:
+    visible = true
+    pending_capture = pending_capture.duplicate(true)
+    restart_button.visible = false
+    _clear_container(path_box)
+    _clear_container(capture_actions)
+    title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
+    progress_label.text = _progress_text()
+
+
+func _clear_saved_special_battle() -> void:
+    saved_special_battle_kind = ""
+    saved_special_enemy_party.clear()
+    saved_special_battle_heading = ""
 
 
 func _build_run_exit_dialog() -> void:
