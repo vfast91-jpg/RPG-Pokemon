@@ -7,8 +7,10 @@ on:
     paths:
       - data/gen1_moves_runtime_v22_canonical_gap_10.json
       - scripts/battle_demo_v22_canonical_gap_fill_v1.gd
+      - scripts/battle_demo_v22_canonical_gap_selection_v1.gd
       - scripts/battle_demo_typenspiegel_ui_fix_v1.gd
       - tests/v22_canonical_gap_fill_test.gd
+      - tests/v22_healing_wish_selection_test.gd
       - .github/workflows/v22-canonical-gap.yml
   workflow_dispatch:
 
@@ -40,3 +42,6 @@ jobs:
 
       - name: V22 canonical gap regression
         run: ./godot --headless --path . --script tests/v22_canonical_gap_fill_test.gd
+
+      - name: V22 Healing Wish selection regression
+        run: ./godot --headless --path . --script tests/v22_healing_wish_selection_test.gd
