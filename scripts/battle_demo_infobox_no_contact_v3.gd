@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_infobox_final_v2.gd"
+extends "res://scripts/battle_demo_v22_effective_speed_integrity_v1.gd"
 
 # Player-facing infobox refinement: contact is a combat-internal property and
 # should not consume an extra presentation line. Other genuine special features
