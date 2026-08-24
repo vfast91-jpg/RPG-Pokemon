@@ -2,9 +2,14 @@ extends "res://scripts/battle_demo_zf_combat_v1.gd"
 
 # Battle-state rules for the Zubat -> Quapsel attack batch:
 # Wonder Room, Freeze/Flame Wheel, Perish Song and Retaliate KO windows.
+#
+# V22 Freeze is not an open-ended per-action thaw lottery. A newly frozen
+# Pokemon loses exactly 1-3 of its own action opportunities unless a central
+# thaw interaction cures it earlier.
 
 const ZF_WONDER_ROOM_DURATION_SECONDS: float = 50.0
-const ZF_FREEZE_THAW_CHANCE: float = 0.20
+const ZF_FREEZE_MIN_ACTIONS: int = 1
+const ZF_FREEZE_MAX_ACTIONS: int = 3
 
 var _zf_alive_snapshot: Dictionary = {}
 
@@ -13,6 +18,7 @@ func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
     var combatant: Dictionary = super._make_combatant(side, index, setup)
     combatant["zf_perish_count"] = 0
     combatant["zf_perish_applied_serial"] = -1
+    combatant["zf_freeze_actions"] = 0
     return combatant
 
 
@@ -66,9 +72,11 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
     if str(actor.get("major_status", "")) == "freeze":
         if bool(runtime.get("thaws_user", false)) or move_id == "flame_wheel":
             _zf_clear_freeze(actor, "🔥 AUFGETAUT")
-        elif randf() < ZF_FREEZE_THAW_CHANCE:
-            _zf_clear_freeze(actor, "❄️ AUFGETAUT")
         else:
+            if int(actor.get("zf_freeze_actions", 0)) <= 0:
+                # Compatibility for restored/legacy battle states that predate
+                # the explicit V22 freeze-action counter.
+                actor["zf_freeze_actions"] = _zf_roll_freeze_actions()
             _zf_selected_target_id = ""
             _zf_target_selection_move_id = ""
             _zf_consume_frozen_action(actor)
@@ -88,6 +96,35 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
     if kind == "zf_perish_song":
         return _zf_apply_perish_song(actor)
     return super._effect(actor, target, mechanic)
+
+
+func _zf_apply_status_direct(
+    actor: Dictionary,
+    target: Dictionary,
+    status_id: String,
+    chance: float
+) -> float:
+    var was_frozen: bool = str(target.get("major_status", "")) == "freeze"
+    var result: float = super._zf_apply_status_direct(actor, target, status_id, chance)
+    if (
+        status_id == "freeze"
+        and not was_frozen
+        and str(target.get("major_status", "")) == "freeze"
+    ):
+        target["zf_freeze_actions"] = _zf_roll_freeze_actions()
+    return result
+
+
+func _zf_cleanse_major(target: Dictionary) -> float:
+    var was_frozen: bool = str(target.get("major_status", "")) == "freeze"
+    var result: float = super._zf_cleanse_major(target)
+    if was_frozen and str(target.get("major_status", "")) != "freeze":
+        target["zf_freeze_actions"] = 0
+    return result
+
+
+func _zf_roll_freeze_actions() -> int:
+    return randi_range(ZF_FREEZE_MIN_ACTIONS, ZF_FREEZE_MAX_ACTIONS)
 
 
 func _zf_activate_wonder_room(actor: Dictionary) -> float:
@@ -139,6 +176,8 @@ func _zf_tick_perish_after_action(combatant: Dictionary) -> void:
 
 
 func _zf_consume_frozen_action(actor: Dictionary) -> void:
+    var remaining: int = maxi(1, int(actor.get("zf_freeze_actions", 0))) - 1
+    actor["zf_freeze_actions"] = remaining
     actor["zf_ally_ko_since_action"] = false
     _begin_counted_action(actor)
     actor["atb"] = 0.0
@@ -153,6 +192,10 @@ func _zf_consume_frozen_action(actor: Dictionary) -> void:
         _resolve_after_action_effects(actor)
     _zf_tick_perish_after_action(actor)
     _zf_mark_new_knockouts()
+
+    if remaining <= 0 and str(actor.get("major_status", "")) == "freeze":
+        _zf_clear_freeze(actor, "❄️ AUFGETAUT")
+
     _refresh_cards()
     _check_end()
 
@@ -160,6 +203,7 @@ func _zf_consume_frozen_action(actor: Dictionary) -> void:
 func _zf_clear_freeze(actor: Dictionary, feedback: String) -> void:
     if str(actor.get("major_status", "")) == "freeze":
         actor["major_status"] = ""
+        actor["zf_freeze_actions"] = 0
         _spawn_feedback_label(actor, feedback, Color("bfe9ff"))
 
 
