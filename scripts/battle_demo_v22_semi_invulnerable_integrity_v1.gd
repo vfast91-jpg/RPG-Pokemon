@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_infobox_final_v2.gd"
+extends "res://scripts/battle_demo_feedback_queue_v1.gd"
 
 # Final V22 integrity for semi-invulnerable charge states.
 #
