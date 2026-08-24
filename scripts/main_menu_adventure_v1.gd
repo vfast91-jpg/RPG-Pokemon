@@ -19,7 +19,6 @@ func _promote_adventure_menu() -> void:
     var route_button: Button = _find_menu_button(menu_root, "DEMO-ROUTE")
     if route_button != null:
         route_button.text = "AUF INS ABENTEUER!"
-        route_button.tooltip_text = "Starte dein Abenteuer durch 100 Etappen mit Pfadwahl, Fangen, Heilung, TMs, EP und persistenten KP."
 
     var test_button: Button = _find_menu_button(menu_root, "TESTKAMPF")
     var pvp_button: Button = _find_menu_button(menu_root, "PLAYER VS PLAYER")
@@ -38,7 +37,6 @@ func _promote_adventure_menu() -> void:
         if route_button != null:
             pvp_button.size_flags_horizontal = route_button.size_flags_horizontal
         pvp_button.remove_theme_font_size_override("font_size")
-        pvp_button.tooltip_text = "Lokales 4-gegen-4: gemeinsames Level wählen, Teams abwechselnd draften und an einem Bildschirm gegeneinander kämpfen."
     elif test_button != null:
         test_button.queue_free()
 
@@ -61,6 +59,9 @@ func _polish_main_menu_buttons() -> void:
         var button: Button = _find_menu_button(menu_root, button_text)
         if button == null:
             continue
+        # These four buttons are self-explanatory. Tooltips only obscure the menu
+        # and can sit on top of the button the player is trying to click.
+        button.tooltip_text = ""
         _apply_main_menu_button_style(button)
 
 
