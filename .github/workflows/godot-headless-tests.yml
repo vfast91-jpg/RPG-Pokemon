@@ -85,6 +85,8 @@ jobs:
         run: ./godot --headless --path . --script tests/flinch_rule_test.gd
       - name: V22 final attack runtime regression test
         run: ./godot --headless --path . --script tests/v22_attack_runtime_regression_test.gd
+      - name: V22 sequence hit integrity test
+        run: ./godot --headless --path . --script tests/v22_sequence_hit_integrity_test.gd
       - name: Bibor infobox and Toxic Spikes regression test
         run: ./godot --headless --path . --script tests/bibor_infobox_runtime_test.gd
       - name: Lockduft regression test
