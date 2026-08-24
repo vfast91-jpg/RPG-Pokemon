@@ -12,7 +12,7 @@ const INFOBOX_COLLAPSED_TEXT_HEIGHT: float = 36.0
 const INFOBOX_EXPANDED_TEXT_HEIGHT_MAX: float = 220.0
 const INFOBOX_COLLAPSED_COMMAND_HEIGHT: float = 136.0
 const INFOBOX_EXPANDED_COMMAND_HEIGHT_MAX: float = 320.0
-const INFOBOX_TEXT_PADDING: float = 4.0
+const INFOBOX_COMPACT_TEXT_PADDING: float = 4.0
 const INFOBOX_OVERFLOW_TOLERANCE: float = 4.0
 
 var _attack_infobox_expanded: bool = false
@@ -60,7 +60,7 @@ func _fit_attack_infobox_to_content() -> void:
 
     var natural_height: float = maxf(
         INFOBOX_COLLAPSED_TEXT_HEIGHT,
-        float(log_label.get_content_height()) + INFOBOX_TEXT_PADDING
+        float(log_label.get_content_height()) + INFOBOX_COMPACT_TEXT_PADDING
     )
     var has_hidden_content: bool = (
         natural_height
