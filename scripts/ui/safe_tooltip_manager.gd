@@ -202,7 +202,7 @@ func _show_tooltip_surface() -> void:
 
     _layout_serial += 1
     var serial: int = _layout_serial
-    var viewport_size: Vector2 = get_viewport_rect().size
+    var viewport_size: Vector2 = _viewport_size()
     var panel_width: float = _desired_tooltip_width(_source_text, viewport_size)
 
     _text.text = _source_text
@@ -226,7 +226,7 @@ func _finalize_tooltip_layout(serial: int, panel_width: float) -> void:
     if serial != _layout_serial or _panel == null or _text == null or not _panel.visible:
         return
 
-    var viewport_size: Vector2 = get_viewport_rect().size
+    var viewport_size: Vector2 = _viewport_size()
     var max_panel_height: float = minf(
         TOOLTIP_MAX_HEIGHT,
         maxf(TOOLTIP_MIN_TEXT_HEIGHT + TOOLTIP_VERTICAL_PADDING, viewport_size.y - TOOLTIP_VIEWPORT_MARGIN * 2.0)
@@ -279,7 +279,11 @@ func _position_tooltip(viewport_size: Vector2) -> void:
     if _panel == null or not _panel.visible:
         return
 
-    var mouse: Vector2 = get_viewport().get_mouse_position()
+    var viewport: Viewport = get_viewport()
+    if viewport == null:
+        return
+
+    var mouse: Vector2 = viewport.get_mouse_position()
     var panel_size: Vector2 = _panel.size
     var position_value: Vector2 = mouse + Vector2(TOOLTIP_CURSOR_GAP, TOOLTIP_CURSOR_GAP)
 
@@ -299,6 +303,13 @@ func _position_tooltip(viewport_size: Vector2) -> void:
         maxf(TOOLTIP_VIEWPORT_MARGIN, viewport_size.y - panel_size.y - TOOLTIP_VIEWPORT_MARGIN)
     )
     _panel.position = position_value
+
+
+func _viewport_size() -> Vector2:
+    var viewport: Viewport = get_viewport()
+    if viewport == null:
+        return Vector2(640.0, 360.0)
+    return viewport.get_visible_rect().size
 
 
 func _hide_tooltip_surface() -> void:
