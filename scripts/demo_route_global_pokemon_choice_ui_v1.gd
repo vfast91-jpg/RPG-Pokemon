@@ -176,7 +176,7 @@ func _choose_tm_offer(entry: Dictionary) -> void:
             _make_route_pokemon_choice_card(
                 member,
                 "💿 %s lernen" % move_name,
-                "%s %s zuweisen." % [tm_label, str(member.get("name", "Pokémon"))],
+                "",
                 _assign_tm.bind(entry, team_index)
             )
         )
