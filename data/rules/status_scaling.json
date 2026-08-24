@@ -1,27 +1,34 @@
 {
-  "schema_version": 2,
-  "rule_id": "status_softcap_v1",
+  "schema_version": 3,
+  "rule_id": "status_softcap_stage2_v2",
   "curve": 75.0,
   "ratio_formula": "R = Status / (75 + Status)",
+  "positive_stage_translation": {
+    "+1": 1.0,
+    "+2": 1.25,
+    "second_stage_share": 0.25,
+    "note": "For a positive +2-stage attribute boost, the first stage contributes the full R and the second stage contributes 25% of that first-stage contribution. No +3-stage rule is introduced here."
+  },
   "rules": {
-    "increase_or_slowdown": "multiplier = 1 + weight * R",
-    "reduction_or_speedup": "multiplier = (1 - R) ^ weight",
+    "increase_or_slowdown": "multiplier = 1 + effective_positive_stage_weight * R for positive attribute boosts",
+    "reduction_or_speedup": "legacy reduction/debuff curve remains unchanged unless a separate rule explicitly replaces it",
     "bounded_percent_effect": "percent = 100 * R",
     "incoming_vulnerability_storage": "stored_defense_multiplier = 1 / (1 + weight * R)",
-    "incoming_protection_storage": "stored_defense_multiplier = 1 / ((1 - R) ^ weight)"
+    "incoming_positive_defense_boost": "stored_defense_multiplier = 1 + effective_positive_stage_weight * R"
   },
   "examples": [
-    {"status": 25, "R": 0.25, "bounded_percent": 25.0, "one_x_reduction": 25.0},
-    {"status": 50, "R": 0.4, "bounded_percent": 40.0, "one_x_reduction": 40.0},
-    {"status": 75, "R": 0.5, "bounded_percent": 50.0, "one_x_reduction": 50.0},
-    {"status": 100, "R": 0.5714285714, "bounded_percent": 57.14285714, "one_x_reduction": 57.14285714},
-    {"status": 200, "R": 0.7272727273, "bounded_percent": 72.72727273, "one_x_reduction": 72.72727273},
-    {"status": 300, "R": 0.8, "bounded_percent": 80.0, "one_x_reduction": 80.0}
+    {"status": 25, "R": 0.25, "bounded_percent": 25.0, "positive_plus_1_percent": 25.0, "positive_plus_2_percent": 31.25},
+    {"status": 50, "R": 0.4, "bounded_percent": 40.0, "positive_plus_1_percent": 40.0, "positive_plus_2_percent": 50.0},
+    {"status": 60, "R": 0.4444444444, "bounded_percent": 44.44444444, "positive_plus_1_percent": 44.44444444, "positive_plus_2_percent": 55.55555556},
+    {"status": 75, "R": 0.5, "bounded_percent": 50.0, "positive_plus_1_percent": 50.0, "positive_plus_2_percent": 62.5},
+    {"status": 100, "R": 0.5714285714, "bounded_percent": 57.14285714, "positive_plus_1_percent": 57.14285714, "positive_plus_2_percent": 71.42857143}
   ],
   "notes": [
     "Every additional finite Status point remains useful.",
-    "A 1x reduction uses exactly R, so the central curve has the same visible meaning for healing, protection, debuffs and speedups.",
-    "Move weights such as 2x or 3x compound the remaining fraction and never create negative values.",
+    "Positive +2-stage boosts are translated centrally to 1.25x instead of being doubled per move.",
+    "The rule is global for the central stat-modifier runtime and therefore applies to current and future moves that use the shared stage mechanic.",
+    "Existing negative -2 debuffs are not silently redesigned by this change.",
+    "Horter/Stockpile uses the same +2 translation per stack but stores one persistent Defense contribution instead of multiplying temporary modifiers.",
     "Weather does not use this rule; weather strength and effects belong to the central weather definition."
   ]
 }
