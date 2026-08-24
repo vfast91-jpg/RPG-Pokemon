@@ -1,0 +1,42 @@
+name: Run Save Regression Test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/run_save_manager.gd"
+      - "scripts/demo_route_run_save_v1.gd"
+      - "scripts/main_menu_run_save_v1.gd"
+      - "tests/run_save_manager_test.gd"
+      - ".github/workflows/run-save-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-save-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output godot.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.7.2-stable_linux.x86_64 godot
+          chmod +x godot
+          ./godot --version
+
+      - name: Parse project headless
+        run: ./godot --headless --path . --editor --quit
+
+      - name: Run single-slot save regression
+        run: ./godot --headless --path . --script tests/run_save_manager_test.gd
