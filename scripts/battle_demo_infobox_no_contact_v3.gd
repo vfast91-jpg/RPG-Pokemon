@@ -2,17 +2,21 @@ extends "res://scripts/battle_demo_v22_effective_speed_integrity_v1.gd"
 
 # Final player-facing infobox cleanup.
 #
-# - Contact is a combat-internal property and does not consume presentation space.
-# - Short/two-line messages stay compact instead of reserving a third text line.
-# - Long explanations stop growing into the battlefield and become scrollable.
-# - A short, already-readable special-effect summary stays short; the verbose
-#   description/special-rules fallback is reserved for missing or technical text.
+# The battle info area is deliberately compact during normal play: it always
+# shows only two text lines. Longer explanations can be opened explicitly with
+# a small chevron and closed again afterwards. This keeps the battlefield calm
+# once the player knows the moves, while the complete explanation remains one
+# click away whenever it is needed.
 
-const INFOBOX_COMPACT_TEXT_HEIGHT_MIN: float = 36.0
-const INFOBOX_COMPACT_TEXT_HEIGHT_MAX: float = 76.0
-const INFOBOX_COMPACT_COMMAND_HEIGHT_BASE: float = 136.0
-const INFOBOX_COMPACT_COMMAND_HEIGHT_MAX: float = 176.0
-const INFOBOX_COMPACT_TEXT_PADDING: float = 4.0
+const INFOBOX_COLLAPSED_TEXT_HEIGHT: float = 36.0
+const INFOBOX_EXPANDED_TEXT_HEIGHT_MAX: float = 220.0
+const INFOBOX_COLLAPSED_COMMAND_HEIGHT: float = 136.0
+const INFOBOX_EXPANDED_COMMAND_HEIGHT_MAX: float = 320.0
+const INFOBOX_TEXT_PADDING: float = 4.0
+const INFOBOX_OVERFLOW_TOLERANCE: float = 4.0
+
+var _attack_infobox_expanded: bool = false
+var _attack_infobox_toggle: Button = null
 
 
 func _standard_feature_bits(move: Dictionary) -> Array[String]:
@@ -32,23 +36,49 @@ func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
     return false
 
 
+func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = false) -> void:
+    # A newly inspected move always starts in the compact everyday view.
+    _attack_infobox_expanded = false
+    super._preview_move(move_id, move, touch_confirm)
+
+
+func _set_log(text: String) -> void:
+    # Battle messages also return to the unobtrusive two-line baseline.
+    _attack_infobox_expanded = false
+    super._set_log(text)
+
+
 func _fit_attack_infobox_to_content() -> void:
     if log_label == null:
         return
+
+    _ensure_attack_infobox_toggle()
 
     log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     log_label.fit_content = false
     log_label.scroll_following = false
 
-    # Two text lines are the compact baseline again. Only actual content makes
-    # the box taller; very long special cases hit the cap and scroll internally.
     var natural_height: float = maxf(
-        INFOBOX_COMPACT_TEXT_HEIGHT_MIN,
-        float(log_label.get_content_height()) + INFOBOX_COMPACT_TEXT_PADDING
+        INFOBOX_COLLAPSED_TEXT_HEIGHT,
+        float(log_label.get_content_height()) + INFOBOX_TEXT_PADDING
     )
+    var has_hidden_content: bool = (
+        natural_height
+        > INFOBOX_COLLAPSED_TEXT_HEIGHT + INFOBOX_OVERFLOW_TOLERANCE
+    )
+
+    # Do not leave an expanded empty/short box behind when the text changes.
+    if not has_hidden_content:
+        _attack_infobox_expanded = false
+
     var shown_height: float = _infobox_shown_text_height(natural_height)
     log_label.custom_minimum_size.y = shown_height
-    log_label.scroll_active = natural_height > INFOBOX_COMPACT_TEXT_HEIGHT_MAX + 0.5
+    log_label.scroll_active = (
+        _attack_infobox_expanded
+        and natural_height > INFOBOX_EXPANDED_TEXT_HEIGHT_MAX + 0.5
+    )
+
+    _sync_attack_infobox_toggle(has_hidden_content)
 
     var content: VBoxContainer = log_label.get_parent() as VBoxContainer
     if content == null:
@@ -57,18 +87,70 @@ func _fit_attack_infobox_to_content() -> void:
     if command == null:
         return
 
-    var extra_height: float = maxf(0.0, shown_height - INFOBOX_COMPACT_TEXT_HEIGHT_MIN)
-    var command_height: float = clampf(
-        INFOBOX_COMPACT_COMMAND_HEIGHT_BASE + extra_height,
-        INFOBOX_COMPACT_COMMAND_HEIGHT_BASE,
-        INFOBOX_COMPACT_COMMAND_HEIGHT_MAX
-    )
+    var command_height: float = INFOBOX_COLLAPSED_COMMAND_HEIGHT
+    if _attack_infobox_expanded:
+        var extra_height: float = maxf(
+            0.0,
+            shown_height - INFOBOX_COLLAPSED_TEXT_HEIGHT
+        )
+        command_height = clampf(
+            INFOBOX_COLLAPSED_COMMAND_HEIGHT + extra_height,
+            INFOBOX_COLLAPSED_COMMAND_HEIGHT,
+            INFOBOX_EXPANDED_COMMAND_HEIGHT_MAX
+        )
     command.offset_top = -command_height
 
 
 func _infobox_shown_text_height(natural_height: float) -> float:
+    if not _attack_infobox_expanded:
+        return INFOBOX_COLLAPSED_TEXT_HEIGHT
     return clampf(
         natural_height,
-        INFOBOX_COMPACT_TEXT_HEIGHT_MIN,
-        INFOBOX_COMPACT_TEXT_HEIGHT_MAX
+        INFOBOX_COLLAPSED_TEXT_HEIGHT,
+        INFOBOX_EXPANDED_TEXT_HEIGHT_MAX
     )
+
+
+func _ensure_attack_infobox_toggle() -> void:
+    if log_label == null:
+        return
+    if _attack_infobox_toggle != null and is_instance_valid(_attack_infobox_toggle):
+        return
+
+    var toggle: Button = Button.new()
+    toggle.name = "AttackInfoExpandToggle"
+    toggle.flat = true
+    toggle.focus_mode = Control.FOCUS_NONE
+    toggle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    toggle.tooltip_text = "Mehr anzeigen"
+    toggle.anchor_left = 1.0
+    toggle.anchor_right = 1.0
+    toggle.anchor_top = 0.0
+    toggle.anchor_bottom = 0.0
+    toggle.offset_left = -30.0
+    toggle.offset_right = -4.0
+    toggle.offset_top = 3.0
+    toggle.offset_bottom = 29.0
+    toggle.z_index = 20
+    toggle.pressed.connect(_toggle_attack_infobox_expanded)
+    log_label.add_child(toggle)
+    _attack_infobox_toggle = toggle
+
+
+func _sync_attack_infobox_toggle(has_hidden_content: bool) -> void:
+    if _attack_infobox_toggle == null or not is_instance_valid(_attack_infobox_toggle):
+        return
+    _attack_infobox_toggle.visible = has_hidden_content
+    _attack_infobox_toggle.text = "▲" if _attack_infobox_expanded else "▼"
+    _attack_infobox_toggle.tooltip_text = (
+        "Weniger anzeigen" if _attack_infobox_expanded else "Mehr anzeigen"
+    )
+
+
+func _toggle_attack_infobox_expanded() -> void:
+    if _attack_infobox_toggle == null or not is_instance_valid(_attack_infobox_toggle):
+        return
+    if not _attack_infobox_toggle.visible:
+        return
+    _attack_infobox_expanded = not _attack_infobox_expanded
+    _fit_attack_infobox_to_content()
