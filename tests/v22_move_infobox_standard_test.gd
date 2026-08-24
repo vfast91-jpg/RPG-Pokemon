@@ -90,6 +90,10 @@ func _initialize() -> void:
             not plain.contains("_"),
             move_id + ": Infobox enthält noch einen internen snake_case-Bezeichner: " + plain
         )
+        _check(
+            not plain.to_lower().contains("wirkung: ad "),
+            move_id + ": Infobox zeigt noch einen internen Abra-Doduo-Effektbezeichner: " + plain
+        )
         for forbidden: String in FORBIDDEN_PLAYER_TEXT:
             _check(
                 not plain.to_lower().contains(forbidden.to_lower()),
@@ -161,6 +165,23 @@ func _test_representative_boxes(battle, moves: Dictionary) -> void:
         "Verwurzler wird nicht verständlich als besondere Heil-/Rooted-Mechanik erklärt."
     )
     _check(not ingrain_text.contains("v22_"), "Verwurzler zeigt einen internen V22-Bezeichner.")
+
+    var rock_polish_text: String = battle._standardized_move_info_text(_move(moves, "rock_polish"))
+    _check(
+        rock_polish_text.contains("Wirkung: Erhöht die eigene Geschwindigkeit stark für drei eigene Aktionen."),
+        "Steinpolitur zeigt nicht die verständliche Geschwindigkeitswirkung."
+    )
+    _check(
+        not rock_polish_text.to_lower().contains("ad modifier"),
+        "Steinpolitur zeigt noch den internen Effekttext 'ad modifier'."
+    )
+
+    var retaliate_text: String = battle._standardized_move_info_text(_move(moves, "retaliate"))
+    _check(
+        retaliate_text.contains("Stärke: 70")
+        and retaliate_text.contains("Wirkung: Hat Stärke 140, wenn seit der letzten eigenen Aktion ein Verbündeter kampfunfähig geworden ist."),
+        "Heimzahlung erklärt die bedingte Verdopplung auf Stärke 140 nicht."
+    )
 
     for move_id: String in ["whirlwind", "roar"]:
         var pause_text: String = battle._standardized_move_info_text(_move(moves, move_id))
@@ -261,6 +282,22 @@ func _test_compact_presentation_contract(battle) -> void:
     _check(
         battle._summary_needs_player_fallback(readable_special, "v22_internal_rule"),
         "Interne Runtime-Texte müssen weiterhin auf sicheren Spielertext zurückfallen."
+    )
+
+    var dynamic_damage_special: Dictionary = {
+        "category": "physical",
+        "power": 70,
+        "description": "Verdoppelt unter einer klaren Kampfbedingung seine Stärke.",
+        "mechanics": [{"kind": "damage"}],
+        "runtime": {"runtime_supported": true, "dynamic_power": true}
+    }
+    _check(
+        battle._summary_needs_player_fallback(dynamic_damage_special, "Schaden"),
+        "Ein bloßes 'Schaden' darf eine vorhandene dynamische Spezialregel nicht verschlucken."
+    )
+    _check(
+        battle._summary_needs_player_fallback(dynamic_damage_special, "ad modifier"),
+        "Abra-Doduo-Runtimebezeichner müssen auf Spielertext zurückfallen."
     )
 
 
