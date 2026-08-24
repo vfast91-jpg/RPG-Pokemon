@@ -28,12 +28,17 @@ func _v22_cancel_air_charge_after_smack_down(snapshots: Dictionary) -> void:
         if not (target_value is Dictionary):
             continue
         var target: Dictionary = target_value
-        var charge_move: String = str(target.get("db_charge_move", ""))
-        if not V22_SMACK_DOWN_CANCELLED_CHARGES.has(charge_move):
-            continue
+        if _v22_cancel_air_charge(target):
+            _spawn_feedback_label(target, "🪨 LUFTPHASE ABGEBROCHEN", Color("d3bd9b"))
 
-        target["db_charge_move"] = ""
-        target["db_charge_target_id"] = ""
-        target["db_charge_firing"] = false
-        _v22_clear_charge_slot(target)
-        _spawn_feedback_label(target, "🪨 LUFTPHASE ABGEBROCHEN", Color("d3bd9b"))
+
+func _v22_cancel_air_charge(target: Dictionary) -> bool:
+    var charge_move: String = str(target.get("db_charge_move", ""))
+    if not V22_SMACK_DOWN_CANCELLED_CHARGES.has(charge_move):
+        return false
+
+    target["db_charge_move"] = ""
+    target["db_charge_target_id"] = ""
+    target["db_charge_firing"] = false
+    _v22_clear_charge_slot(target)
+    return true
