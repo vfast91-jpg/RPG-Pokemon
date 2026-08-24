@@ -191,6 +191,21 @@ func _test_collapsible_layout_contract(battle) -> void:
         "Die geschlossene Infobox braucht eine eindeutige Aufklapp-Beschriftung."
     )
 
+    battle._attack_infobox_is_move_preview = false
+    _check(
+        not battle._attack_infobox_has_hidden_content(90.0),
+        "Warten und andere allgemeine Kampfmeldungen dürfen nie 'Mehr anzeigen' anbieten."
+    )
+    battle._attack_infobox_is_move_preview = true
+    _check(
+        battle._attack_infobox_has_hidden_content(90.0),
+        "Eine lange Attacken-Vorschau muss 'Mehr anzeigen' anbieten."
+    )
+    _check(
+        not battle._attack_infobox_has_hidden_content(36.0),
+        "Eine kurze Attacken-Vorschau darf keinen unnötigen Aufklapp-Button zeigen."
+    )
+
     battle._attack_infobox_expanded = true
     _check(
         is_equal_approx(battle._infobox_shown_text_height(90.0), 90.0),
@@ -206,6 +221,7 @@ func _test_collapsible_layout_contract(battle) -> void:
         "Die offene Infobox braucht eine eindeutige Zuklapp-Beschriftung."
     )
     battle._attack_infobox_expanded = false
+    battle._attack_infobox_is_move_preview = false
 
 
 func _test_compact_presentation_contract(battle) -> void:
