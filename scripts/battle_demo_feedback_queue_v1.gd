@@ -173,6 +173,8 @@ func _tf_play_next_feedback_label(combatant_id: String, generation: int) -> void
         _tf_feedback_label_finished(combatant_id, generation)
         return
 
+    var color_value: Variant = item.get("color", Color("ffeaa2"))
+    var item_color: Color = color_value if color_value is Color else Color("ffeaa2")
     var duration: float = float(
         _tf_feedback_batch_duration.get(
             combatant_id,
@@ -182,7 +184,7 @@ func _tf_play_next_feedback_label(combatant_id: String, generation: int) -> void
     _tf_render_feedback_label(
         combatant_value as Dictionary,
         str(item.get("text", "")),
-        item.get("color", Color("ffeaa2")) as Color,
+        item_color,
         duration,
         combatant_id,
         generation
