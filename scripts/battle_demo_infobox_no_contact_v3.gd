@@ -4,9 +4,9 @@ extends "res://scripts/battle_demo_v22_effective_speed_integrity_v1.gd"
 #
 # The battle info area is deliberately compact during normal play: it always
 # shows only two text lines. Longer explanations can be opened explicitly with
-# a small chevron and closed again afterwards. This keeps the battlefield calm
-# once the player knows the moves, while the complete explanation remains one
-# click away whenever it is needed.
+# a clearly labelled control and closed again afterwards. This keeps the
+# battlefield calm once the player knows the moves, while the complete
+# explanation remains one click away whenever it is needed.
 
 const INFOBOX_COLLAPSED_TEXT_HEIGHT: float = 36.0
 const INFOBOX_EXPANDED_TEXT_HEIGHT_MAX: float = 220.0
@@ -127,10 +127,12 @@ func _ensure_attack_infobox_toggle() -> void:
     toggle.anchor_right = 1.0
     toggle.anchor_top = 0.0
     toggle.anchor_bottom = 0.0
-    toggle.offset_left = -30.0
+    toggle.offset_left = -136.0
     toggle.offset_right = -4.0
-    toggle.offset_top = 3.0
+    toggle.offset_top = 2.0
     toggle.offset_bottom = 29.0
+    toggle.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    toggle.add_theme_font_size_override("font_size", 11)
     toggle.z_index = 20
     toggle.pressed.connect(_toggle_attack_infobox_expanded)
     log_label.add_child(toggle)
@@ -141,10 +143,16 @@ func _sync_attack_infobox_toggle(has_hidden_content: bool) -> void:
     if _attack_infobox_toggle == null or not is_instance_valid(_attack_infobox_toggle):
         return
     _attack_infobox_toggle.visible = has_hidden_content
-    _attack_infobox_toggle.text = "▲" if _attack_infobox_expanded else "▼"
+    _attack_infobox_toggle.text = _attack_infobox_toggle_text()
     _attack_infobox_toggle.tooltip_text = (
         "Weniger anzeigen" if _attack_infobox_expanded else "Mehr anzeigen"
     )
+
+
+func _attack_infobox_toggle_text() -> String:
+    # Explicit wording is intentional: the control must be understandable even
+    # to young players who do not already know what a bare chevron means.
+    return "Weniger anzeigen ▲" if _attack_infobox_expanded else "Mehr anzeigen ▼"
 
 
 func _toggle_attack_infobox_expanded() -> void:
