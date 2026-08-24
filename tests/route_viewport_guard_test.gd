@@ -8,7 +8,7 @@ const FRAME_VERTICAL_MARGIN: float = 8.0
 func _initialize() -> void:
     var route = RouteScript.new()
     route._build_ui()
-    route._tf_install_local_path_scroll()
+    route._tf_install_local_path_viewport()
     route._tf_install_local_action_scroll()
     route._tf_bound_event_log()
     route._tf_refresh_local_scroll_state()
@@ -23,7 +23,7 @@ func _initialize() -> void:
     assert(frame.offset_right == -8.0 and frame.offset_bottom == -8.0, "Der Goldrahmen braucht den festen unteren/rechten Innenabstand.")
 
     # Regression: the complete route screen must never become scrollable. Only
-    # descendants representing specific content regions may own scrollbars.
+    # descendants representing genuinely scroll-worthy local content may scroll.
     assert(
         frame.get_node_or_null("RouteViewportScroll") == null,
         "Der komplette Routenrahmen darf keinen globalen ScrollContainer besitzen."
@@ -58,14 +58,28 @@ func _initialize() -> void:
         "Auch Landschaftstext darf die sichere lokale Mindesthöhe nicht überschreiten."
     )
 
-    # Path/landscape content owns a local scroll boundary. This is essential
-    # because landscape cards themselves can be taller than the remaining route
-    # panel space after title, footer and event text are accounted for.
-    var path_scroll := route.path_box.get_parent() as ScrollContainer
-    assert(path_scroll != null, "Weg- und Landschaftsinhalte brauchen einen lokalen ScrollContainer.")
-    assert(path_scroll.name == "RoutePathScroll", "Der lokale Weg-Scroller braucht einen stabilen Namen.")
-    assert(path_scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO, "Zu hohe Wegauswahlen müssen lokal scrollbar sein.")
-    assert(path_scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED, "Wegauswahlen dürfen keinen horizontalen Scroll-Overflow erzeugen.")
+    # Landscape/path content must NOT have a scrollbar. The previous protection
+    # used RoutePathScroll, which fixed overflow but produced the ugly scrollbar
+    # next to the two landscape cards. A plain clipped Control now breaks minimum
+    # size propagation without exposing any scrolling UI.
+    var path_parent: Node = route.path_box.get_parent()
+    assert(path_parent is Control, "Weg- und Landschaftsinhalte brauchen einen begrenzten lokalen Viewport.")
+    assert(not (path_parent is ScrollContainer), "Die Landschaftsauswahl darf ausdrücklich KEIN ScrollContainer sein.")
+    assert(path_parent.name == "RoutePathViewport", "Der lokale Weg-Viewport braucht einen stabilen Namen.")
+    assert((path_parent as Control).clip_contents, "Der Weg-Viewport muss Überlauf sicher abschneiden können.")
+    assert(
+        route.root.find_child("RoutePathScroll", true, false) == null,
+        "Die alte Scrollbar neben der Landschaftsauswahl darf nirgendwo mehr existieren."
+    )
+
+    # The real landscape card content needs roughly 166px vertically:
+    # 126px image + 4px separation + 26px name button + 10px panel margins.
+    # The path viewport cap deliberately leaves enough room for that exact UI.
+    var expected_landscape_height: float = route.LANDSCAPE_CARD_IMAGE_SIZE.y + 4.0 + 26.0 + 10.0
+    assert(
+        route.ROUTE_PATH_MAX_HEIGHT >= expected_landscape_height,
+        "Der scrollbarfreie Weg-Viewport muss die aktuellen Landschaftskarten vollständig aufnehmen."
+    )
 
     var tall_landscape_row := PanelContainer.new()
     tall_landscape_row.name = "MockTallLandscapeChoice"
@@ -73,25 +87,32 @@ func _initialize() -> void:
     route.path_box.add_child(tall_landscape_row)
     route._tf_refresh_local_scroll_state()
     route._tf_install_route_viewport_guard()
-    assert(path_scroll.visible, "Gefüllte Weg-/Landschaftsinhalte müssen ihren lokalen Scrollbereich benutzen.")
+
+    var path_viewport := path_parent as Control
+    assert(path_viewport.visible, "Gefüllte Weg-/Landschaftsinhalte müssen sichtbar bleiben.")
     assert(
-        route.event_label.size_flags_vertical == Control.SIZE_FILL,
-        "Bei offener Wegauswahl darf der Infotext nicht den Platz des lokalen Scrollers auffressen."
+        path_viewport.custom_minimum_size.y <= route.ROUTE_PATH_MAX_HEIGHT,
+        "Auch übergroße Weg-Inhalte dürfen keine unkontrollierte Mindesthöhe weiterreichen."
+    )
+    assert(
+        route.event_label.size_flags_vertical == Control.SIZE_EXPAND_FILL,
+        "Ohne Aktionsliste darf der scrollbare Infotext den verbleibenden Platz sinnvoll nutzen."
     )
 
-    # Most importantly, a deliberately oversized local choice must not make the
+    # Most importantly, a deliberately oversized path choice must not make the
     # gold frame itself demand more height than the visible internal viewport.
     var maximum_frame_height: float = INTERNAL_VIEWPORT_HEIGHT - FRAME_VERTICAL_MARGIN * 2.0
     assert(
         frame.get_combined_minimum_size().y <= maximum_frame_height,
-        "Lokaler Weg-Overflow darf die Mindesthöhe des Goldrahmens nicht über den Viewport vergrößern."
+        "Weg-Overflow darf die Mindesthöhe des Goldrahmens nicht über den Viewport vergrößern."
     )
 
     route._clear_container(route.path_box)
     route._tf_refresh_local_scroll_state()
 
     # Dynamic selection areas (training, TM recipients, item recipients, capture
-    # choices, etc.) need their OWN scrollbar as well.
+    # choices, etc.) DO need their own scrollbar because these lists can genuinely
+    # grow with team size and must keep every option/back button reachable.
     var action_scroll := route.capture_actions.get_parent() as ScrollContainer
     assert(action_scroll != null, "Dynamische Routenauswahlen brauchen einen lokalen ScrollContainer.")
     assert(action_scroll.name == "RouteActionScroll", "Der lokale Auswahl-Scroller braucht einen stabilen Namen.")
@@ -112,7 +133,7 @@ func _initialize() -> void:
     assert(training_back != null, "Der Trainingsplatz braucht einen erreichbaren Zurück-Button.")
     assert(training_back.text.contains("ZURÜCK ZUR WEGAUSWAHL"), "Der Trainings-Zurück-Button muss klar zur Wegauswahl führen.")
     assert(action_scroll.visible, "Ein gefüllter Auswahlbereich muss als lokaler Scrollbereich sichtbar sein.")
-    assert(not path_scroll.visible, "Eine aktive Unterauswahl darf nicht gleichzeitig mit einer alten Wegauswahl um Höhe konkurrieren.")
+    assert(not path_viewport.visible, "Eine aktive Unterauswahl darf nicht gleichzeitig mit der alten Wegauswahl um Höhe konkurrieren.")
     assert(route.capture_actions.get_child_count() == 5, "Vier Trainingskarten plus Zurück-Button müssen im lokalen Scroller bleiben.")
     assert(route.capture_actions.get_parent() == action_scroll, "Auswahlkarten dürfen den lokalen Scrollbereich nicht verlassen.")
     assert(
@@ -137,9 +158,13 @@ func _initialize() -> void:
         "Auch neue Top-Layer müssen den zentralen Viewport-Schutz weiter erben."
     )
     assert(
-        active_route.has_method("_tf_install_local_path_scroll")
+        active_route.has_method("_tf_install_local_path_viewport")
         and active_route.has_method("_tf_install_local_action_scroll"),
         "Auch neue Top-Layer müssen die lokalen Overflow-Grenzen weiter erben."
+    )
+    assert(
+        active_route.has_method("_tf_install_local_path_scroll"),
+        "Der alte Path-Scroll-Aufruf muss als kompatibler Alias erhalten bleiben."
     )
 
     active_route.free()
