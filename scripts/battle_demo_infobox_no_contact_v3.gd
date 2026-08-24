@@ -6,6 +6,11 @@ extends "res://scripts/battle_demo_v22_effective_speed_integrity_v1.gd"
 # shows only two text lines. Longer move explanations can be opened explicitly
 # with a clearly labelled control and closed again afterwards. Generic battle
 # messages such as Warten never show that control.
+#
+# While expanded, the command panel becomes a temporary foreground overlay so
+# Pokemon sprites, roster/status cards and their hover content can never cover
+# the explanation. Collapsing restores the panel's original stacking/input
+# behaviour.
 
 const INFOBOX_COLLAPSED_TEXT_HEIGHT: float = 36.0
 const INFOBOX_EXPANDED_TEXT_HEIGHT_MAX: float = 220.0
@@ -13,10 +18,15 @@ const INFOBOX_COLLAPSED_COMMAND_HEIGHT: float = 136.0
 const INFOBOX_EXPANDED_COMMAND_HEIGHT_MAX: float = 320.0
 const INFOBOX_COMPACT_TEXT_PADDING: float = 4.0
 const INFOBOX_OVERFLOW_TOLERANCE: float = 4.0
+const INFOBOX_EXPANDED_Z_INDEX: int = 900
 
 var _attack_infobox_expanded: bool = false
 var _attack_infobox_toggle: Button = null
 var _attack_infobox_is_move_preview: bool = false
+var _attack_infobox_command: PanelContainer = null
+var _attack_infobox_command_base_z_index: int = 0
+var _attack_infobox_command_base_mouse_filter: int = Control.MOUSE_FILTER_STOP
+var _attack_infobox_command_state_captured: bool = false
 
 
 func _standard_feature_bits(move: Dictionary) -> Array[String]:
@@ -92,6 +102,8 @@ func _fit_attack_infobox_to_content() -> void:
     if command == null:
         return
 
+    _sync_attack_infobox_foreground(command)
+
     var command_height: float = INFOBOX_COLLAPSED_COMMAND_HEIGHT
     if _attack_infobox_expanded:
         var extra_height: float = maxf(
@@ -104,6 +116,39 @@ func _fit_attack_infobox_to_content() -> void:
             INFOBOX_EXPANDED_COMMAND_HEIGHT_MAX
         )
     command.offset_top = -command_height
+
+
+func _sync_attack_infobox_foreground(command: PanelContainer) -> void:
+    if command == null:
+        return
+
+    if (
+        not _attack_infobox_command_state_captured
+        or _attack_infobox_command != command
+    ):
+        _attack_infobox_command = command
+        _attack_infobox_command_base_z_index = command.z_index
+        _attack_infobox_command_base_mouse_filter = int(command.mouse_filter)
+        _attack_infobox_command_state_captured = true
+
+    command.z_index = _attack_infobox_overlay_z_index(
+        _attack_infobox_command_base_z_index
+    )
+    command.mouse_filter = _attack_infobox_overlay_mouse_filter(
+        _attack_infobox_command_base_mouse_filter
+    )
+
+
+func _attack_infobox_overlay_z_index(base_z_index: int) -> int:
+    return INFOBOX_EXPANDED_Z_INDEX if _attack_infobox_expanded else base_z_index
+
+
+func _attack_infobox_overlay_mouse_filter(base_mouse_filter: int) -> int:
+    return (
+        Control.MOUSE_FILTER_STOP
+        if _attack_infobox_expanded
+        else base_mouse_filter
+    )
 
 
 func _attack_infobox_has_hidden_content(natural_height: float) -> bool:
