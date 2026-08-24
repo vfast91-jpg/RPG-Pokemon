@@ -40,6 +40,22 @@ func _begin_training_event() -> void:
     _tf_reset_action_scroll()
 
 
+func _prepare_boss_reward_finish(reward_text: String) -> void:
+    super._prepare_boss_reward_finish(reward_text)
+
+    # The CTA already says exactly what clicking it does. A duplicate tooltip
+    # only covers the button and can intercept the mouse in the custom tooltip UI.
+    if capture_actions == null:
+        return
+    var finish_card: Node = capture_actions.get_node_or_null("NextStageCTA")
+    if finish_card == null:
+        return
+
+    for child: Node in finish_card.get_children():
+        if child is Button:
+            (child as Button).tooltip_text = ""
+
+
 func _tf_prepare_route_choice_layout(landscape_choice: bool) -> void:
     # The landscape layer historically switched fit_content back on here. That
     # makes long battle summaries part of the route panel's minimum height and
