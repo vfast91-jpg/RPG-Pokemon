@@ -6,6 +6,8 @@ extends "res://scripts/battle_demo_player_effect_labels.gd"
 const ROUTE_BOSS_SPRITE_SCALE: float = 1.5
 const ROUTE_BOSS_CARD_HEIGHT: float = 60.0
 const ROUTE_BOSS_HP_BAR_GAP: float = 8.0
+const ROUTE_BOSS_SHADOW_SCALE: Vector2 = Vector2(1.8, 1.45)
+const ROUTE_BOSS_SHADOW_FOOT_Y_RATIO: float = 0.88
 
 
 func _route_begin_wave() -> void:
@@ -42,6 +44,7 @@ func _route_begin_wave() -> void:
 
     if boss_found:
         _decorate_route_boss_cards()
+        _spread_simultaneous_route_bosses()
         _refresh_cards()
         _set_log("👑 Eine Seltene Begegnung! Der Mini-Boss besitzt zwei vollständige KP-Leisten.")
 
@@ -95,10 +98,97 @@ func _decorate_route_boss_cards() -> void:
 
             var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
             if shadow != null:
-                shadow.position = sprite.position + Vector2(boss_size.x * 0.5, boss_size.y - 5.0)
-                shadow.scale = Vector2(ROUTE_BOSS_SPRITE_SCALE, 1.25)
+                _position_route_boss_shadow(shadow, sprite)
 
         cards[combatant_id] = ui
+
+
+func _spread_simultaneous_route_bosses() -> void:
+    # The normal two-Pokemon formation is intentionally compact. That becomes
+    # too tight once both route bosses grow to 60px cards and 108px sprites.
+    # A milestone Doppelboss therefore gets two dedicated quarter-height slots.
+    # This also leaves a generous gap between the enlarged status cards.
+    if enemy_team.size() != 2:
+        return
+
+    var boss_entries: Array[Dictionary] = []
+    var area: Control = null
+
+    for combatant_value: Variant in enemy_team:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        if not bool(combatant.get("boss", false)):
+            continue
+
+        var combatant_id: String = str(combatant.get("id", ""))
+        var ui_value: Variant = cards.get(combatant_id, {})
+        if not (ui_value is Dictionary):
+            continue
+        var ui: Dictionary = ui_value
+        var card: Control = ui.get("card") as Control
+        var sprite: TextureRect = ui.get("texture") as TextureRect
+        if card == null or sprite == null:
+            continue
+
+        var sprite_area: Control = sprite.get_parent() as Control
+        if sprite_area == null:
+            continue
+        if area == null:
+            area = sprite_area
+        elif sprite_area != area:
+            continue
+
+        boss_entries.append({
+            "combatant_id": combatant_id,
+            "card": card,
+            "sprite": sprite,
+            "ui": ui
+        })
+
+    if boss_entries.size() != 2 or area == null:
+        return
+
+    var slot_centers: Array[float] = [area.size.y * 0.25, area.size.y * 0.75]
+    for index: int in range(2):
+        var entry: Dictionary = boss_entries[index]
+        var card: Control = entry.get("card") as Control
+        var sprite: TextureRect = entry.get("sprite") as TextureRect
+        var ui: Dictionary = entry.get("ui", {}) as Dictionary
+        var combatant_id: String = str(entry.get("combatant_id", ""))
+        if card == null or sprite == null:
+            continue
+
+        var center_y: float = slot_centers[index]
+        card.position.y = clampf(
+            center_y - card.size.y * 0.5,
+            0.0,
+            maxf(0.0, area.size.y - card.size.y)
+        )
+        sprite.position.y = clampf(
+            center_y - sprite.size.y * 0.5,
+            0.0,
+            maxf(0.0, area.size.y - sprite.size.y)
+        )
+
+        var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
+        if shadow != null:
+            _position_route_boss_shadow(shadow, sprite)
+
+        var connector: Line2D = ui.get("connector") as Line2D
+        if connector != null:
+            _update_roster_connector(connector, card, sprite, true)
+
+
+func _position_route_boss_shadow(shadow: Polygon2D, sprite: TextureRect) -> void:
+    # Boss sprites are 50% larger than normal. Give their ground contact the
+    # same visual weight and anchor it slightly above the texture-box bottom so
+    # wide/tall species do not look as if the shadow is detached from their feet.
+    shadow.position = sprite.position + Vector2(
+        sprite.size.x * 0.5,
+        sprite.size.y * ROUTE_BOSS_SHADOW_FOOT_Y_RATIO
+    )
+    shadow.scale = ROUTE_BOSS_SHADOW_SCALE
 
 
 func _arrange_boss_card_meters(canvas: Control, ui: Dictionary, combatant: Dictionary) -> void:
