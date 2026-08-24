@@ -33,6 +33,13 @@ func _choose_path(choice: Dictionary) -> void:
 
 
 func _start_stage_battle() -> void:
+    # A Besondere Begegnung replaces the normal battle for this stage. While
+    # its Fundstelle reward is still pending, no inherited/legacy continue
+    # button may ever start an additional normal stage battle.
+    if _boss_fundstelle_pending:
+        _prepare_boss_reward_finish(event_label.text)
+        return
+
     AudioManager.prepare_battle("final" if stage >= AUDIO_FINAL_STAGE else "normal")
     super._start_stage_battle()
 
@@ -229,6 +236,8 @@ func _choose_revive() -> void:
 
 
 func _apply_revive(team_index: int) -> void:
+    var boss_reward: bool = _boss_fundstelle_pending
+
     if team_index < 0 or team_index >= team.size():
         _show_fundstelle_options()
         return
@@ -257,6 +266,13 @@ func _apply_revive(team_index: int) -> void:
     )
     _refresh_team_panel()
     AudioManager.play_heal_sfx()
+
+    # Beleber was added after the original boss-reward flow. Make it obey the
+    # same completion rule as TM, healing items and vitamins: the boss already
+    # WAS this stage's battle, so the reward must finish the stage instead of
+    # exposing the inherited "continue to battle" action.
+    if boss_reward and continue_button != null and continue_button.visible:
+        _prepare_boss_reward_finish(event_label.text)
 
 
 func _revive_hp_amount(max_hp: int) -> int:
