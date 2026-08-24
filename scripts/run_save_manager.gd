@@ -6,7 +6,7 @@ const SAVE_PATH: String = "user://timeflow_run_save.dat"
 const SAVE_VERSION: int = 1
 const SAVE_KIND: String = "adventure_route"
 
-var _last_state_hash: int = 0
+var _last_payload_hash: int = 0
 
 
 func has_run_save() -> bool:
@@ -18,6 +18,11 @@ func saved_stage() -> int:
     return maxi(1, int(payload.get("stage", 1))) if not payload.is_empty() else 1
 
 
+func saved_checkpoint() -> String:
+    var payload: Dictionary = load_run_save()
+    return str(payload.get("checkpoint", "stage_checkpoint")) if not payload.is_empty() else ""
+
+
 func save_route(route: Node, checkpoint: String = "autosave") -> bool:
     if route == null:
         return false
@@ -26,8 +31,8 @@ func save_route(route: Node, checkpoint: String = "autosave") -> bool:
     if state.is_empty():
         return false
 
-    var state_hash: int = hash(state)
-    if state_hash == _last_state_hash and FileAccess.file_exists(SAVE_PATH):
+    var payload_hash: int = hash([checkpoint, state])
+    if payload_hash == _last_payload_hash and FileAccess.file_exists(SAVE_PATH):
         return true
 
     var payload: Dictionary = {
@@ -47,7 +52,7 @@ func save_route(route: Node, checkpoint: String = "autosave") -> bool:
     file.store_var(payload, false)
     file.flush()
     file.close()
-    _last_state_hash = state_hash
+    _last_payload_hash = payload_hash
     return true
 
 
@@ -96,12 +101,12 @@ func restore_route(route: Node) -> bool:
             continue
         route.set(property_name, state[key_value])
 
-    _last_state_hash = hash(state)
+    _last_payload_hash = hash([str(payload.get("checkpoint", "")), state])
     return true
 
 
 func clear_run_save() -> void:
-    _last_state_hash = 0
+    _last_payload_hash = 0
     if not FileAccess.file_exists(SAVE_PATH):
         return
 
@@ -121,6 +126,8 @@ func _snapshot_script_state(route: Node) -> Dictionary:
         var info: Dictionary = info_value as Dictionary
         var usage: int = int(info.get("usage", 0))
         if (usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
+            continue
+        if (usage & PROPERTY_USAGE_STORAGE) == 0:
             continue
 
         var property_name: String = str(info.get("name", ""))
@@ -149,7 +156,8 @@ func _is_variant_save_safe(value: Variant) -> bool:
         TYPE_OBJECT, TYPE_CALLABLE, TYPE_SIGNAL, TYPE_RID:
             return false
         TYPE_ARRAY:
-            for item: Variant in value as Array:
+            var array_value: Array = value as Array
+            for item: Variant in array_value:
                 if not _is_variant_save_safe(item):
                     return false
             return true
