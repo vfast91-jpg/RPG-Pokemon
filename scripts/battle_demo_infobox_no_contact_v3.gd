@@ -39,11 +39,34 @@ func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
     # Never replace a concise, player-readable special summary with the complete
     # database prose just because the summary happens to be short. That was what
     # made attacks such as Schlecker balloon to several lines.
-    if _contains_internal_infobox_token(text):
+    #
+    # A bare "Schaden" is different: for moves whose real rule lives in runtime
+    # metadata (dynamic power, recoil conditions, etc.) it contains no special
+    # information at all. In that case use the player-facing description.
+    # Likewise, newly added family prefixes must never leak as labels such as
+    # "ad modifier" into the combat UI.
+    if _contains_internal_infobox_token(text) or _contains_untranslated_runtime_family_label(text):
         return true
     if text.is_empty():
         return _move_has_complex_player_rule(move)
+    if (
+        text.strip_edges() == "Schaden"
+        and _move_has_complex_player_rule(move)
+        and _move_has_readable_player_fallback(move)
+    ):
+        return true
     return false
+
+
+func _contains_untranslated_runtime_family_label(source: String) -> bool:
+    var lower: String = source.strip_edges().to_lower()
+    return lower.begins_with("ad_") or lower.begins_with("ad ")
+
+
+func _move_has_readable_player_fallback(move: Dictionary) -> bool:
+    if not _clean_player_fallback_fragment(str(move.get("description", ""))).is_empty():
+        return true
+    return _has_player_special_rules(move)
 
 
 func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = false) -> void:
