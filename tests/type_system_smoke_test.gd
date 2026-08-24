@@ -31,6 +31,14 @@ func _initialize() -> void:
     assert(ground_result["feedback_key"] == "super_ineffective", "Elektro gegen Boden muss super_ineffective melden.")
     assert(ground_result["feedback_text"] == "Super ineffektiv!", "0,25x muss sichtbares Super-ineffektiv-Feedback liefern.")
 
+    # Regression: Schlecker (Geist) gegen Mauzi (Normal) ist in Timeflow keine
+    # Immunität. Diese Kombination muss 0,25x UND explizit Super ineffektiv sein.
+    var lick_vs_meowth: Dictionary = type_system.evaluate("ghost", ["normal"])
+    _assert_close(float(lick_vs_meowth["multiplier"]), 0.25, "Schlecker gegen Mauzi")
+    assert(lick_vs_meowth["feedback_key"] == "super_ineffective", "Geist gegen Normal darf nicht als immun gemeldet werden.")
+    assert(lick_vs_meowth["feedback_text"] == "Super ineffektiv!", "Schlecker gegen Mauzi muss Super ineffektiv melden.")
+    assert(lick_vs_meowth["feedback_text"] != "Keine Wirkung.", "Schlecker gegen Mauzi darf niemals Keine Wirkung melden.")
+
     var dual_result: Dictionary = type_system.evaluate("normal", ["ghost", "rock"])
     assert(dual_result["feedback_key"] == "super_ineffective", "0,125x bei Doppeltyp muss ebenfalls super_ineffective melden.")
 
