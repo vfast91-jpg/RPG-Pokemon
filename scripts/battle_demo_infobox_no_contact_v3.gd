@@ -3,10 +3,9 @@ extends "res://scripts/battle_demo_v22_effective_speed_integrity_v1.gd"
 # Final player-facing infobox cleanup.
 #
 # The battle info area is deliberately compact during normal play: it always
-# shows only two text lines. Longer explanations can be opened explicitly with
-# a clearly labelled control and closed again afterwards. This keeps the
-# battlefield calm once the player knows the moves, while the complete
-# explanation remains one click away whenever it is needed.
+# shows only two text lines. Longer move explanations can be opened explicitly
+# with a clearly labelled control and closed again afterwards. Generic battle
+# messages such as Warten never show that control.
 
 const INFOBOX_COLLAPSED_TEXT_HEIGHT: float = 36.0
 const INFOBOX_EXPANDED_TEXT_HEIGHT_MAX: float = 220.0
@@ -17,6 +16,7 @@ const INFOBOX_OVERFLOW_TOLERANCE: float = 4.0
 
 var _attack_infobox_expanded: bool = false
 var _attack_infobox_toggle: Button = null
+var _attack_infobox_is_move_preview: bool = false
 
 
 func _standard_feature_bits(move: Dictionary) -> Array[String]:
@@ -37,14 +37,22 @@ func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
 
 
 func _preview_move(move_id: String, move: Dictionary, touch_confirm: bool = false) -> void:
-    # A newly inspected move always starts in the compact everyday view.
+    # A newly inspected move always starts in the compact everyday view. The
+    # inherited preview may call _set_log(), so mark the text as a move preview
+    # again only after that inherited work is complete.
     _attack_infobox_expanded = false
+    _attack_infobox_is_move_preview = false
     super._preview_move(move_id, move, touch_confirm)
+    _attack_infobox_is_move_preview = true
+    _fit_attack_infobox_to_content()
 
 
 func _set_log(text: String) -> void:
-    # Battle messages also return to the unobtrusive two-line baseline.
+    # Generic battle messages (including Warten) are not expandable move
+    # descriptions. They must never advertise hidden information that does not
+    # exist behind the control.
     _attack_infobox_expanded = false
+    _attack_infobox_is_move_preview = false
     super._set_log(text)
 
 
@@ -62,10 +70,7 @@ func _fit_attack_infobox_to_content() -> void:
         INFOBOX_COLLAPSED_TEXT_HEIGHT,
         float(log_label.get_content_height()) + INFOBOX_COMPACT_TEXT_PADDING
     )
-    var has_hidden_content: bool = (
-        natural_height
-        > INFOBOX_COLLAPSED_TEXT_HEIGHT + INFOBOX_OVERFLOW_TOLERANCE
-    )
+    var has_hidden_content: bool = _attack_infobox_has_hidden_content(natural_height)
 
     # Do not leave an expanded empty/short box behind when the text changes.
     if not has_hidden_content:
@@ -99,6 +104,14 @@ func _fit_attack_infobox_to_content() -> void:
             INFOBOX_EXPANDED_COMMAND_HEIGHT_MAX
         )
     command.offset_top = -command_height
+
+
+func _attack_infobox_has_hidden_content(natural_height: float) -> bool:
+    return (
+        _attack_infobox_is_move_preview
+        and natural_height
+        > INFOBOX_COLLAPSED_TEXT_HEIGHT + INFOBOX_OVERFLOW_TOLERANCE
+    )
 
 
 func _infobox_shown_text_height(natural_height: float) -> float:
