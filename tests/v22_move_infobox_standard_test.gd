@@ -190,6 +190,15 @@ func _test_collapsible_layout_contract(battle) -> void:
         "Mehr anzeigen ▼",
         "Die geschlossene Infobox braucht eine eindeutige Aufklapp-Beschriftung."
     )
+    _check(
+        battle._attack_infobox_overlay_z_index(37) == 37,
+        "Die geschlossene Infobox muss ihren ursprünglichen Ebenenwert behalten."
+    )
+    _check(
+        battle._attack_infobox_overlay_mouse_filter(Control.MOUSE_FILTER_PASS)
+        == Control.MOUSE_FILTER_PASS,
+        "Die geschlossene Infobox muss ihr ursprüngliches Mausverhalten behalten."
+    )
 
     battle._attack_infobox_is_move_preview = false
     _check(
@@ -219,6 +228,15 @@ func _test_collapsible_layout_contract(battle) -> void:
         battle._attack_infobox_toggle_text(),
         "Weniger anzeigen ▲",
         "Die offene Infobox braucht eine eindeutige Zuklapp-Beschriftung."
+    )
+    _check(
+        battle._attack_infobox_overlay_z_index(37) == 900,
+        "Die offene Infobox muss vor Pokemon und Statuskarten liegen."
+    )
+    _check(
+        battle._attack_infobox_overlay_mouse_filter(Control.MOUSE_FILTER_PASS)
+        == Control.MOUSE_FILTER_STOP,
+        "Die offene Infobox muss Maus-Hover auf verdeckte Statuskarten blockieren."
     )
     battle._attack_infobox_expanded = false
     battle._attack_infobox_is_move_preview = false
