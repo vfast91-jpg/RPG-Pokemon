@@ -19,23 +19,35 @@ func _initialize() -> void:
     assert(is_equal_approx(StatusEffects.critical_bonus_fraction(75.0, 0.5), 0.25))
     assert(is_equal_approx(StatusEffects.critical_bonus_fraction(75.0, 1.0), 0.50))
 
-    # The active battle scene may have newer integrity/UI layers above the
-    # migration runtime. Verify the current top layer instead of demanding that
-    # main.tscn points directly at an older intermediate class.
+    # main.tscn is intentionally allowed to gain newer integrity/UI layers over
+    # time. Resolve the active BattleDemo script dynamically and verify that the
+    # status migration still exists anywhere in its inheritance chain.
     var main_text: String = FileAccess.get_file_as_string("res://main.tscn")
+    var battle_resource_regex := RegEx.new()
     assert(
-        main_text.contains("battle_demo_v22_critical_support_integrity_v1.gd"),
-        "main.tscn muss die finale V22-Crit-Support-Integritaet laden."
+        battle_resource_regex.compile(
+            "ext_resource type=\"Script\" path=\"([^\"]+)\" id=\"2_battle\""
+        ) == OK
     )
+    var match_result: RegExMatch = battle_resource_regex.search(main_text)
+    assert(match_result != null, "main.tscn muss eine BattleDemo-Scriptressource besitzen.")
+    var active_battle_path: String = match_result.get_string(1)
+    var active_script: Script = load(active_battle_path) as Script
+    assert(active_script != null, "Die aktive BattleDemo-Runtime muss ladbar sein.")
+
+    var cursor: Script = active_script
+    var migration_found: bool = false
+    while cursor != null:
+        if cursor.resource_path.ends_with("battle_demo_status_effect_migration_v1.gd"):
+            migration_found = true
+            break
+        cursor = cursor.get_base_script()
     assert(
-        load("res://scripts/battle_demo_status_effect_migration_v1.gd") != null,
-        "Die Status-Migrationsruntime muss ohne Parserfehler ladbar sein."
+        migration_found,
+        "Die aktive BattleDemo-Vererbung muss die Status-Migrationsruntime enthalten."
     )
-    var final_runtime_script: Script = load(
-        "res://scripts/battle_demo_v22_critical_support_integrity_v1.gd"
-    ) as Script
-    assert(final_runtime_script != null, "Die finale V22-Crit-Support-Runtime muss ladbar sein.")
-    var final_runtime: Node = final_runtime_script.new() as Node
+
+    var final_runtime: Node = active_script.new() as Node
     assert(final_runtime != null)
 
     # Focus Energy uses +100R percentage points with no historical +25 PP cap.
