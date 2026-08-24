@@ -3,27 +3,28 @@ extends "res://scripts/demo_route_global_pokemon_choice_ui_v1.gd"
 # Route viewport guard.
 #
 # The gold outer frame is a hard viewport boundary. It is NEVER a scrollable
-# surface. Every potentially growing child area owns its overflow locally:
+# surface. Overflow is handled only where scrolling is actually useful:
 # - event/result text scrolls inside its RichTextLabel,
-# - route/path content (including landscape choices) scrolls locally if needed,
 # - dynamic action lists (training, TM/item targets, capture choices, etc.)
-#   scroll locally if needed.
+#   scroll locally if needed,
+# - route/path content (including the two landscape cards) is clipped inside a
+#   bounded viewport but deliberately has NO scrollbar.
 #
-# This deliberately breaks minimum-size propagation from dynamic content before
-# the outer frame is re-anchored. That is the important invariant: adding text,
-# cards or future route choices must not be able to push the gold frame below
-# the visible 640x360 game viewport.
+# This breaks minimum-size propagation from dynamic content before the outer
+# frame is re-anchored. Adding text, cards or future route choices must not be
+# able to push the gold frame below the visible 640x360 game viewport.
 
 const ROUTE_EVENT_LABEL_MAX_MIN_HEIGHT: float = 58.0
+const ROUTE_PATH_MAX_HEIGHT: float = 168.0
 
 var _tf_route_frame: PanelContainer
-var _tf_path_scroll: ScrollContainer
+var _tf_path_viewport: Control
 var _tf_action_scroll: ScrollContainer
 
 
 func _ready() -> void:
     super._ready()
-    _tf_install_local_path_scroll()
+    _tf_install_local_path_viewport()
     _tf_install_local_action_scroll()
     _tf_bound_event_log()
     _tf_refresh_local_scroll_state()
@@ -32,7 +33,7 @@ func _ready() -> void:
 
 func _show_stage_choices(message: String = "") -> void:
     super._show_stage_choices(message)
-    _tf_install_local_path_scroll()
+    _tf_install_local_path_viewport()
     _tf_install_local_action_scroll()
     _tf_bound_event_log()
     _tf_refresh_local_scroll_state()
@@ -105,16 +106,37 @@ func _tf_apply_route_frame_bounds(frame: PanelContainer) -> void:
     frame.offset_bottom = -8.0
 
 
-func _tf_install_local_path_scroll() -> void:
+func _tf_install_local_path_viewport() -> void:
     if path_box == null:
         return
 
     var current_parent: Node = path_box.get_parent()
+
+    # Compatibility cleanup for builds that still have the previous
+    # RoutePathScroll wrapper alive during a hot reload. Replace that scrollbar
+    # with the non-scrolling clipped viewport used by the current layout.
     if current_parent is ScrollContainer:
-        _tf_path_scroll = current_parent as ScrollContainer
-        _tf_path_scroll.name = "RoutePathScroll"
-        _tf_configure_local_scroll(_tf_path_scroll)
-        _tf_connect_path_scroll_signals()
+        var old_scroll := current_parent as ScrollContainer
+        var holder: Node = old_scroll.get_parent()
+        if holder == null:
+            return
+        var old_index: int = old_scroll.get_index()
+        old_scroll.remove_child(path_box)
+        holder.remove_child(old_scroll)
+        old_scroll.free()
+        _tf_path_viewport = _tf_make_path_viewport()
+        holder.add_child(_tf_path_viewport)
+        holder.move_child(_tf_path_viewport, old_index)
+        _tf_path_viewport.add_child(path_box)
+        _tf_configure_path_box()
+        _tf_connect_path_viewport_signals()
+        return
+
+    if current_parent is Control and current_parent.name == "RoutePathViewport":
+        _tf_path_viewport = current_parent as Control
+        _tf_configure_path_viewport(_tf_path_viewport)
+        _tf_configure_path_box()
+        _tf_connect_path_viewport_signals()
         return
 
     if current_parent == null:
@@ -123,20 +145,54 @@ func _tf_install_local_path_scroll() -> void:
     var original_index: int = path_box.get_index()
     current_parent.remove_child(path_box)
 
-    _tf_path_scroll = ScrollContainer.new()
-    _tf_path_scroll.name = "RoutePathScroll"
-    _tf_configure_local_scroll(_tf_path_scroll)
-    current_parent.add_child(_tf_path_scroll)
-    current_parent.move_child(_tf_path_scroll, original_index)
-    _tf_path_scroll.add_child(path_box)
+    _tf_path_viewport = _tf_make_path_viewport()
+    current_parent.add_child(_tf_path_viewport)
+    current_parent.move_child(_tf_path_viewport, original_index)
+    _tf_path_viewport.add_child(path_box)
 
-    # The path VBox may contain tall landscape cards or future route widgets.
-    # Its height must never propagate past this local scrolling boundary.
+    _tf_configure_path_box()
+    _tf_connect_path_viewport_signals()
+
+
+# Compatibility alias retained for older tests/callers. Despite the historical
+# name this no longer installs a scrollbar around path/landscape content.
+func _tf_install_local_path_scroll() -> void:
+    _tf_install_local_path_viewport()
+
+
+func _tf_make_path_viewport() -> Control:
+    var viewport := Control.new()
+    viewport.name = "RoutePathViewport"
+    _tf_configure_path_viewport(viewport)
+    return viewport
+
+
+func _tf_configure_path_viewport(viewport: Control) -> void:
+    viewport.custom_minimum_size = Vector2.ZERO
+    viewport.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    viewport.size_flags_vertical = Control.SIZE_FILL
+    viewport.clip_contents = true
+
+
+func _tf_configure_path_box() -> void:
+    if path_box == null:
+        return
+
+    # A plain Control boundary does not propagate the VBox minimum height to the
+    # outer route layout. The VBox still uses its natural height internally, and
+    # the known landscape layout fits inside the capped 168px viewport without a
+    # scrollbar.
     path_box.custom_minimum_size = Vector2.ZERO
+    path_box.anchor_left = 0.0
+    path_box.anchor_top = 0.0
+    path_box.anchor_right = 1.0
+    path_box.anchor_bottom = 0.0
+    path_box.offset_left = 0.0
+    path_box.offset_top = 0.0
+    path_box.offset_right = 0.0
+    path_box.offset_bottom = 0.0
     path_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     path_box.size_flags_vertical = Control.SIZE_FILL
-
-    _tf_connect_path_scroll_signals()
 
 
 func _tf_install_local_action_scroll() -> void:
@@ -182,7 +238,7 @@ func _tf_configure_local_scroll(scroll: ScrollContainer) -> void:
     scroll.clip_contents = true
 
 
-func _tf_connect_path_scroll_signals() -> void:
+func _tf_connect_path_viewport_signals() -> void:
     if path_box == null:
         return
 
@@ -199,6 +255,11 @@ func _tf_connect_path_scroll_signals() -> void:
         path_box.visibility_changed.connect(visibility_callback)
 
 
+# Compatibility alias retained for older callers.
+func _tf_connect_path_scroll_signals() -> void:
+    _tf_connect_path_viewport_signals()
+
+
 func _tf_connect_action_scroll_signals() -> void:
     if capture_actions == null:
         return
@@ -213,8 +274,6 @@ func _tf_connect_action_scroll_signals() -> void:
 
 
 func _tf_on_path_child_entered(_child: Node) -> void:
-    if path_box != null and path_box.get_child_count() == 1:
-        _tf_reset_path_scroll()
     call_deferred("_tf_refresh_local_scroll_state")
 
 
@@ -249,20 +308,28 @@ func _tf_refresh_local_scroll_state() -> void:
         and not has_actions
     )
 
-    # Action selections take precedence over stale/disabled path choices. This
-    # prevents two local scroll regions from competing for the same route-panel
-    # height during training, capture replacement, TM/item target selection, etc.
-    if _tf_path_scroll != null:
-        _tf_path_scroll.visible = has_paths
+    # Path/landscape content is visually bounded but never scrollable. Its
+    # wrapper only reserves the natural height that is actually needed, capped at
+    # the known safe landscape height so it can never push the outer frame.
+    if _tf_path_viewport != null:
+        _tf_path_viewport.visible = has_paths
+        var path_height: float = 0.0
+        if has_paths:
+            path_height = minf(
+                path_box.get_combined_minimum_size().y,
+                ROUTE_PATH_MAX_HEIGHT
+            )
+        _tf_path_viewport.custom_minimum_size = Vector2(0.0, path_height)
+
     if _tf_action_scroll != null:
         _tf_action_scroll.visible = has_actions
 
-    # Whenever a local choice region is open, the event text keeps only its
-    # bounded minimum height. The remaining space belongs to the relevant local
-    # scroller. With no choices, the event/result text may use spare space.
+    # Dynamic action lists need the maximum remaining height and therefore keep
+    # the event text compact. Normal paths and landscape choices fit without a
+    # path scrollbar, so the event text may use any spare vertical space.
     if event_label != null:
         event_label.size_flags_vertical = (
-            Control.SIZE_FILL if has_paths or has_actions else Control.SIZE_EXPAND_FILL
+            Control.SIZE_FILL if has_actions else Control.SIZE_EXPAND_FILL
         )
 
     # A later child minimum-size recalculation must still not be able to move the
@@ -277,9 +344,9 @@ func _tf_refresh_action_scroll_state() -> void:
     _tf_refresh_local_scroll_state()
 
 
+# Compatibility no-op: path/landscape content no longer has a scrollbar.
 func _tf_reset_path_scroll() -> void:
-    if _tf_path_scroll != null:
-        _tf_path_scroll.scroll_vertical = 0
+    pass
 
 
 func _tf_reset_action_scroll() -> void:
