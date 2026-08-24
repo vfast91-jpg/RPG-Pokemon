@@ -153,6 +153,48 @@ func _show_fundstelle_options() -> void:
 
     capture_actions.add_child(revive_button)
     capture_actions.move_child(revive_button, insert_index)
+    _layout_fundstelle_rewards()
+
+
+func _layout_fundstelle_rewards() -> void:
+    # The Fundstelle always has at most six actual rewards. Present them as two
+    # compact rows (3 TMs / heal + revive + vitamin) so every option is visible
+    # immediately and the player never has to discover a hidden reward by scrolling.
+    if capture_actions == null:
+        return
+
+    var reward_buttons: Array[Button] = []
+    for child: Node in capture_actions.get_children():
+        if child is Button:
+            reward_buttons.append(child as Button)
+
+    if reward_buttons.is_empty():
+        return
+
+    var grid := GridContainer.new()
+    grid.name = "FundstelleRewardGrid"
+    grid.columns = 3
+    grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    grid.add_theme_constant_override("h_separation", 6)
+    grid.add_theme_constant_override("v_separation", 5)
+
+    for button: Button in reward_buttons:
+        capture_actions.remove_child(button)
+
+    capture_actions.add_child(grid)
+    capture_actions.move_child(grid, 0)
+    capture_actions.add_theme_constant_override("separation", 4)
+
+    for button: Button in reward_buttons:
+        button.custom_minimum_size = Vector2(0, 34)
+        button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        button.add_theme_font_size_override("font_size", 10)
+        grid.add_child(button)
+
+    # Reclaim a little of the unused explanatory-text space for the reward rows.
+    # The text still fits comfortably; result/target screens remain scroll-safe.
+    if event_label != null:
+        event_label.custom_minimum_size.y = 48.0
 
 
 func _choose_revive() -> void:
