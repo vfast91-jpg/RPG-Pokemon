@@ -287,6 +287,19 @@ func _feedback_result(target: Dictionary, before: Dictionary) -> Dictionary:
     return result
 
 
+func _tf_current_move_is_direct_damage() -> bool:
+    if _feedback_active_move_id.is_empty():
+        return false
+    var move: Dictionary = _move_data(_feedback_active_move_id)
+    var mechanics_value: Variant = move.get("mechanics", [])
+    if not (mechanics_value is Array):
+        return false
+    for mechanic_value: Variant in mechanics_value:
+        if mechanic_value is Dictionary and str((mechanic_value as Dictionary).get("kind", "")) == "damage":
+            return true
+    return false
+
+
 func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) -> void:
     var player_text: String = _v22_standardize_player_text(text)
 
