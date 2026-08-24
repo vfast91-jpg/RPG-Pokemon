@@ -2,6 +2,7 @@ extends SceneTree
 
 const MoveContractScript = preload("res://scripts/battle/move_contract.gd")
 const SandRuntimeScript = preload("res://scripts/battle_demo_database_sandshrew_family.gd")
+const SandIntegrityScript = preload("res://scripts/battle_demo_sandshrew_hit_aggro_integrity_v1.gd")
 
 const SPECIES_PACK_PATH: String = "res://data/gen1_species_v3_sandshrew_family_v1.json"
 const MOVE_PACK_PATH: String = "res://data/gen1_moves_runtime_v3_19_sandshrew_family_tms.json"
@@ -18,6 +19,7 @@ func _initialize() -> void:
     _test_species_and_playable_registration()
     _test_move_pack_contracts()
     _test_runtime_helpers()
+    _test_hit_followup_and_binding_aggro_integrity()
     _test_active_chain_and_assets()
 
     print("Sandan/Sandamer family integration test: PASS")
@@ -96,10 +98,19 @@ func _test_move_pack_contracts() -> void:
     var multi_hit: Dictionary = (fury_swipes.get("runtime", {}) as Dictionary).get("multi_hit", {})
     assert(multi_hit.get("weights", []) == [3,3,1,1])
 
+    var crush_claw: Dictionary = moves.get("crush_claw", {})
+    var crush_mechanics: Array = crush_claw.get("mechanics", [])
+    assert(crush_mechanics.size() == 2)
+    assert(str((crush_mechanics[1] as Dictionary).get("kind", "")) == "db_chance_mechanic")
+    assert(is_equal_approx(float((crush_mechanics[1] as Dictionary).get("chance", 0.0)), 0.5))
+
     var sand_tomb: Dictionary = moves.get("sand_tomb", {})
     var mechanics: Array = sand_tomb.get("mechanics", [])
     assert(mechanics.size() == 2)
     assert(str((mechanics[1] as Dictionary).get("kind", "")) == "binding")
+    assert(int((mechanics[1] as Dictionary).get("min_ticks", 0)) == 4)
+    assert(int((mechanics[1] as Dictionary).get("max_ticks", 0)) == 5)
+    assert(is_equal_approx(float((mechanics[1] as Dictionary).get("damage_fraction", 0.0)), 1.0 / 8.0))
 
     assert(bool(((moves.get("stone_edge", {}) as Dictionary).get("runtime", {}) as Dictionary).get("high_crit", false)))
 
@@ -127,13 +138,88 @@ func _test_runtime_helpers() -> void:
     runtime.free()
 
 
+func _test_hit_followup_and_binding_aggro_integrity() -> void:
+    var runtime = SandIntegrityScript.new()
+
+    assert(runtime._sand_followup_requires_connected_hit("crush_claw", "db_chance_mechanic"))
+    assert(runtime._sand_followup_requires_connected_hit("sand_tomb", "binding"))
+    assert(not runtime._sand_followup_requires_connected_hit("sand_tomb", "damage"))
+
+    var target: Dictionary = {
+        "id": "enemy_0",
+        "alive": true,
+        "hp": 100,
+        "max_hp": 100,
+        "db_substitute_hp": 0,
+        "binding_effect": {},
+        "timed_modifiers": []
+    }
+    runtime._sand_followup_snapshots = {
+        "enemy_0": {
+            "target": target,
+            "hp": 100,
+            "substitute_hp": 0
+        }
+    }
+
+    # Protection/type immunity: no real HP or Delegator-HP loss -> no follow-up.
+    assert(not runtime._sand_followup_connected(target))
+    runtime._sand_followup_move_id = "crush_claw"
+    assert(is_equal_approx(runtime._effect({}, target, {
+        "kind": "db_chance_mechanic",
+        "chance": 1.0,
+        "mechanic": {"kind": "incoming_damage_mod", "multiplier": 1.2}
+    }), 0.0))
+    assert((target.get("timed_modifiers", []) as Array).is_empty())
+
+    # A normal connected damaging hit unlocks the follow-up.
+    target["hp"] = 80
+    assert(runtime._sand_followup_connected(target))
+
+    # Damage absorbed by Delegator still counts as a connected hit. The existing
+    # central Delegator interceptor is then responsible for blocking the debuff.
+    target["hp"] = 100
+    target["db_substitute_hp"] = 10
+    runtime._sand_followup_snapshots = {
+        "enemy_0": {
+            "target": target,
+            "hp": 100,
+            "substitute_hp": 25
+        }
+    }
+    assert(runtime._sand_followup_connected(target))
+
+    # Binding setup no longer awards the inherited flat +4 Aggro. Its real
+    # residual damage is credited exactly when the tick happens.
+    var actor: Dictionary = {"side": "player", "index": 0, "aggro": 7.0}
+    var bind_target: Dictionary = {"alive": true, "binding_effect": {}}
+    assert(is_equal_approx(runtime._apply_binding(actor, bind_target, {
+        "kind": "binding",
+        "min_ticks": 4,
+        "max_ticks": 4,
+        "damage_fraction": 0.125
+    }), 0.0))
+    assert(not (bind_target.get("binding_effect", {}) as Dictionary).is_empty())
+
+    assert(runtime._credit_actual_binding_damage_aggro(actor, 100, 88) == 12)
+    assert(is_equal_approx(float(actor.get("aggro", 0.0)), 19.0))
+    assert(runtime._credit_actual_binding_damage_aggro(actor, 88, 88) == 0)
+    assert(is_equal_approx(float(actor.get("aggro", 0.0)), 19.0))
+
+    runtime.free()
+
+
 func _test_active_chain_and_assets() -> void:
     assert(ResourceLoader.exists("res://assets/monsters/Sandan.png"))
     assert(ResourceLoader.exists("res://assets/monsters/Sandamer.png"))
     assert(ResourceLoader.exists("res://scripts/battle_demo_database_sandshrew_family.gd"))
+    assert(ResourceLoader.exists("res://scripts/battle_demo_sandshrew_hit_aggro_integrity_v1.gd"))
 
     var active_chain: String = FileAccess.get_file_as_string("res://scripts/battle_demo_type_help_button_polish.gd")
     assert(active_chain.contains("res://scripts/battle_demo_database_sandshrew_family.gd"))
+
+    var main_scene: String = FileAccess.get_file_as_string("res://main.tscn")
+    assert(main_scene.contains("res://scripts/battle_demo_sandshrew_hit_aggro_integrity_v1.gd"))
 
     var weights: Dictionary = _read_json("res://data/gen1_species_weights_v1.json").get("weights_kg", {})
     assert(is_equal_approx(float(weights.get("sandshrew", 0.0)), 12.0))
