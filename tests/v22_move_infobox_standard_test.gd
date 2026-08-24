@@ -185,6 +185,11 @@ func _test_collapsible_layout_contract(battle) -> void:
         is_equal_approx(battle._infobox_shown_text_height(400.0), 36.0),
         "Auch sehr langer Text muss geschlossen bei zwei Zeilen bleiben."
     )
+    _check_equal(
+        battle._attack_infobox_toggle_text(),
+        "Mehr anzeigen ▼",
+        "Die geschlossene Infobox braucht eine eindeutige Aufklapp-Beschriftung."
+    )
 
     battle._attack_infobox_expanded = true
     _check(
@@ -194,6 +199,11 @@ func _test_collapsible_layout_contract(battle) -> void:
     _check(
         is_equal_approx(battle._infobox_shown_text_height(400.0), 220.0),
         "Extrem langer Text muss im aufgeklappten Zustand am sicheren Maximum scrollen."
+    )
+    _check_equal(
+        battle._attack_infobox_toggle_text(),
+        "Weniger anzeigen ▲",
+        "Die offene Infobox braucht eine eindeutige Zuklapp-Beschriftung."
     )
     battle._attack_infobox_expanded = false
 
