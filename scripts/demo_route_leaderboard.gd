@@ -3,7 +3,7 @@ extends RefCounted
 const SAVE_PATH: String = "user://demo_route_bestenliste.json"
 const MAX_ENTRIES: int = 100
 const MAX_NAME_LENGTH: int = 24
-const MAX_ROUTE_STAGE: int = 90
+const MAX_ROUTE_STAGE: int = 100
 
 
 static func load_entries() -> Array:
