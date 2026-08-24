@@ -118,6 +118,22 @@ func _rewrite_main_menu_copy(node: Node) -> void:
         _rewrite_main_menu_copy(child)
 
 
+func _make_pvp_candidate_card(entry: Dictionary) -> PanelContainer:
+    var panel: PanelContainer = super._make_pvp_candidate_card(entry)
+    _remove_pvp_info_tooltip(panel)
+    return panel
+
+
+func _remove_pvp_info_tooltip(node: Node) -> void:
+    if node is Button:
+        var button := node as Button
+        if button.text == "i":
+            button.tooltip_text = ""
+
+    for child: Node in node.get_children():
+        _remove_pvp_info_tooltip(child)
+
+
 func _refresh_leaderboard() -> void:
     super._refresh_leaderboard()
     if leaderboard_text != null:
