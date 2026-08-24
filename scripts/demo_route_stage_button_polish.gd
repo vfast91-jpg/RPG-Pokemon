@@ -17,7 +17,7 @@ func _polish_stage_battle_button() -> void:
     continue_button.custom_minimum_size = Vector2(330, 42)
     continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     continue_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-    continue_button.tooltip_text = "Starte den Kampf dieser Etappe."
+    continue_button.tooltip_text = ""
 
     continue_button.add_theme_font_size_override("font_size", 12)
     continue_button.add_theme_color_override("font_color", Color("f6e7a3"))
