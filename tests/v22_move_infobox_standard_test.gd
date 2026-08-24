@@ -104,12 +104,12 @@ func _initialize() -> void:
             )
 
     _test_representative_boxes(battle, moves)
-    _test_responsive_layout_contract(battle)
+    _test_collapsible_layout_contract(battle)
     _test_compact_presentation_contract(battle)
 
     battle.free()
     if failures == 0:
-        print("V22 move infobox standard test: PASS (479 Attacken + compact responsive Layout)")
+        print("V22 move infobox standard test: PASS (479 Attacken + collapsible two-line layout)")
         quit(0)
     push_error("V22 move infobox standard test: %d Fehler" % failures)
     quit(1)
@@ -171,19 +171,31 @@ func _test_representative_boxes(battle, moves: Dictionary) -> void:
         )
 
 
-func _test_responsive_layout_contract(battle) -> void:
+func _test_collapsible_layout_contract(battle) -> void:
+    battle._attack_infobox_expanded = false
     _check(
         is_equal_approx(battle._infobox_shown_text_height(30.0), 36.0),
-        "Kurze Zwei-Zeilen-Infoboxen müssen auf die kompakte Höhe schrumpfen."
+        "Kurzer Text muss in der normalen Zwei-Zeilen-Höhe bleiben."
     )
     _check(
-        is_equal_approx(battle._infobox_shown_text_height(52.0), 52.0),
-        "Mittellange Infoboxen sollen nur so hoch wie ihr Inhalt sein."
+        is_equal_approx(battle._infobox_shown_text_height(90.0), 36.0),
+        "Langer Text darf die geschlossene Infobox nicht automatisch vergrößern."
     )
     _check(
-        is_equal_approx(battle._infobox_shown_text_height(180.0), 76.0),
-        "Sehr lange Sonderfälle müssen früh in den Scrollmodus wechseln."
+        is_equal_approx(battle._infobox_shown_text_height(400.0), 36.0),
+        "Auch sehr langer Text muss geschlossen bei zwei Zeilen bleiben."
     )
+
+    battle._attack_infobox_expanded = true
+    _check(
+        is_equal_approx(battle._infobox_shown_text_height(90.0), 90.0),
+        "Aufgeklappte Infobox muss den vorhandenen Text sichtbar machen."
+    )
+    _check(
+        is_equal_approx(battle._infobox_shown_text_height(400.0), 220.0),
+        "Extrem langer Text muss im aufgeklappten Zustand am sicheren Maximum scrollen."
+    )
+    battle._attack_infobox_expanded = false
 
 
 func _test_compact_presentation_contract(battle) -> void:
