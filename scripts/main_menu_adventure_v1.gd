@@ -4,7 +4,7 @@ extends "res://scripts/main_endgame_v1.gd"
 # - removes the obsolete free-configurable test battle / Kampflabor entry
 # - promotes Player vs Player to a full-width standalone menu button
 # - presents the route as the actual adventure instead of a demo
-# - gives the four main actions a calm, unified visual treatment without changing layout
+# - keeps the four main actions visually consistent without adding extra copy
 
 
 func _build_main_menu() -> void:
@@ -19,6 +19,8 @@ func _promote_adventure_menu() -> void:
     var route_button: Button = _find_menu_button(menu_root, "DEMO-ROUTE")
     if route_button != null:
         route_button.text = "AUF INS ABENTEUER!"
+        route_button.custom_minimum_size = Vector2(240, 44)
+        route_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
     var test_button: Button = _find_menu_button(menu_root, "TESTKAMPF")
     var pvp_button: Button = _find_menu_button(menu_root, "PLAYER VS PLAYER")
@@ -34,20 +36,16 @@ func _promote_adventure_menu() -> void:
                 battle_mode_row.queue_free()
 
         pvp_button.custom_minimum_size = Vector2(240, 44)
-        if route_button != null:
-            pvp_button.size_flags_horizontal = route_button.size_flags_horizontal
+        pvp_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         pvp_button.remove_theme_font_size_override("font_size")
     elif test_button != null:
         test_button.queue_free()
 
-    _rewrite_main_menu_copy(menu_root)
+    _remove_unrequested_menu_copy(menu_root)
     _polish_main_menu_buttons()
 
 
 func _polish_main_menu_buttons() -> void:
-    # Deliberately style only the four player-facing start-screen actions.
-    # Their existing custom_minimum_size values and container flags stay untouched,
-    # so the menu keeps exactly the same footprint and cannot push content downward.
     var button_texts: Array[String] = [
         "AUF INS ABENTEUER!",
         "PLAYER VS PLAYER",
@@ -59,8 +57,6 @@ func _polish_main_menu_buttons() -> void:
         var button: Button = _find_menu_button(menu_root, button_text)
         if button == null:
             continue
-        # These four buttons are self-explanatory. Tooltips only obscure the menu
-        # and can sit on top of the button the player is trying to click.
         button.tooltip_text = ""
         _apply_main_menu_button_style(button)
 
@@ -103,19 +99,22 @@ func _main_menu_button_style(bg: Color, border: Color) -> StyleBoxFlat:
     return style
 
 
-func _rewrite_main_menu_copy(node: Node) -> void:
+func _remove_unrequested_menu_copy(node: Node) -> void:
     if node is Label:
         var label := node as Label
-        if label.text == "Wähle, was du testen möchtest.":
-            label.text = "Dein Abenteuer beginnt hier."
-        label.text = label.text.replace("Die Demo-Route startet", "Dein Abenteuer startet")
-        label.text = label.text.replace("Demo-Route", "Route")
-    elif node is Button:
-        var button := node as Button
-        button.tooltip_text = button.tooltip_text.replace("Demo-Route", "Route")
+        var text: String = label.text.strip_edges()
+        if (
+            text == "Wähle, was du testen möchtest."
+            or text == "Dein Abenteuer beginnt hier."
+            or text.begins_with("Die Demo-Route startet mit einem zufälligen Pokémon")
+            or text.begins_with("Dein Abenteuer startet mit einem zufälligen Pokémon")
+        ):
+            label.visible = false
+            label.queue_free()
+            return
 
     for child: Node in node.get_children():
-        _rewrite_main_menu_copy(child)
+        _remove_unrequested_menu_copy(child)
 
 
 func _make_pvp_candidate_card(entry: Dictionary) -> PanelContainer:
