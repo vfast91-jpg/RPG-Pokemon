@@ -90,6 +90,17 @@ func _database_begin_multi_hit_sequence(
         )
         return
 
+    super._database_begin_multi_hit_sequence(
+        actor,
+        move_id,
+        move,
+        _v22_adjust_multi_hit_first_hit_snapshots(target_snapshots),
+        planned_hits,
+        guaranteed_crit_for_action
+    )
+
+
+func _v22_adjust_multi_hit_first_hit_snapshots(target_snapshots: Dictionary) -> Dictionary:
     # The inherited multi-hit launcher uses the first-hit HP delta to decide
     # which targets stay in the timed sequence. If the first hit was absorbed
     # by a Delegator, feed it an equivalent first-hit delta while keeping the
@@ -122,15 +133,7 @@ func _database_begin_multi_hit_sequence(
             if real_hp_damage <= 0 and substitute_damage > 0:
                 adjusted["hp"] = int(target.get("hp", 0)) + substitute_damage
         adjusted_snapshots[target_id_value] = adjusted
-
-    super._database_begin_multi_hit_sequence(
-        actor,
-        move_id,
-        move,
-        adjusted_snapshots,
-        planned_hits,
-        guaranteed_crit_for_action
-    )
+    return adjusted_snapshots
 
 
 func _v22_audit_final_move_set() -> void:
