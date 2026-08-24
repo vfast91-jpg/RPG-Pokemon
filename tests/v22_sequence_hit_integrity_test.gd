@@ -16,6 +16,7 @@ func _initialize() -> void:
     _test_substitute_counts_as_direct_hit(battle)
     _test_multi_hit_first_phase_survives_substitute(battle)
     _test_uproar_execution_semantics(battle)
+    _test_rollout_single_sequence_owner(battle)
     _test_interruption_has_no_completion_confusion(battle)
     _test_belch_remains_intentionally_locked(moves)
 
@@ -143,6 +144,59 @@ func _test_uproar_execution_semantics(battle) -> void:
     _check(
         battle._v22_any_opponent_lost_hp({"side": "player"}, {}),
         "Ausgeführter Aufruhr darf nicht allein wegen 0 KP-Schaden als Sequenzabbruch gelten."
+    )
+
+
+func _test_rollout_single_sequence_owner(battle) -> void:
+    _check(
+        battle._v22_rollout_power_chain_for_actor({"sand_defense_curled": false})
+        == [30, 60, 120, 240, 480],
+        "Walzer-Grundkette muss 30/60/120/240/480 bleiben."
+    )
+    _check(
+        battle._v22_rollout_power_chain_for_actor({"sand_defense_curled": true})
+        == [60, 120, 240, 480, 960],
+        "Einigler muss jede Walzer-Stufe exakt verdoppeln."
+    )
+
+    # Simulate the state immediately after the central sequence engine has
+    # processed the first successful action. The Sandan compatibility layer must
+    # not touch the already-established four remaining forced actions.
+    var after_first: Dictionary = {
+        "alive": true,
+        "db_forced_move_id": "rollout",
+        "db_forced_actions_left": 4,
+        "sand_rollout_active": false,
+        "sand_rollout_step": 0
+    }
+    battle._sand_finish_rollout_action(after_first, true, true, false)
+    _check(
+        int(after_first.get("db_forced_actions_left", -1)) == 4,
+        "Walzer darf nach Aktion 1 den zentralen Wiederholungszähler nicht doppelt reduzieren."
+    )
+    _check(
+        bool(after_first.get("sand_rollout_active", false))
+        and int(after_first.get("sand_rollout_step", 0)) == 1,
+        "Sandan-Kompatibilitätszustand muss nach Walzer 1 nur die Anzeige nachführen."
+    )
+
+    # After action 2 the central engine has already decremented 4 -> 3. The old
+    # Sandan handler used to decrement this a second time to 2; that was the bug.
+    var after_second: Dictionary = {
+        "alive": true,
+        "db_forced_move_id": "rollout",
+        "db_forced_actions_left": 3,
+        "sand_rollout_active": true,
+        "sand_rollout_step": 1
+    }
+    battle._sand_finish_rollout_action(after_second, true, true, true)
+    _check(
+        int(after_second.get("db_forced_actions_left", -1)) == 3,
+        "Walzer darf nach Aktion 2 den zentralen Zähler nicht von 3 auf 2 doppelt reduzieren."
+    )
+    _check(
+        int(after_second.get("sand_rollout_step", 0)) == 2,
+        "Walzer-Anzeigezustand muss nach Aktion 2 auf Stufe 2 fortschreiten."
     )
 
 
