@@ -1,6 +1,6 @@
 extends SceneTree
 
-const BattleScript = preload("res://scripts/battle_demo_infobox_final_v2.gd")
+const BattleScript = preload("res://scripts/battle_demo_target_marker_clean_v1.gd")
 const V22MoveCatalog = preload("res://scripts/battle/v22_move_catalog.gd")
 
 const EXPECTED_TARGET_LABELS: Dictionary = {
@@ -105,10 +105,11 @@ func _initialize() -> void:
 
     _test_representative_boxes(battle, moves)
     _test_responsive_layout_contract(battle)
+    _test_compact_presentation_contract(battle)
 
     battle.free()
     if failures == 0:
-        print("V22 move infobox standard test: PASS (479 Attacken + responsive Layout)")
+        print("V22 move infobox standard test: PASS (479 Attacken + compact responsive Layout)")
         quit(0)
     push_error("V22 move infobox standard test: %d Fehler" % failures)
     quit(1)
@@ -172,16 +173,38 @@ func _test_representative_boxes(battle, moves: Dictionary) -> void:
 
 func _test_responsive_layout_contract(battle) -> void:
     _check(
-        is_equal_approx(battle._infobox_shown_text_height(30.0), 54.0),
-        "Kurze Infoboxen unterschreiten die kompakte Mindesthöhe."
+        is_equal_approx(battle._infobox_shown_text_height(30.0), 36.0),
+        "Kurze Zwei-Zeilen-Infoboxen müssen auf die kompakte Höhe schrumpfen."
     )
     _check(
-        is_equal_approx(battle._infobox_shown_text_height(82.0), 82.0),
-        "Mittellange Infoboxen dürfen nicht unnötig gekappt werden."
+        is_equal_approx(battle._infobox_shown_text_height(52.0), 52.0),
+        "Mittellange Infoboxen sollen nur so hoch wie ihr Inhalt sein."
     )
     _check(
-        is_equal_approx(battle._infobox_shown_text_height(180.0), 112.0),
-        "Sehr lange Sonderfälle müssen am Layout-Limit in den Scrollmodus wechseln."
+        is_equal_approx(battle._infobox_shown_text_height(180.0), 76.0),
+        "Sehr lange Sonderfälle müssen früh in den Scrollmodus wechseln."
+    )
+
+
+func _test_compact_presentation_contract(battle) -> void:
+    _check(
+        not battle._standard_feature_bits({"contact": true}).has("Kontakt"),
+        "Kontakt darf keine eigene Besonderheitszeile erzeugen."
+    )
+
+    var readable_special: Dictionary = {
+        "category": "physical",
+        "power": 30,
+        "runtime": {"special_rule": true},
+        "special_rules": ["Eine lange zusätzliche Spielerregel, die nicht automatisch eingeblendet werden soll."]
+    }
+    _check(
+        not battle._summary_needs_player_fallback(readable_special, "Ziel-Aggro halbieren"),
+        "Kurze verständliche Sonderwirkungs-Texte dürfen nicht zu Langtext aufgebläht werden."
+    )
+    _check(
+        battle._summary_needs_player_fallback(readable_special, "v22_internal_rule"),
+        "Interne Runtime-Texte müssen weiterhin auf sicheren Spielertext zurückfallen."
     )
 
 
