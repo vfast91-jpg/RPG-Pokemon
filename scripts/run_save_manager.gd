@@ -6,11 +6,14 @@ const SAVE_PATH: String = "user://timeflow_run_save.dat"
 const SAVE_VERSION: int = 1
 const SAVE_KIND: String = "adventure_route"
 
+# Kept configurable so the persistence layer can be regression-tested without
+# ever touching a player's real adventure save.
+var save_path: String = SAVE_PATH
 var _last_payload_hash: int = 0
 
 
 func has_run_save() -> bool:
-    return FileAccess.file_exists(SAVE_PATH) and not load_run_save().is_empty()
+    return FileAccess.file_exists(save_path) and not load_run_save().is_empty()
 
 
 func saved_stage() -> int:
@@ -29,10 +32,14 @@ func save_route(route: Node, checkpoint: String = "autosave") -> bool:
 
     var state: Dictionary = _snapshot_script_state(route)
     if state.is_empty():
+        push_error("RunSaveManager: Kein speicherbarer Run-Zustand gefunden.")
+        return false
+    if not state.has("stage") or not state.has("team"):
+        push_error("RunSaveManager: Pflichtfelder stage/team fehlen im Run-Snapshot.")
         return false
 
     var payload_hash: int = hash([checkpoint, state])
-    if payload_hash == _last_payload_hash and FileAccess.file_exists(SAVE_PATH):
+    if payload_hash == _last_payload_hash and FileAccess.file_exists(save_path):
         return true
 
     var payload: Dictionary = {
@@ -44,39 +51,35 @@ func save_route(route: Node, checkpoint: String = "autosave") -> bool:
         "state": state
     }
 
-    var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+    var file := FileAccess.open(save_path, FileAccess.WRITE)
     if file == null:
-        push_error("RunSaveManager: Spielstand konnte nicht geöffnet werden: %s" % SAVE_PATH)
+        push_error("RunSaveManager: Spielstand konnte nicht geöffnet werden: %s" % save_path)
         return false
 
     file.store_var(payload, false)
     file.flush()
+    var write_error: Error = file.get_error()
     file.close()
+    if write_error != OK:
+        push_error(
+            "RunSaveManager: Fehler beim Schreiben des Spielstands (%s)."
+            % error_string(write_error)
+        )
+        return false
+
+    # Do not report success merely because FileAccess.open() succeeded. Verify
+    # that the just-written payload can actually be read and validated again.
+    var verified: Dictionary = _load_payload()
+    if verified.is_empty():
+        push_error("RunSaveManager: Geschriebener Spielstand konnte nicht verifiziert werden.")
+        return false
+
     _last_payload_hash = payload_hash
     return true
 
 
 func load_run_save() -> Dictionary:
-    if not FileAccess.file_exists(SAVE_PATH):
-        return {}
-
-    var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-    if file == null:
-        return {}
-
-    var value: Variant = file.get_var(false)
-    file.close()
-    if not (value is Dictionary):
-        return {}
-
-    var payload: Dictionary = value as Dictionary
-    if int(payload.get("version", 0)) != SAVE_VERSION:
-        return {}
-    if str(payload.get("kind", "")) != SAVE_KIND:
-        return {}
-    if not (payload.get("state", {}) is Dictionary):
-        return {}
-    return payload
+    return _load_payload()
 
 
 func restore_route(route: Node) -> bool:
@@ -107,13 +110,39 @@ func restore_route(route: Node) -> bool:
 
 func clear_run_save() -> void:
     _last_payload_hash = 0
-    if not FileAccess.file_exists(SAVE_PATH):
+    if not FileAccess.file_exists(save_path):
         return
 
-    var absolute_path: String = ProjectSettings.globalize_path(SAVE_PATH)
+    var absolute_path: String = ProjectSettings.globalize_path(save_path)
     var error: Error = DirAccess.remove_absolute(absolute_path)
     if error != OK:
         push_warning("RunSaveManager: Spielstand konnte nicht gelöscht werden (%s)." % error_string(error))
+
+
+func _load_payload() -> Dictionary:
+    if not FileAccess.file_exists(save_path):
+        return {}
+
+    var file := FileAccess.open(save_path, FileAccess.READ)
+    if file == null:
+        return {}
+
+    var value: Variant = file.get_var(false)
+    var read_error: Error = file.get_error()
+    file.close()
+    if read_error != OK and read_error != ERR_FILE_EOF:
+        return {}
+    if not (value is Dictionary):
+        return {}
+
+    var payload: Dictionary = value as Dictionary
+    if int(payload.get("version", 0)) != SAVE_VERSION:
+        return {}
+    if str(payload.get("kind", "")) != SAVE_KIND:
+        return {}
+    if not (payload.get("state", {}) is Dictionary):
+        return {}
+    return payload
 
 
 func _snapshot_script_state(route: Node) -> Dictionary:
@@ -125,22 +154,34 @@ func _snapshot_script_state(route: Node) -> Dictionary:
 
         var info: Dictionary = info_value as Dictionary
         var usage: int = int(info.get("usage", 0))
+
+        # Runtime GDScript members are the actual run state. They do NOT need to
+        # carry PROPERTY_USAGE_STORAGE; requiring that flag was the bug that
+        # could produce an empty snapshot and therefore no save file at all.
         if (usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
-            continue
-        if (usage & PROPERTY_USAGE_STORAGE) == 0:
             continue
 
         var property_name: String = str(info.get("name", ""))
-        if property_name.is_empty() or _is_save_system_internal(property_name):
-            continue
+        _copy_property_if_safe(route, property_name, state)
 
-        var value: Variant = route.get(property_name)
-        if not _is_variant_save_safe(value):
-            continue
-
-        state[property_name] = value
-
+    # Defensive fallback for the two fields without which a run can never be
+    # considered valid, even if Godot changes property usage flags in a future
+    # version.
+    _copy_property_if_safe(route, "stage", state)
+    _copy_property_if_safe(route, "team", state)
     return state
+
+
+func _copy_property_if_safe(route: Node, property_name: String, state: Dictionary) -> void:
+    if property_name.is_empty() or state.has(property_name):
+        return
+    if _is_save_system_internal(property_name):
+        return
+
+    var value: Variant = route.get(property_name)
+    if not _is_variant_save_safe(value):
+        return
+    state[property_name] = value
 
 
 func _is_save_system_internal(property_name: String) -> bool:
