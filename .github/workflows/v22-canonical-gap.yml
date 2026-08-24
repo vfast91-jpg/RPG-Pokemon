@@ -1,0 +1,42 @@
+name: V22 Canonical Gap Regression
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - data/gen1_moves_runtime_v22_canonical_gap_10.json
+      - scripts/battle_demo_v22_canonical_gap_fill_v1.gd
+      - scripts/battle_demo_typenspiegel_ui_fix_v1.gd
+      - tests/v22_canonical_gap_fill_test.gd
+      - .github/workflows/v22-canonical-gap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-gap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            --output godot.zip \
+            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.7.2-stable_linux.x86_64 godot
+          chmod +x godot
+          ./godot --version
+
+      - name: Parse project headless
+        run: ./godot --headless --path . --editor --quit
+
+      - name: V22 canonical gap regression
+        run: ./godot --headless --path . --script tests/v22_canonical_gap_fill_test.gd
