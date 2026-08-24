@@ -11,6 +11,7 @@ var _run_save_new_dialog: ConfirmationDialog
 
 func _build_main_menu() -> void:
     super._build_main_menu()
+    _rewrite_stage_count_copy(menu_root)
     _run_save_adventure_button = _find_menu_button(menu_root, "AUF INS ABENTEUER!")
     _install_single_slot_adventure_row()
     _build_new_adventure_dialog()
@@ -32,6 +33,12 @@ func _start_demo_route() -> void:
         demo_route.call("continue_saved_route")
     else:
         demo_route.call("start_route")
+
+
+func _refresh_leaderboard() -> void:
+    super._refresh_leaderboard()
+    if leaderboard_text != null:
+        leaderboard_text.text = leaderboard_text.text.replace("/90", "/100")
 
 
 func _install_single_slot_adventure_row() -> void:
@@ -105,3 +112,17 @@ func _refresh_run_save_menu() -> void:
     _run_save_adventure_button.tooltip_text = ""
     if _run_save_new_button != null:
         _run_save_new_button.visible = has_save
+
+
+func _rewrite_stage_count_copy(node: Node) -> void:
+    if node is Label:
+        var label: Label = node as Label
+        label.text = label.text.replace("90 Etappen", "100 Etappen")
+        label.text = label.text.replace("Etappe 90", "Etappe 100")
+    elif node is Button:
+        var button: Button = node as Button
+        button.tooltip_text = button.tooltip_text.replace("90 Etappen", "100 Etappen")
+        button.tooltip_text = button.tooltip_text.replace("Etappe 90", "Etappe 100")
+
+    for child: Node in node.get_children():
+        _rewrite_stage_count_copy(child)
