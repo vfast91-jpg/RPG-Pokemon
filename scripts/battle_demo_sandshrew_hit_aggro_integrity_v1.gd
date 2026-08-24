@@ -15,6 +15,10 @@ extends "res://scripts/battle_demo_target_marker_clean_v1.gd"
 # effect is its later periodic damage, so no speculative flat Aggro is awarded on
 # application. Each binding tick instead credits the source with exactly the KP
 # damage that actually happened.
+#
+# Schmeichler has one Nidoran-family follow-up that is applied after the generic
+# status mechanics resolve. Reuse the same central Delegator interceptor here so
+# that its three-action STATUS bonus cannot leak through a hostile substitute.
 
 const SAND_HIT_GUARDED_MOVES: Array[String] = ["crush_claw", "sand_tomb"]
 
@@ -102,3 +106,9 @@ func _credit_actual_binding_damage_aggro(
         return 0
     source["aggro"] = float(source.get("aggro", 0.0)) + float(actual_damage)
     return actual_damage
+
+
+func _nido_apply_status_effectiveness_bonus(actor: Dictionary, target: Dictionary) -> void:
+    if _bulba_substitute_blocks_effect(actor, target, {"kind": "status"}):
+        return
+    super._nido_apply_status_effectiveness_bonus(actor, target)
