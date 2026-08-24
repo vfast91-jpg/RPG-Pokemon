@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_phase_animation_fix_v1.gd"
+extends "res://scripts/battle_demo_v22_canonical_gap_fill_v1.gd"
 
 # Final hotfix for combat-visible type changes and Typenspiegel feedback.
 #
