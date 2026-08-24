@@ -91,10 +91,37 @@ func _execute_move(actor: Dictionary, move_id: String) -> void:
 
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
     var kind: String = str(mechanic.get("kind", ""))
+    var status_id: String = str(mechanic.get("status", ""))
+
     if kind == "zf_wonder_room":
         return _zf_activate_wonder_room(actor)
     if kind == "zf_perish_song":
         return _zf_apply_perish_song(actor)
+
+    # Older database packs may still expose Freeze through the generic status
+    # mechanic. Route that through the normalized V22 status implementation and
+    # require actual target HP loss, so protection, immunity and Delegator do not
+    # leak Freeze onto the real Pokémon behind the blocked hit.
+    if kind in ["status", "db_status"] and status_id == "freeze":
+        if _zf_actual_damage(target) <= 0:
+            return 0.0
+        return _zf_apply_status_direct(
+            actor,
+            target,
+            "freeze",
+            float(mechanic.get("chance", 1.0))
+        )
+
+    # Compiler/runtime packs may represent the central thaw interactions either
+    # as runtime flags (handled before the move above) or as explicit mechanics.
+    if kind == "thaw":
+        _zf_clear_freeze(actor, "🔥 AUFGETAUT")
+        return 0.0
+    if kind == "thaw_target_if_hit":
+        if _zf_actual_damage(target) > 0:
+            _zf_clear_freeze(target, "🔥 AUFGETAUT")
+        return 0.0
+
     return super._effect(actor, target, mechanic)
 
 
@@ -125,6 +152,12 @@ func _zf_cleanse_major(target: Dictionary) -> float:
 
 func _zf_roll_freeze_actions() -> int:
     return randi_range(ZF_FREEZE_MIN_ACTIONS, ZF_FREEZE_MAX_ACTIONS)
+
+
+func _zf_consume_freeze_action_budget(actor: Dictionary) -> int:
+    var remaining: int = maxi(1, int(actor.get("zf_freeze_actions", 0))) - 1
+    actor["zf_freeze_actions"] = remaining
+    return remaining
 
 
 func _zf_activate_wonder_room(actor: Dictionary) -> float:
@@ -176,8 +209,7 @@ func _zf_tick_perish_after_action(combatant: Dictionary) -> void:
 
 
 func _zf_consume_frozen_action(actor: Dictionary) -> void:
-    var remaining: int = maxi(1, int(actor.get("zf_freeze_actions", 0))) - 1
-    actor["zf_freeze_actions"] = remaining
+    var remaining: int = _zf_consume_freeze_action_budget(actor)
     actor["zf_ally_ko_since_action"] = false
     _begin_counted_action(actor)
     actor["atb"] = 0.0
