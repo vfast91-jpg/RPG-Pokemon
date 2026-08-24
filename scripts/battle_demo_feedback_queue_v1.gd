@@ -29,11 +29,14 @@ func _start_battle() -> void:
 
 
 func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) -> void:
-    # battle_demo_feedback_polish normally captures precise mechanic labels in
-    # its own override before delegating to the visual renderer. Because this
-    # final queue layer delays rendering, capture that information immediately
-    # so deferred KEIN-EFFEKT checks keep their existing behavior.
-    _tf_capture_custom_feedback(combatant, text)
+    var player_text: String = _tf_prepare_feedback_text(combatant, text)
+    if player_text.strip_edges().is_empty():
+        return
+
+    # Preserve every inherited non-visual side effect (especially the custom
+    # feedback capture used by deferred KEIN-EFFEKT validation), but suppress
+    # the old renderer itself. Rendering is handled by this queue below.
+    _tf_run_inherited_feedback_side_effects(combatant, player_text, color)
 
     if battle_panel == null:
         return
@@ -42,7 +45,7 @@ func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) ->
     if combatant_id.is_empty():
         _tf_render_feedback_label(
             combatant,
-            text,
+            player_text,
             color,
             FEEDBACK_QUEUE_MAX_LABEL_SECONDS,
             "",
@@ -54,7 +57,7 @@ func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) ->
     var queue: Array = queue_value if queue_value is Array else []
     queue.append({
         "combatant": combatant,
-        "text": text,
+        "text": player_text,
         "color": color
     })
     _tf_feedback_queues[combatant_id] = queue
@@ -62,9 +65,9 @@ func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) ->
     if bool(_tf_feedback_busy.get(combatant_id, false)):
         return
 
-    # Defer one frame/call-stack step so labels emitted by one resolved action
-    # are collected into the same batch. That lets us choose a readable speed
-    # while still fitting the usual 2.5-second action-feedback window.
+    # Defer one call-stack step so labels emitted by one resolved action are
+    # collected into the same batch. This gives short bursts an adaptive speed
+    # while keeping them inside the normal action-feedback window.
     _tf_feedback_busy[combatant_id] = true
     call_deferred(
         "_tf_begin_feedback_batch",
@@ -73,19 +76,49 @@ func _spawn_feedback_label(combatant: Dictionary, text: String, color: Color) ->
     )
 
 
-func _tf_capture_custom_feedback(combatant: Dictionary, text: String) -> void:
-    if not _feedback_should_capture_custom_label(text):
-        return
+func _tf_prepare_feedback_text(combatant: Dictionary, text: String) -> String:
+    # Keep the V22 final vocabulary guard that previously sat at the visual
+    # entry point. The queue must never reintroduce historical wording.
+    var player_text: String = _v22_standardize_player_text(text)
 
-    var target_id: String = str(combatant.get("id", ""))
-    if target_id.is_empty():
-        return
+    # Preserve the central type-immunity correction from the inherited V22
+    # layer. A stale specialist label must not claim WIRKUNGSLOS when the
+    # authoritative TypeSystem says the direct-damage move has a multiplier.
+    var upper: String = player_text.to_upper()
+    var looks_like_old_type_immunity: bool = (
+        upper.contains("WIRKUNGSLOS")
+        or upper == "KEINE WIRKUNG"
+        or upper == "KEINE WIRKUNG."
+    )
+    if looks_like_old_type_immunity and _tf_current_move_is_direct_damage():
+        var move: Dictionary = _move_data(_feedback_active_move_id)
+        var move_type: String = str(move.get("type", ""))
+        if TypeSystem.is_known_type(move_type):
+            var multiplier: float = TypeSystem.get_multiplier(
+                move_type,
+                _type_array(combatant.get("types", []))
+            )
+            if not is_zero_approx(multiplier):
+                var central_feedback: String = TypeSystem.get_feedback_text(multiplier).strip_edges()
+                if central_feedback.is_empty():
+                    return ""
+                player_text = central_feedback.trim_suffix(".").trim_suffix("!").to_upper()
 
-    var labels_value: Variant = _feedback_custom_labels.get(target_id, [])
-    var labels: Array = labels_value if labels_value is Array else []
-    if not labels.has(text):
-        labels.append(text)
-    _feedback_custom_labels[target_id] = labels
+    return player_text
+
+
+func _tf_run_inherited_feedback_side_effects(
+    combatant: Dictionary,
+    text: String,
+    color: Color
+) -> void:
+    # The legacy renderer exits immediately when battle_panel is null. Temporarily
+    # hiding the panel therefore lets the complete inherited override chain run
+    # its text guards/capture logic without creating a second visual label.
+    var saved_battle_panel: Variant = battle_panel
+    battle_panel = null
+    super._spawn_feedback_label(combatant, text, color)
+    battle_panel = saved_battle_panel
 
 
 func _tf_begin_feedback_batch(combatant_id: String, generation: int) -> void:
