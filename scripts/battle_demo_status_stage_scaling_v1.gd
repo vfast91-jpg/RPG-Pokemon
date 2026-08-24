@@ -14,7 +14,7 @@ extends "res://scripts/battle_demo_low_hp_power_v1.gd"
 # each new modifier. Horter now owns one persistent Defense contribution that is
 # derived from its stack count and disappears only when its stacks are consumed.
 
-const StatusStageScaling = preload("res://scripts/battle/status_stage_scaling.gd")
+const StageScalingRules = preload("res://scripts/battle/status_stage_scaling.gd")
 const STOCKPILE_ORIGINAL_POSITIVE_STAGES: float = 2.0
 
 
@@ -33,7 +33,7 @@ func _status_modifier_multiplier(
 ) -> float:
     var signed_stages: float = float(mechanic.get("multiplier_from_special", 1.0))
     var adjusted: Dictionary = mechanic.duplicate(true)
-    adjusted["multiplier_from_special"] = StatusStageScaling.adjusted_signed_stage_weight(
+    adjusted["multiplier_from_special"] = StageScalingRules.adjusted_signed_stage_weight(
         kind,
         signed_stages
     )
@@ -85,7 +85,7 @@ func _apply_global_stockpile(actor: Dictionary, mechanic: Dictionary) -> float:
     actor["db_stockpile"] = stacks
 
     var signed_stages: float = -STOCKPILE_ORIGINAL_POSITIVE_STAGES
-    var per_stack_weight: float = StatusStageScaling.effective_positive_stage_weight(
+    var per_stack_weight: float = StageScalingRules.effective_positive_stage_weight(
         "incoming_damage_mod",
         signed_stages
     )
