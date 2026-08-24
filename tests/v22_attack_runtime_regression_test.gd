@@ -1,6 +1,6 @@
 extends SceneTree
 
-const CurrentBattleScript = preload("res://scripts/battle_demo_v22_runtime_completion_v1.gd")
+const CurrentBattleScript = preload("res://scripts/battle_demo_v22_effective_speed_integrity_v1.gd")
 const V22MoveCatalog = preload("res://scripts/battle/v22_move_catalog.gd")
 
 const PER_TARGET_ACCURACY_IDS: Array[String] = [
@@ -14,6 +14,7 @@ const FLINCH_IDS: Array[String] = [
     "iron_head", "extrasensory", "sky_attack", "astonish", "waterfall",
     "stomp", "headbutt", "icicle_crash", "mountain_gale", "dragon_rush"
 ]
+const V22_INTENTIONALLY_LOCKED_IDS: Array[String] = ["belch"]
 const MULTI_HIT_CONTRACTS: Dictionary = {
     "fury_attack": [2, 5, [3, 3, 1, 1]],
     "pin_missile": [2, 5, [3, 3, 1, 1]],
@@ -47,7 +48,11 @@ func _initialize() -> void:
         if not moves.has(move_id):
             continue
         var move: Dictionary = _move(moves, move_id)
-        _check(bool(_runtime(move).get("runtime_supported", true)), move_id + ": runtime_supported=false")
+        var supported: bool = bool(_runtime(move).get("runtime_supported", true))
+        if V22_INTENTIONALLY_LOCKED_IDS.has(move_id):
+            _check(not supported, move_id + ": V22-Zukunftssperre wurde versehentlich aufgehoben.")
+        else:
+            _check(supported, move_id + ": runtime_supported=false")
         _check(battle._v22_move_has_executable_path(move), move_id + ": kein ausführbarer Runtime-Pfad")
 
     _test_rock_slide(battle, moves)
@@ -58,6 +63,9 @@ func _initialize() -> void:
     _test_sequences(moves)
     _test_charge_and_delay_paths(moves)
     _test_runtime_completion(battle, moves)
+    _test_critical_support(battle, moves)
+    _test_effective_speed_power(battle, moves)
+    _test_intentional_locks(moves)
 
     battle.free()
     if failures == 0:
@@ -205,6 +213,89 @@ func _test_runtime_completion(battle, moves: Dictionary) -> void:
     battle._effect(source, rooted, {"kind": "db_atb_pause"})
     _check(float(rooted.get("db_atb_pause_remaining_seconds", 0.0)) > 0.0, "Rooted darf Drachenruten-Pause nicht blockieren.")
     battle._v22_active_move_id = ""
+
+
+func _test_critical_support(battle, moves: Dictionary) -> void:
+    var focus_energy: Dictionary = _move(moves, "focus_energy")
+    _check(_has_mechanic(focus_energy, "critical_focus"), "Energiefokus: critical_focus fehlt.")
+    _check(
+        is_equal_approx(float(battle._status_percent(75.0)), 50.0),
+        "Energiefokus muss bei Status 75 +50 Prozentpunkte liefern, nicht den alten +25-Cap."
+    )
+
+    var dragon_cheer_active: Dictionary = {
+        "cf_dragon_cheer_actions": 3,
+        "db_focus_energy_bonus_pp": 0.0,
+        "critical_focus_bonus": 0.0
+    }
+    _check(
+        battle._v22_focus_energy_blocked_by_dragon_cheer(dragon_cheer_active),
+        "Aktives Drachenjubel muss Energiefokus blockieren."
+    )
+
+    var focus_energy_active: Dictionary = {
+        "cf_dragon_cheer_actions": 0,
+        "db_focus_energy_bonus_pp": 50.0,
+        "critical_focus_bonus": 0.5
+    }
+    _check(
+        not battle._cf_dragon_cheer_eligible(focus_energy_active),
+        "Aktiver Energiefokus muss Drachenjubel blockieren."
+    )
+
+
+func _test_effective_speed_power(battle, moves: Dictionary) -> void:
+    var electro_ball: Dictionary = _move(moves, "electro_ball")
+    var runtime: Dictionary = _runtime(electro_ball)
+    _check(bool(runtime.get("runtime_supported", false)), "Elektroball muss spielbar sein.")
+    _check(bool(runtime.get("timeflow_effective_speed_power", false)), "Elektroball: effektiver-Tempo-Pfad fehlt.")
+    _check(runtime.get("power_tiers", []) == [40, 60, 80, 120, 150], "Elektroball: falsche V22-Stärkestufen.")
+
+    var actor: Dictionary = {
+        "speed": 100.0, "paralyzed": false, "cycle": 7.0, "atb": 0.0,
+        "timed_modifiers": []
+    }
+    var target: Dictionary = {
+        "speed": 50.0, "paralyzed": false, "cycle": 1.0, "atb": 99.0,
+        "timed_modifiers": [], "db_atb_pause_remaining_seconds": 99.0
+    }
+    _check(
+        battle._pika_electro_ball_power(actor, target) == 80,
+        "Elektroball: Tempo 100 gegen 50 muss Verhältnis 2x und Stärke 80 ergeben."
+    )
+
+    actor["speed"] = 200.0
+    _check(battle._pika_electro_ball_power(actor, target) == 150, "Elektroball: >=4x muss Stärke 150 ergeben.")
+    actor["speed"] = 40.0
+    _check(battle._pika_electro_ball_power(actor, target) == 40, "Elektroball: <1x muss Stärke 40 ergeben.")
+
+    actor["speed"] = 100.0
+    actor["paralyzed"] = true
+    _check(
+        battle._pika_electro_ball_power(actor, target) == 60,
+        "Elektroball: Paralyse muss die wirksame Geschwindigkeit halbieren."
+    )
+
+    actor["paralyzed"] = false
+    actor["speed"] = 50.0
+    actor["timed_modifiers"] = [
+        {"kind": "atb_cycle_mod", "multiplier": 0.5}
+    ]
+    _check(
+        battle._pika_electro_ball_power(actor, target) == 80,
+        "Elektroball: echte Tempo-Modifikatoren müssen in das Verhältnis eingehen."
+    )
+
+
+func _test_intentional_locks(moves: Dictionary) -> void:
+    var belch: Dictionary = _move(moves, "belch")
+    _check(not bool(_runtime(belch).get("runtime_supported", true)), "Rülpser darf vor der Beerenmechanik nicht regulär freigeschaltet sein.")
+    _check(_has_mechanic(belch, "damage"), "Rülpser: zukünftiger Schadenspfad muss erhalten bleiben.")
+    var rules: String = str(belch.get("special_rules", ""))
+    _check(
+        rules.contains("Beerenmechanik") or rules.contains("requires_berry_consumed"),
+        "Rülpser: V22-Beerenabhängigkeit ist nicht dokumentiert."
+    )
 
 
 func _move(moves: Dictionary, move_id: String) -> Dictionary:
