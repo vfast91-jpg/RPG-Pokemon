@@ -95,7 +95,7 @@ func _show_fundstelle_options() -> void:
         var tm_button := Button.new()
         tm_button.text = "💿 TM · %s" % str(entry.get("name", entry.get("move_id", "TM")))
         tm_button.custom_minimum_size = Vector2(0, 27)
-        tm_button.tooltip_text = _tm_recipient_hint(recipients)
+        tm_button.tooltip_text = _tm_offer_tooltip(entry, recipients)
         tm_button.pressed.connect(_choose_tm_offer.bind(entry))
         capture_actions.add_child(tm_button)
 
