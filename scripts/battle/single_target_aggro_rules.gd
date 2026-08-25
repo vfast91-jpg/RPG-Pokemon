@@ -5,6 +5,7 @@ extends RefCounted
 # owns only the invariant classification and multiplier.
 
 const TARGET_AGGRO_MULTIPLIER: float = 0.5
+const BOSS_LOCKED_AGGRO: float = 1.0
 const NON_SUCCESS_OUTCOMES: Array[String] = [
     "miss", "immune", "blocked", "failed", "skipped"
 ]
@@ -93,4 +94,10 @@ static func should_reduce(
 
 
 static func reduce(target: Dictionary) -> void:
+    # Boss Aggro is a hard Timeflow invariant. Target relief must never turn
+    # Aggro 1 into 0.5 (or lower), otherwise reinforcements would no longer
+    # reliably pull focus away from their leader.
+    if bool(target.get("boss", false)):
+        target["aggro"] = BOSS_LOCKED_AGGRO
+        return
     target["aggro"] = float(target.get("aggro", 0.0)) * TARGET_AGGRO_MULTIPLIER
