@@ -37,12 +37,22 @@ func _active_event_choice(kind: String, current_stage: int) -> Dictionary:
         return choice
 
     var count: int = maxi(1, int(reinforcement.get("count", 2)))
+    var reinforcement_offset: int = int(reinforcement.get("level_offset", -5))
+    var reinforcement_level_text: String = _boss_reinforcement_level_hint(reinforcement_offset)
     choice["hint"] = (
         "Boss mit doppelten KP auf dem höchsten eigenen Level +5. "
-        + "Beim Wechsel auf die zweite KP-Leiste ruft er %d gleichartige Verstärkungen "
-        + "auf deinem höchsten Teamlevel. Sieg gibt normale Etappen-EP und danach eine Fundstelle."
-    ) % count
+        + "Beim Wechsel auf die zweite KP-Leiste ruft er %d gleichartige Verstärkungen %s. "
+        + "Sieg gibt normale Etappen-EP und danach eine Fundstelle."
+    ) % [count, reinforcement_level_text]
     return choice
+
+
+func _boss_reinforcement_level_hint(level_offset: int) -> String:
+    if level_offset < 0:
+        return "%d Level unter deinem höchsten Teamlevel" % absi(level_offset)
+    if level_offset > 0:
+        return "%d Level über deinem höchsten Teamlevel" % level_offset
+    return "auf deinem höchsten Teamlevel"
 
 
 func _start_special_battle(kind: String, enemy_party: Array, heading: String) -> void:
@@ -108,10 +118,13 @@ func _decorate_standard_boss_reinforcement_contract(enemy_party: Array) -> Array
     if boss_species_id.is_empty():
         return result
 
+    var reinforcement_level_offset: int = int(reinforcement.get("level_offset", -5))
     source["boss_reinforcement_enabled"] = true
     source["boss_reinforcement_count"] = clampi(int(reinforcement.get("count", 2)), 1, 3)
     source["boss_reinforcement_species_id"] = boss_species_id
-    source["boss_reinforcement_level"] = maxi(1, _highest_team_level())
+    source["boss_reinforcement_level"] = BossReinforcementRules.reinforcement_level_for_player_max(
+        _highest_team_level()
+    )
     source["boss_reinforcement_hp_multiplier"] = maxf(
         1.0,
         float(reinforcement.get("hp_multiplier", 1.0))
@@ -126,12 +139,17 @@ func _decorate_standard_boss_reinforcement_contract(enemy_party: Array) -> Array
         int(reinforcement.get("trigger_remaining_bars", 1))
     )
     source["boss_reinforcement_species_mode"] = "same_as_boss"
-    source["boss_reinforcement_level_mode"] = "player_max"
+    source["boss_reinforcement_level_mode"] = str(
+        reinforcement.get("level_mode", "player_max_offset")
+    )
+    source["boss_reinforcement_level_offset"] = reinforcement_level_offset
     result[0] = source
     return result
 
 
 func _stage_uses_standard_boss_reinforcements(current_stage: int) -> bool:
+    if current_stage < SPECIAL_EVENT_STAGE:
+        return false
     if current_stage >= ENDGAME_STAGE_START:
         return false
     if _is_milestone_double_boss_stage(current_stage):
