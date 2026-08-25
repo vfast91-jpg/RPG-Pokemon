@@ -17,10 +17,10 @@ func _initialize() -> void:
     _check(bool(reinforcement.get("enabled", false)), "Standard-Bossverstaerkung muss aktiviert sein.")
     _check(int(reinforcement.get("count", 0)) == 2, "Standard-Boss muss genau zwei Verstaerkungen rufen.")
     _check(str(reinforcement.get("species_mode", "")) == "same_as_boss", "Verstaerkung muss exakt dieselbe Spezies wie der Boss behalten.")
-    _check(str(reinforcement.get("level_mode", "")) == "player_max_offset", "Verstaerkungslevel muss als Offset zum hoechsten eigenen Pokemon berechnet werden.")
-    _check(int(reinforcement.get("level_offset", 0)) == -5, "Standard-Verstaerkungen muessen genau fuenf Level unter dem Teammaximum liegen.")
-    _check(BossRules.reinforcement_level_for_player_max(12) == 7, "Teammaximum Lv.12 muss Standard-Verstaerkungen auf Lv.7 ergeben.")
-    _check(BossRules.reinforcement_level_for_player_max(3) == 1, "Verstaerkungslevel muss bei niedrigen Teams mindestens Lv.1 bleiben.")
+    _check(str(reinforcement.get("level_mode", "")) == "player_max", "Verstaerkungslevel muss exakt dem hoechsten eigenen Pokemon entsprechen.")
+    _check(not reinforcement.has("level_offset"), "Standard-Verstaerkungen duerfen keinen zusaetzlichen Level-Offset besitzen.")
+    _check(BossRules.reinforcement_level_for_player_max(12) == 12, "Teammaximum Lv.12 muss Standard-Verstaerkungen auf Lv.12 ergeben.")
+    _check(BossRules.reinforcement_level_for_player_max(1) == 1, "Teammaximum Lv.1 muss Standard-Verstaerkungen auf Lv.1 ergeben.")
     _check(is_equal_approx(float(reinforcement.get("hp_multiplier", 0.0)), 1.0), "Verstaerkung darf keinen Boss-KP-Multiplikator erhalten.")
     _check(is_equal_approx(float(reinforcement.get("start_atb_percent", -1.0)), 0.0), "Verstaerkung muss mit 0 Prozent ATB starten.")
 
@@ -38,11 +38,17 @@ func _initialize() -> void:
     _check(bool(boss.get("boss_reinforcement_enabled", false)), "Standard-Boss muss Verstaerkungsvertrag erhalten.")
     _check(int(boss.get("boss_reinforcement_count", 0)) == 2, "Bossvertrag muss zwei Verstaerkungen anfordern.")
     _check(str(boss.get("boss_reinforcement_species_id", "")) == "charmeleon", "Glutexo-Verstaerkung darf nicht zu Glumanda rueckentwickelt werden.")
-    _check(int(boss.get("boss_reinforcement_level", 0)) == 7, "Bei Teammaximum Lv.12 muessen Verstaerkungen Lv.7 sein.")
-    _check(int(boss.get("boss_reinforcement_level_offset", 0)) == -5, "Bossvertrag muss den vereinbarten Level-Offset -5 dokumentieren.")
+    _check(int(boss.get("boss_reinforcement_level", 0)) == 12, "Bei Teammaximum Lv.12 muessen Verstaerkungen Lv.12 sein.")
+    _check(str(boss.get("boss_reinforcement_level_mode", "")) == "player_max", "Bossvertrag muss den exakten Spieler-Maxlevel-Modus dokumentieren.")
+    _check(not boss.has("boss_reinforcement_level_offset"), "Bossvertrag darf keinen veralteten Verstaerkungs-Level-Offset enthalten.")
     _check(is_equal_approx(float(boss.get("boss_reinforcement_hp_multiplier", 0.0)), 1.0), "Verstaerkungen muessen normale KP besitzen.")
     _check(is_equal_approx(float(boss.get("boss_reinforcement_start_atb", -1.0)), 0.0), "Verstaerkungen muessen mit leerer ATB-Leiste erscheinen.")
     _check(int(boss.get("level", 0)) == 17, "Bosslevel selbst darf durch den Verstaerkungsvertrag nicht veraendert werden.")
+
+    route.set_route_difficulty("hard", 4)
+    var difficulty_result: Array = route._apply_route_difficulty(decorated)
+    var difficulty_boss: Dictionary = difficulty_result[0] as Dictionary
+    _check(int(difficulty_boss.get("boss_reinforcement_level", 0)) == 12, "Routenschwierigkeit darf das exakte Spieler-Maxlevel der Verstaerkungen nicht verschieben.")
 
     route.stage = 10
     var too_early: Array = route._decorate_standard_boss_reinforcement_contract(standard_party)
