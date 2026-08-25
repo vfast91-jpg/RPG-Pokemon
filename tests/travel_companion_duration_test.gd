@@ -12,6 +12,7 @@ func _init() -> void:
     _test_staggered_companions_leave_independently()
     _test_existing_duration_is_never_reset()
     _test_pending_companion_starts_with_full_duration()
+    _test_battle_round_trip_cannot_reset_duration()
 
     if failures.is_empty():
         print("PASS: travel companion duration tests")
@@ -101,4 +102,19 @@ func _test_pending_companion_starts_with_full_duration() -> void:
     route.pending_capture = {"name": "Abra"}
     route._ensure_pending_companion_duration()
     _expect(int(route.pending_capture.get("travel_stages_remaining", -1)) == 30, "A newly found pending companion must receive 30 stages before joining.")
+    route.free()
+
+
+func _test_battle_round_trip_cannot_reset_duration() -> void:
+    var route: Node = _new_route()
+    route.team = [{"name": "Pikachu", "travel_stages_remaining": 8, "hp": 20}]
+
+    var rebuilt_battle_team: Array = [{"name": "Pikachu", "hp": 11}]
+    var protected_team: Array = route._preserve_companion_duration_metadata(rebuilt_battle_team)
+    _expect(int(protected_team[0].get("travel_stages_remaining", -1)) == 8, "Battle round-trip must restore missing companion duration metadata.")
+    _expect(int(protected_team[0].get("hp", -1)) == 11, "Battle round-trip protection must not overwrite battle-updated values.")
+
+    var already_preserved_team: Array = [{"name": "Pikachu", "travel_stages_remaining": 6, "hp": 9}]
+    protected_team = route._preserve_companion_duration_metadata(already_preserved_team)
+    _expect(int(protected_team[0].get("travel_stages_remaining", -1)) == 6, "Existing battle-returned duration must remain authoritative.")
     route.free()
