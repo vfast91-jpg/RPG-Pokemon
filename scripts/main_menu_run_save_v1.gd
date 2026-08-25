@@ -3,22 +3,27 @@ extends "res://scripts/main_menu_adventure_v1.gd"
 # Main-menu integration for the single active adventure slot.
 # - Existing runs continue immediately.
 # - A new adventure first shows one compact, non-scrolling overview.
+# - After the overview, the player chooses the run difficulty before Stage 1.
 
 var _run_save_adventure_button: Button
 var _adventure_intro_overlay: Control
 var _adventure_intro_start_button: Button
+var _difficulty_overlay: Control
+var _difficulty_first_button: Button
 
 
 func _build_main_menu() -> void:
     super._build_main_menu()
     _run_save_adventure_button = _find_menu_button(menu_root, "AUF INS ABENTEUER!")
     _build_adventure_intro_overlay()
+    _build_difficulty_overlay()
     _refresh_run_save_menu()
 
 
 func _show_main_menu() -> void:
     super._show_main_menu()
     _hide_adventure_intro()
+    _hide_difficulty_selector()
     _refresh_run_save_menu()
 
 
@@ -172,11 +177,139 @@ func _make_adventure_intro_card(title_text: String, body_text: String) -> PanelC
     return card
 
 
+func _build_difficulty_overlay() -> void:
+    if menu_root == null or _difficulty_overlay != null:
+        return
+
+    _difficulty_overlay = Control.new()
+    _difficulty_overlay.name = "AdventureDifficultyOverlay"
+    _difficulty_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _difficulty_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    _difficulty_overlay.z_index = 55
+    _difficulty_overlay.visible = false
+    menu_root.add_child(_difficulty_overlay)
+
+    var shade := ColorRect.new()
+    shade.color = Color(0.0, 0.0, 0.0, 0.78)
+    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    shade.mouse_filter = Control.MOUSE_FILTER_STOP
+    _difficulty_overlay.add_child(shade)
+
+    var center := CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _difficulty_overlay.add_child(center)
+
+    var panel := PanelContainer.new()
+    panel.custom_minimum_size = Vector2(566, 270)
+    panel.add_theme_stylebox_override(
+        "panel",
+        _panel(Color("14251f"), Color("e0c95f"), 13, 12.0)
+    )
+    center.add_child(panel)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 8)
+    panel.add_child(content)
+
+    var title := Label.new()
+    title.text = "WÄHLE DEINE SCHWIERIGKEIT"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 20)
+    title.add_theme_color_override("font_color", Color("ffe46f"))
+    content.add_child(title)
+
+    var subtitle := Label.new()
+    subtitle.text = "Die Schwierigkeit verändert die Level aller gegnerischen Pokémon."
+    subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    subtitle.add_theme_font_size_override("font_size", 10)
+    subtitle.add_theme_color_override("font_color", Color("b9d0c6"))
+    content.add_child(subtitle)
+
+    var grid := GridContainer.new()
+    grid.columns = 2
+    grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    grid.add_theme_constant_override("h_separation", 8)
+    grid.add_theme_constant_override("v_separation", 8)
+    content.add_child(grid)
+
+    _difficulty_first_button = _make_difficulty_button(
+        "LOCKER\nGegner · 2 Level niedriger",
+        "locker",
+        -2,
+        Color("244035")
+    )
+    grid.add_child(_difficulty_first_button)
+    grid.add_child(_make_difficulty_button(
+        "NORMAL\nStandard-Schwierigkeit",
+        "normal",
+        0,
+        Color("20362d")
+    ))
+    grid.add_child(_make_difficulty_button(
+        "SCHWER\nGegner · 2 Level höher",
+        "schwer",
+        2,
+        Color("3b3225")
+    ))
+    grid.add_child(_make_difficulty_button(
+        "MEISTER\nGegner · 4 Level höher",
+        "meister",
+        4,
+        Color("40292a")
+    ))
+
+    var note := Label.new()
+    note.text = "Die Auswahl gilt für das gesamte Abenteuer und wird mit deinem Lauf gespeichert."
+    note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    note.add_theme_font_size_override("font_size", 9)
+    note.add_theme_color_override("font_color", Color("9fb8ad"))
+    content.add_child(note)
+
+
+func _make_difficulty_button(
+    label_text: String,
+    difficulty_key: String,
+    level_offset: int,
+    base_color: Color
+) -> Button:
+    var button := Button.new()
+    button.text = label_text
+    button.custom_minimum_size = Vector2(0, 72)
+    button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    button.add_theme_font_size_override("font_size", 12)
+    button.add_theme_color_override("font_color", Color("fff4b5"))
+    button.add_theme_color_override("font_hover_color", Color("ffffff"))
+    button.add_theme_color_override("font_pressed_color", Color("e8ddb0"))
+    button.add_theme_stylebox_override(
+        "normal",
+        _main_menu_button_style(base_color, Color("647d70"))
+    )
+    button.add_theme_stylebox_override(
+        "hover",
+        _main_menu_button_style(base_color.lightened(0.08), Color("ffe46f"))
+    )
+    button.add_theme_stylebox_override(
+        "pressed",
+        _main_menu_button_style(base_color.darkened(0.08), Color("cbb64f"))
+    )
+    button.add_theme_stylebox_override(
+        "focus",
+        _main_menu_button_style(base_color.lightened(0.05), Color("fff0a0"))
+    )
+    button.pressed.connect(_confirm_difficulty.bind(difficulty_key, level_offset))
+    return button
+
+
 func _show_adventure_intro() -> void:
     if _adventure_intro_overlay == null:
         _confirm_new_adventure()
         return
 
+    _hide_difficulty_selector()
     _adventure_intro_overlay.visible = true
     if _adventure_intro_start_button != null:
         _adventure_intro_start_button.disabled = false
@@ -193,6 +326,32 @@ func _confirm_new_adventure() -> void:
         _adventure_intro_start_button.disabled = true
 
     _hide_adventure_intro()
+    _show_difficulty_selector()
+
+
+func _show_difficulty_selector() -> void:
+    if _difficulty_overlay == null:
+        _confirm_difficulty("normal", 0)
+        return
+
+    _difficulty_overlay.visible = true
+    if _difficulty_first_button != null:
+        _difficulty_first_button.grab_focus()
+
+
+func _hide_difficulty_selector() -> void:
+    if _difficulty_overlay != null:
+        _difficulty_overlay.visible = false
+
+
+func _confirm_difficulty(difficulty_key: String, level_offset: int) -> void:
+    _hide_difficulty_selector()
+
+    if demo_route != null and demo_route.has_method("set_route_difficulty"):
+        demo_route.call("set_route_difficulty", difficulty_key, level_offset)
+    else:
+        push_warning("Abenteuer: Die Route unterstützt noch keine Schwierigkeitsauswahl; Normal wird verwendet.")
+
     menu_layer.visible = false
     battle_demo.visible = false
     demo_route.call("start_route")
