@@ -4,6 +4,8 @@ extends "res://scripts/demo_route_encounter_rebalance.gd"
 # The travelling team is capped at four Pokémon, so the sidebar should show
 # all four cards at once instead of requiring vertical scrolling.
 
+var _team_count_label: Label
+
 
 func _ready() -> void:
     super._ready()
@@ -23,9 +25,45 @@ func _fit_four_member_team_panel() -> void:
         team_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
         team_scroll.scroll_vertical = 0
 
+    _ensure_team_count_label()
+    _update_team_count_label()
+
+
+func _ensure_team_count_label() -> void:
+    if _team_count_label != null and is_instance_valid(_team_count_label):
+        return
+    if team_box == null:
+        return
+
+    var team_scroll_node := team_box.get_parent()
+    if not (team_scroll_node is ScrollContainer):
+        return
+
+    var team_content_node := team_scroll_node.get_parent()
+    if not (team_content_node is VBoxContainer):
+        return
+
+    var team_scroll := team_scroll_node as ScrollContainer
+    var team_content := team_content_node as VBoxContainer
+
+    _team_count_label = Label.new()
+    _team_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _team_count_label.add_theme_font_size_override("font_size", 9)
+    _team_count_label.add_theme_color_override("font_color", Color("bad7c9"))
+    team_content.add_child(_team_count_label)
+    team_content.move_child(_team_count_label, team_scroll.get_index())
+
+
+func _update_team_count_label() -> void:
+    if _team_count_label == null or not is_instance_valid(_team_count_label):
+        return
+    _team_count_label.text = "%d von 4" % team.size()
+
 
 func _refresh_team_panel() -> void:
     super._refresh_team_panel()
+    _ensure_team_count_label()
+    _update_team_count_label()
 
     # Keep the storage footer to a single compact line so it cannot steal
     # vertical room from the four fixed team cards.
