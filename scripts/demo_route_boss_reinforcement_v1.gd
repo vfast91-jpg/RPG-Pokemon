@@ -62,20 +62,25 @@ func _apply_route_difficulty(enemy_party: Array) -> Array:
 
         var enemy: Dictionary = enemy_value as Dictionary
         # Special battles are saved after this adjustment and may later re-enter
-        # this method on resume. The marker prevents applying the offset twice.
-        if bool(enemy.get("_route_difficulty_applied", false)):
-            continue
+        # this method on resume. Separate markers prevent both double-scaling and
+        # missing the reinforcement level if that contract is added afterwards.
+        if not bool(enemy.get("_route_difficulty_level_applied", false)):
+            enemy["level"] = maxi(
+                1,
+                int(enemy.get("level", 1)) + route_difficulty_level_offset
+            )
+            enemy["_route_difficulty_level_applied"] = true
 
-        enemy["level"] = maxi(
-            1,
-            int(enemy.get("level", 1)) + route_difficulty_level_offset
-        )
-        if enemy.has("boss_reinforcement_level"):
+        if (
+            enemy.has("boss_reinforcement_level")
+            and not bool(enemy.get("_route_difficulty_reinforcement_applied", false))
+        ):
             enemy["boss_reinforcement_level"] = maxi(
                 1,
                 int(enemy.get("boss_reinforcement_level", 1)) + route_difficulty_level_offset
             )
-        enemy["_route_difficulty_applied"] = true
+            enemy["_route_difficulty_reinforcement_applied"] = true
+
         result[index] = enemy
 
     return result
