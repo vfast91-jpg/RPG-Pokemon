@@ -7,8 +7,10 @@ on:
     paths:
       - "scripts/run_save_manager.gd"
       - "scripts/demo_route_run_save_v1.gd"
+      - "scripts/demo_route_boss_reward_two_pick_v1.gd"
       - "scripts/main_menu_run_save_v1.gd"
       - "tests/run_save_manager_test.gd"
+      - "tests/boss_fundstelle_two_pick_test.gd"
       - ".github/workflows/run-save-tests.yml"
   workflow_dispatch:
 
@@ -40,3 +42,6 @@ jobs:
 
       - name: Run single-slot save regression
         run: ./godot --headless --path . --script tests/run_save_manager_test.gd
+
+      - name: Run boss Fundstelle two-pick regression
+        run: ./godot --headless --path . --script tests/boss_fundstelle_two_pick_test.gd
