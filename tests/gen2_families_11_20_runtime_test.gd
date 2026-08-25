@@ -4,25 +4,20 @@ const BattleScript = preload("res://scripts/battle_demo_gen2_moves_v23_v1.gd")
 
 const MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.json"
 const META_PATH: String = "res://data/pokemon_family_meta_v1.json"
-const DETAIL_PATH: String = "res://data/gen2_species_families_01_10_v1.json"
+const DETAIL_PATH: String = "res://data/gen2_species_families_11_20_v1.json"
 
 const EXPECTED_SPECIES_COUNT: int = 232
 const EXPECTED_ROOT_COUNT: int = 98
 const NEW_ROOTS: Array[String] = [
-	"chikorita", "cyndaquil", "totodile", "sentret", "hoothoot",
-	"ledyba", "spinarak", "chinchou", "togepi", "natu"
+	"mareep", "azurill", "bonsly", "hoppip", "aipom",
+	"sunkern", "yanma", "wooper", "murkrow", "misdreavus"
 ]
 const NEW_SPECIES: Array[String] = [
-	"chikorita", "bayleef", "meganium",
-	"cyndaquil", "quilava", "typhlosion",
-	"totodile", "croconaw", "feraligatr",
-	"sentret", "furret",
-	"hoothoot", "noctowl",
-	"ledyba", "ledian",
-	"spinarak", "ariados",
-	"chinchou", "lanturn",
-	"togepi", "togetic", "togekiss",
-	"natu", "xatu"
+	"mareep", "flaaffy", "ampharos", "azurill", "marill",
+	"azumarill", "bonsly", "sudowoodo", "hoppip", "skiploom",
+	"jumpluff", "aipom", "ambipom", "sunkern", "sunflora",
+	"yanma", "yanmega", "wooper", "quagsire", "murkrow",
+	"honchkrow", "misdreavus", "mismagius"
 ]
 
 
@@ -44,14 +39,13 @@ func _initialize() -> void:
 	for species_id: String in NEW_SPECIES:
 		assert(detail_species.has(species_id), "Gen-2-Pokémon fehlt im Detailpack: " + species_id)
 
-	var chikorita: Dictionary = detail_species.get("chikorita", {})
-	assert((chikorita.get("base_stats", {}) as Dictionary).get("hp", 0) == 45)
-	assert((chikorita.get("evolution", {}) as Dictionary).get("evolves_into", "") == "bayleef")
-	assert((chikorita.get("learnset", {}) as Dictionary).get("tm_hm", []).has("protect"))
+	var mareep: Dictionary = detail_species.get("mareep", {})
+	assert((mareep.get("base_stats", {}) as Dictionary).get("hp", 0) == 55)
+	assert((mareep.get("evolution", {}) as Dictionary).get("evolves_into", "") == "flaaffy")
+	assert((mareep.get("learnset", {}) as Dictionary).get("tm_hm", []).has("protect"))
 
-	var togetic: Dictionary = detail_species.get("togetic", {})
-	assert((togetic.get("evolution", {}) as Dictionary).get("evolves_into", "") == "togekiss")
-	assert(int((togetic.get("evolution", {}) as Dictionary).get("evolution_level", 0)) == 40)
+	var ampharos: Dictionary = detail_species.get("ampharos", {})
+	assert((ampharos.get("learnset", {}) as Dictionary).get("evolution_moves", []).has("thunder_punch"))
 
 	var battle = BattleScript.new()
 	root.add_child(battle)
@@ -67,22 +61,27 @@ func _initialize() -> void:
 		assert(runtime_species.has(species_id), "Gen-2-Pokémon fehlt in Runtime: " + species_id)
 		assert(battle.lab_species_ids.has(species_id), "Gen-2-Pokémon fehlt im Kampflabor: " + species_id)
 
-	assert(battle.route_resolve_species_for_level("chikorita", 15) == "chikorita")
-	assert(battle.route_resolve_species_for_level("chikorita", 16) == "bayleef")
-	assert(battle.route_resolve_species_for_level("chikorita", 32) == "meganium")
-	assert(battle.route_resolve_species_for_level("togepi", 19) == "togepi")
-	assert(battle.route_resolve_species_for_level("togepi", 20) == "togetic")
-	assert(battle.route_resolve_species_for_level("togepi", 40) == "togekiss")
+	assert(battle.route_resolve_species_for_level("mareep", 14) == "mareep")
+	assert(battle.route_resolve_species_for_level("mareep", 15) == "flaaffy")
+	assert(battle.route_resolve_species_for_level("mareep", 30) == "ampharos")
+	assert(battle.route_resolve_species_for_level("azurill", 14) == "azurill")
+	assert(battle.route_resolve_species_for_level("azurill", 15) == "marill")
+	assert(battle.route_resolve_species_for_level("azurill", 18) == "azumarill")
+	assert(battle.route_resolve_species_for_level("misdreavus", 39) == "misdreavus")
+	assert(battle.route_resolve_species_for_level("misdreavus", 40) == "mismagius")
 
-	var chikorita_moves: Array = battle.route_moves_for_level("chikorita", 12)
-	assert(chikorita_moves.has("tackle"))
-	assert(chikorita_moves.has("razor_leaf"))
-	assert(chikorita_moves.has("synthesis"))
+	var mareep_moves: Array = battle.route_moves_for_level("mareep", 12)
+	assert(mareep_moves.has("tackle"))
+	assert(mareep_moves.has("thunder_wave"))
+	assert(mareep_moves.has("thunder_shock"))
+	assert(mareep_moves.has("cotton_spore"))
 
-	var chikorita_tms: Array = battle._lab_available_tm_moves("chikorita")
-	assert(chikorita_tms.has("protect"))
+	var mareep_tms: Array = battle._lab_available_tm_moves("mareep")
+	assert(mareep_tms.has("protect"))
 
-	print("Gen2 first ten families registry/runtime: PASS")
+	assert(not runtime_species.has("ursaluna"), "Ursaluna bleibt absichtlich zurückgestellt.")
+
+	print("Gen2 families 11-20 registry/runtime: PASS")
 	battle.queue_free()
 	quit(0)
 

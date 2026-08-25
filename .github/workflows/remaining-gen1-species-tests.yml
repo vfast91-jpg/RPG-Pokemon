@@ -32,8 +32,14 @@ jobs:
       - name: Parse project headless
         run: ./godot --headless --path . --editor --quit
 
-      - name: Validate complete Gen1 family registry
+      - name: Validate global Pokemon family registry
         run: ./godot --headless --path . --script tests/gen1_remaining_species_data_test.gd
+
+      - name: Validate Gen2 families 01-10
+        run: ./godot --headless --path . --script tests/gen2_first_ten_families_runtime_test.gd
+
+      - name: Validate Gen2 families 11-20
+        run: ./godot --headless --path . --script tests/gen2_families_11_20_runtime_test.gd
 
       - name: Validate Zubat-to-Poliwag attack block
         run: ./godot --headless --path . --script tests/zubat_to_poliwag_moves_runtime_test.gd
