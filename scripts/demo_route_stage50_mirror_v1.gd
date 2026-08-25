@@ -1,4 +1,4 @@
-extends "res://scripts/demo_route_boss_reinforcement_v1.gd"
+extends "res://scripts/demo_route_travel_companion_duration_v1.gd"
 
 # Etappe 50: Spiegelkampf gegen Ditto.
 #
