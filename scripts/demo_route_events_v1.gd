@@ -4,11 +4,14 @@ extends "res://scripts/demo_route_fundstelle_v1.gd"
 # reward flow. Direct Path and Dangerous Path remain only as unreachable
 # inherited legacy code until Phase H removes dead compatibility entry points.
 #
-# Stages 1-10 are the protected onboarding window. During that window the Boss
-# event is deliberately excluded so the gentler fixed encounter curve cannot be
-# bypassed by a highest-team-level +5 battle with double HP.
+# Stages 1-9 are the protected onboarding window. Stage 10 is the first fixed
+# Besondere Begegnung: it is the only route choice on that stage and therefore
+# cannot be skipped or missed by the random three-choice roll. From stage 11 on,
+# the full five-event pool is active again.
 
 const RouteBossRules = preload("res://scripts/route_boss_rules.gd")
+
+const FIRST_SPECIAL_ENCOUNTER_STAGE: int = 10
 
 const ACTIVE_ROUTE_EVENTS: Array[String] = [
     EVENT_HEAL,
@@ -42,8 +45,11 @@ func _reset_boss_reward_state() -> void:
 
 
 func _route_event_pool_for_stage(current_stage: int) -> Array[String]:
+    if current_stage == FIRST_SPECIAL_ENCOUNTER_STAGE:
+        return [EVENT_RARE]
+
     var pool: Array[String] = ACTIVE_ROUTE_EVENTS.duplicate()
-    if current_stage <= 10:
+    if current_stage < FIRST_SPECIAL_ENCOUNTER_STAGE:
         pool.erase(EVENT_RARE)
     return pool
 
@@ -252,7 +258,7 @@ func _apply_healing_item(team_index: int, item: Dictionary) -> void:
 
 func _apply_vitamin(team_index: int, vitamin: Dictionary) -> void:
     var boss_reward: bool = _boss_fundstelle_pending
-    super._apply_vitamin(team_index, vitamin)
+    super._apply_vitamin(entry, team_index)
     if boss_reward and continue_button.visible:
         _prepare_boss_reward_finish(event_label.text)
 
