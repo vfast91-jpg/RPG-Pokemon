@@ -12,7 +12,8 @@ const DEFAULT_REINFORCEMENT_PROFILE := {
     "trigger_remaining_bars": 1,
     "count": 2,
     "species_mode": "same_as_boss",
-    "level_mode": "player_max",
+    "level_mode": "player_max_offset",
+    "level_offset": -5,
     "hp_multiplier": 1.0,
     "start_atb_percent": 0.0
 }
@@ -58,6 +59,14 @@ static func standard_reinforcement_profile() -> Dictionary:
     return _normalized_reinforcement_profile(profile.get("reinforcements", {}))
 
 
+static func reinforcement_level_for_player_max(player_max_level: int) -> int:
+    var profile: Dictionary = standard_reinforcement_profile()
+    return maxi(
+        1,
+        maxi(1, player_max_level) + int(profile.get("level_offset", -5))
+    )
+
+
 static func _normalized_reinforcement_profile(value: Variant) -> Dictionary:
     var result: Dictionary = DEFAULT_REINFORCEMENT_PROFILE.duplicate(true)
     if value is Dictionary:
@@ -67,7 +76,8 @@ static func _normalized_reinforcement_profile(value: Variant) -> Dictionary:
     result["trigger_remaining_bars"] = maxi(1, int(result.get("trigger_remaining_bars", 1)))
     result["count"] = clampi(int(result.get("count", 2)), 1, 3)
     result["species_mode"] = "same_as_boss"
-    result["level_mode"] = "player_max"
+    result["level_mode"] = "player_max_offset"
+    result["level_offset"] = int(result.get("level_offset", -5))
     result["hp_multiplier"] = maxf(1.0, float(result.get("hp_multiplier", 1.0)))
     result["start_atb_percent"] = clampf(
         float(result.get("start_atb_percent", 0.0)),
