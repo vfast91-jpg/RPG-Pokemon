@@ -1,4 +1,4 @@
-extends "res://scripts/demo_route_viewport_guard_v1.gd"
+extends "res://scripts/demo_route_boss_reward_two_pick_v1.gd"
 
 # Single-slot adventure persistence layer.
 # Saves the route state only; MetaProgression and the leaderboard stay separate.
@@ -65,6 +65,10 @@ func continue_saved_route() -> void:
                 )
             else:
                 _show_special_battle_resume()
+        "boss_fundstelle":
+            _show_boss_fundstelle_resume()
+        "boss_reward_complete":
+            _show_boss_reward_complete_resume()
         _:
             _show_stage_choices(
                 "[b]Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
@@ -149,7 +153,12 @@ func _autosave_run(checkpoint: String = "autosave") -> void:
         return
 
     var effective_checkpoint: String = checkpoint
-    if not pending_capture.is_empty():
+    if _boss_fundstelle_pending:
+        if _boss_fundstelle_choices_remaining > 0:
+            effective_checkpoint = "boss_fundstelle"
+        else:
+            effective_checkpoint = "boss_reward_complete"
+    elif not pending_capture.is_empty():
         effective_checkpoint = "pending_capture"
     elif (
         visible
@@ -211,6 +220,43 @@ func _show_special_battle_resume() -> void:
     resume_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     resume_button.pressed.connect(_resume_saved_special_battle)
     path_box.add_child(resume_button)
+    _refresh_team_panel()
+
+
+func _show_boss_fundstelle_resume() -> void:
+    _prepare_resume_surface()
+    path_box.visible = false
+    continue_button.visible = false
+
+    if not _boss_fundstelle_pending:
+        _show_stage_choices(
+            "[b]Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
+        )
+        return
+
+    if _boss_fundstelle_choices_remaining <= 0:
+        _boss_fundstelle_choices_remaining = BOSS_FUNDSTELLE_PICK_COUNT
+
+    _fundstelle_active = true
+    _remove_consumed_boss_tm_offers()
+    _show_fundstelle_options()
+    _refresh_team_panel()
+
+
+func _show_boss_reward_complete_resume() -> void:
+    _prepare_resume_surface()
+    path_box.visible = false
+    continue_button.visible = false
+
+    if not _boss_fundstelle_pending:
+        _show_stage_choices(
+            "[b]Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
+        )
+        return
+
+    _boss_fundstelle_choices_remaining = 0
+    _fundstelle_active = false
+    _prepare_boss_reward_finish(_boss_fundstelle_final_reward_text)
     _refresh_team_panel()
 
 
