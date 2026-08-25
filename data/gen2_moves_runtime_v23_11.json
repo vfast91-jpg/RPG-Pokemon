@@ -1,0 +1,61 @@
+{
+  "schema_version": 3,
+  "source": "Attacken_Datenbank_AKTUALISIERT_2026-08-23_FAMILIEN_41_BIS_64_V22.xlsx / V23 extension",
+  "moves": {
+    "aeroblast": {
+      "schema_version": 3, "id": "aeroblast", "name": "Luftstoß", "description": "Ein mächtiger Luftstoß mit erhöhter Volltrefferchance.", "emoji": "🌀", "type": "flying", "category": "special", "power": 100, "accuracy": 95, "pp": 5, "ap": 8, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "damage"}], "status_scaling": "Keine Statusskalierung.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["Volltrefferchance 12,5 % statt der normalen 5 %."], "optional_tags": ["damage", "flying", "ranged", "high_crit", "signature"], "runtime": {"runtime_supported": true, "v23_critical_chance": 0.125}
+    },
+    "beat_up": {
+      "schema_version": 3, "id": "beat_up", "name": "Prügler", "description": "Alle kampffähigen, statusfreien Teammitglieder tragen je einen Treffer bei.", "emoji": "👥", "type": "dark", "category": "physical", "power": 10, "accuracy": 100, "pp": 10, "ap": 6, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "damage"}], "status_scaling": "Keine Statusskalierung.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["Ein Treffer je lebendem Teammitglied ohne Hauptstatus, maximal 4.", "Trefferstärke = floor(5 + Basis-Angriff des beitragenden Pokémon / 10).", "Jeder Treffer nutzt den aktuellen Angriff des Prügler-Anwenders und würfelt Volltreffer separat."], "optional_tags": ["damage", "team_synergy", "multi_hit", "variable_power"], "runtime": {"runtime_supported": true, "v23_beat_up": true}
+    },
+    "cotton_spore": {
+      "schema_version": 3, "id": "cotton_spore", "name": "Baumwollsaat", "description": "Senkt die Geschwindigkeit aller Gegner stark für 3 eigene Aktionen des jeweiligen Ziels.", "emoji": "☁️", "type": "grass", "category": "status", "power": null, "accuracy": 100, "pp": 40, "ap": 1, "target": "all_enemies", "area": true, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "atb_cycle_mod", "multiplier_from_special": 2.0}], "status_scaling": "Starker Geschwindigkeits-Malus über R=Status/(75+Status), Dauer 3 Zielaktionen.", "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": ["Treffergenauigkeit wird für jeden Gegner separat geprüft."], "runtime": {"runtime_supported": true}
+    },
+    "heal_bell": {
+      "schema_version": 3, "id": "heal_bell", "name": "Vitalglocke", "description": "Heilt die Hauptstatusprobleme aller aktiven Verbündeten.", "emoji": "🔔", "type": "normal", "category": "status", "power": null, "accuracy": null, "pp": 5, "ap": 8, "target": "all_allies", "area": true, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "zf_cleanse_major"}], "status_scaling": "Keine Statusskalierung.", "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": ["Entfernt Paralyse, Verbrennung, Vergiftung/Toxin, Schlaf und Einfrieren; Verwirrung bleibt bestehen.", "Nur tatsächlich entfernte Hauptstatus erzeugen Status-Aggro."], "optional_tags": ["sound", "team_cleanse"], "runtime": {"runtime_supported": true, "sound_move": true}
+    },
+    "hidden_power": {
+      "schema_version": 3, "id": "hidden_power", "name": "Kraftreserve", "description": "Spezialattacke mit Stärke 60; ihr Typ wird für jedes individuelle Pokémon dauerhaft festgelegt.", "emoji": "💠", "type": "normal", "category": "special", "power": 60, "accuracy": 100, "pp": 15, "ap": 6, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "damage"}], "status_scaling": "Keine Statusskalierung.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["Der individuelle Typ wird einmal zufällig aus allen Typen außer Normal und Fee gewählt und permanent gespeichert.", "Der gespeicherte Typ gilt für STAB, Effektivität, Immunität und Anzeige."], "optional_tags": ["damage", "variable_type", "persistent_individual"], "runtime": {"runtime_supported": true, "v23_hidden_power": true}
+    },
+    "mach_punch": {
+      "schema_version": 3, "id": "mach_punch", "name": "Tempohieb", "description": "Ein sehr schneller Hieb, der ausschließlich in Runde 0 eingesetzt werden kann.", "emoji": "👊", "type": "fighting", "category": "physical", "power": 40, "accuracy": 100, "pp": 30, "ap": 8, "target": "enemy_highest_aggro", "area": false, "contact": true, "priority": 1, "opening": true, "opening_only": true,
+      "mechanics": [{"kind": "damage"}], "status_scaling": "Keine Statusskalierung.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["Nur Runde 0; im normalen ATB-Kampf nicht verfügbar."], "runtime": {"runtime_supported": true, "normal_battle_available": false, "opening_priority_reference": 1}
+    },
+    "milk_drink": {
+      "schema_version": 3, "id": "milk_drink", "name": "Milchgetränk", "description": "Regeneriert eigene KP abhängig vom Statuswert.", "emoji": "🥛", "type": "normal", "category": "status", "power": null, "accuracy": null, "pp": 5, "ap": 8, "target": "self", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "ad_heal", "coefficient": 1.0}], "status_scaling": "Heilung = Max-KP × R; R=Status/(75+Status).", "aggro": {"from_damage": false, "from_status": false, "from_healing": true},
+      "special_rules": ["Bei Status 75 werden 50 % Max-KP geheilt; die Heilung nähert sich 100 % an.", "Heilblock wird respektiert; volle KP ergeben 0 Heilung."], "runtime": {"runtime_supported": true}
+    },
+    "octazooka": {
+      "schema_version": 3, "id": "octazooka", "name": "Octazooka", "description": "Feuert Tinte ab und kann nach einem Treffer die Genauigkeit des Ziels senken.", "emoji": "🐙", "type": "water", "category": "special", "power": 65, "accuracy": 85, "pp": 10, "ap": 7, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "damage"}, {"kind": "v23_octazooka_accuracy", "chance": 0.5}], "status_scaling": "Genauigkeitsfaktor nach erfolgreichem Treffer = 1-R; R=Status/(75+Status), Dauer 3 Zielaktionen.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["50 % Chance nur nach tatsächlich verbundenem Schaden; kein Debuff bei Fehlschlag, Immunität oder vollständigem Block.", "Der Genauigkeits-Malus erzeugt keine zusätzliche Status-Aggro."], "runtime": {"runtime_supported": true}
+    },
+    "present": {
+      "schema_version": 3, "id": "present", "name": "Geschenk", "description": "Ein unberechenbares Geschenk: 40/80/120 Stärke oder 25 % Heilung für das Ziel.", "emoji": "🎁", "type": "normal", "category": "physical", "power": 40, "accuracy": 90, "pp": 15, "ap": 6, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "damage"}], "status_scaling": "Keine Statusskalierung; Heilung ist fix 25 % Max-KP.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["40 %: Stärke 40; 30 %: Stärke 80; 10 %: Stärke 120; 20 %: Ziel wird um 25 % Max-KP geheilt.", "Heilung respektiert Heilblock und erzeugt keine Heilungs-Aggro für den Anwender."], "optional_tags": ["variable_power", "random_effect"], "runtime": {"runtime_supported": true, "v23_present": true}
+    },
+    "sacred_fire": {
+      "schema_version": 3, "id": "sacred_fire", "name": "Läuterfeuer", "description": "Heiliges Feuer, das den Anwender vor dem Angriff auftaut und nach einem Treffer verbrennen kann.", "emoji": "🔥", "type": "fire", "category": "physical", "power": 100, "accuracy": 95, "pp": 5, "ap": 8, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "damage"}, {"kind": "v23_sacred_fire_burn", "chance": 0.5}], "status_scaling": "Keine Statusskalierung für die Verbrennungschance.", "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": ["Kann im eingefrorenen Zustand benutzt werden und taut den Anwender unmittelbar vor Genauigkeit/Schaden auf.", "50 % Verbrennung nur nach tatsächlich verbundenem Schaden; keine zusätzliche Status-Aggro."], "runtime": {"runtime_supported": true, "ad_thaw_user": true}
+    },
+    "sketch": {
+      "schema_version": 3, "id": "sketch", "name": "Nachahmer", "description": "Kopiert dauerhaft die zuletzt vom Ziel eingesetzte kopierbare Attacke.", "emoji": "🎨", "type": "normal", "category": "status", "power": null, "accuracy": null, "pp": 1, "ap": 8, "target": "enemy_highest_aggro", "area": false, "contact": false, "priority": 0, "opening": false, "opening_only": false,
+      "mechanics": [{"kind": "v23_sketch"}], "status_scaling": "Keine Statusskalierung.", "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": ["Kopiert die letzte kopierbare Attacke des Ziels dauerhaft; maximal 4 permanent kopierte Attacken.", "Nach der vierten erfolgreichen Kopie ist Nachahmer verbraucht und wird aus der Attackenliste entfernt.", "Kopier-/Zufalls-/Meta-Attacken wie Nachahmer, Mimikry, Copycat, Metronom und Schlafrede sind nicht kopierbar."], "optional_tags": ["persistent_copy"], "runtime": {"runtime_supported": true, "v23_sketch": true}
+    }
+  }
+}
