@@ -1,0 +1,129 @@
+extends SceneTree
+
+const BattleScript = preload("res://scripts/battle_demo_boss_reinforcement_v1.gd")
+
+var failures: int = 0
+
+
+func _initialize() -> void:
+    var battle = BattleScript.new()
+    root.add_child(battle)
+
+    var team_state: Array = [{
+        "species_id": "bulbasaur",
+        "level": 12,
+        "hp": 30,
+        "max_hp": 30
+    }]
+    var enemy_party: Array = [{
+        "species_id": "charmeleon",
+        "level": 17,
+        "boss": true,
+        "hp_multiplier": 2.0,
+        "hp_bars": 2,
+        "boss_reinforcement_enabled": true,
+        "boss_reinforcement_count": 2,
+        "boss_reinforcement_species_id": "charmeleon",
+        "boss_reinforcement_level": 12,
+        "boss_reinforcement_hp_multiplier": 1.0,
+        "boss_reinforcement_start_atb": 0.0,
+        "boss_reinforcement_trigger_remaining_bars": 1
+    }]
+
+    battle.start_route_battle_party(team_state, enemy_party)
+    _check(battle.enemy_team.size() == 1, "Bosskampf muss vor Phase 2 mit genau einem Gegner starten.")
+    if battle.enemy_team.is_empty():
+        _finish(battle)
+        return
+
+    var boss: Dictionary = battle.enemy_team[0] as Dictionary
+    _check(bool(boss.get("boss_reinforcement_enabled", false)), "Boss muss den Routen-Verstaerkungsvertrag in den Kampf uebernehmen.")
+    _check(int(boss.get("level", 0)) == 17, "Boss muss Lv.17 bleiben.")
+    _check(str(boss.get("species_id", "")) == "charmeleon", "Boss-Spezies muss Glutexo bleiben.")
+
+    var base_max_hp: int = maxi(1, int(boss.get("boss_base_max_hp", 0)))
+    _check(int(boss.get("max_hp", 0)) == base_max_hp * 2, "Boss muss weiterhin exakt zwei normale KP-Leisten besitzen.")
+
+    boss["hp"] = base_max_hp + 1
+    _check(not battle._boss_should_call_reinforcements(boss), "Verstaerkung darf vor dem Bruch der ersten KP-Leiste nicht starten.")
+    boss["hp"] = base_max_hp
+    _check(battle._boss_should_call_reinforcements(boss), "Bei Beginn der zweiten KP-Leiste muss die Verstaerkungsphase ausloesen.")
+
+    var normal_probe: Dictionary = battle._make_combatant(
+        "enemy",
+        99,
+        {"species_id": "charmeleon", "level": 12}
+    )
+    var expected_normal_hp: int = int(normal_probe.get("max_hp", 0))
+    var expected_start_aggro: float = float(normal_probe.get("aggro", -1.0))
+
+    boss["boss_reinforcement_started"] = true
+    var created: Array[Dictionary] = battle._spawn_boss_reinforcements(boss)
+    _check(created.size() == 2, "Boss muss genau zwei Verstaerkungen erzeugen.")
+    _check(battle.enemy_team.size() == 3, "Phase 2 muss aus 1 Boss + 2 Verstaerkungen bestehen.")
+
+    for index: int in range(created.size()):
+        var add: Dictionary = created[index]
+        _check(str(add.get("species_id", "")) == "charmeleon", "Verstaerkung #%d muss Glutexo bleiben und darf nicht zu Glumanda rueckentwickelt werden." % (index + 1))
+        _check(int(add.get("level", 0)) == 12, "Verstaerkung #%d muss exakt dem Spieler-Maxlevel Lv.12 entsprechen." % (index + 1))
+        _check(not bool(add.get("boss", true)), "Verstaerkung #%d darf keinen Bossstatus besitzen." % (index + 1))
+        _check(bool(add.get("boss_reinforcement", false)), "Verstaerkung #%d braucht die Laufzeit-Markierung." % (index + 1))
+        _check(int(add.get("max_hp", 0)) == expected_normal_hp, "Verstaerkung #%d muss normale statt verdoppelte KP besitzen." % (index + 1))
+        _check(is_equal_approx(float(add.get("atb", -1.0)), 0.0), "Verstaerkung #%d muss mit 0 Prozent ATB starten." % (index + 1))
+        _check(is_equal_approx(float(add.get("aggro", -2.0)), expected_start_aggro), "Verstaerkung #%d muss die bestehende zentrale Start-Aggro-Berechnung verwenden." % (index + 1))
+
+    battle._layout_reinforcement_visuals(created)
+    boss["boss_reinforcement_spawned"] = true
+    battle._apply_boss_reinforcement_formation(boss)
+
+    var area: Control = battle.battle_panel.get_node("BattleArea") as Control
+    _check(area != null, "Boss+2-Formation braucht die BattleArea.")
+    if area != null and created.size() == 2:
+        var boss_ui: Dictionary = battle.cards.get(str(boss.get("id", "")), {}) as Dictionary
+        var top_ui: Dictionary = battle.cards.get(str(created[0].get("id", "")), {}) as Dictionary
+        var bottom_ui: Dictionary = battle.cards.get(str(created[1].get("id", "")), {}) as Dictionary
+
+        var boss_card: Control = boss_ui.get("card") as Control
+        var top_card: Control = top_ui.get("card") as Control
+        var bottom_card: Control = bottom_ui.get("card") as Control
+        var boss_sprite: TextureRect = boss_ui.get("texture") as TextureRect
+        var top_sprite: TextureRect = top_ui.get("texture") as TextureRect
+        var bottom_sprite: TextureRect = bottom_ui.get("texture") as TextureRect
+
+        _check(boss_card != null and top_card != null and bottom_card != null, "Alle drei Gegner brauchen eigene Statuskarten.")
+        _check(boss_sprite != null and top_sprite != null and bottom_sprite != null, "Alle drei Gegner brauchen eigene Sprites.")
+
+        if boss_card != null and top_card != null and bottom_card != null:
+            _check(top_card.position.y + top_card.size.y <= boss_card.position.y + 0.01, "Obere Verstaerkungskarte darf die Bosskarte nicht ueberlappen.")
+            _check(boss_card.position.y + boss_card.size.y <= bottom_card.position.y + 0.01, "Bosskarte darf die untere Verstaerkungskarte nicht ueberlappen.")
+            _check(top_card.position.y >= -0.01, "Obere Verstaerkungskarte darf nicht aus dem Feld ragen.")
+            _check(bottom_card.position.y + bottom_card.size.y <= area.size.y + 0.01, "Untere Verstaerkungskarte darf nicht aus dem Feld ragen.")
+
+        if boss_sprite != null and top_sprite != null and bottom_sprite != null:
+            _check(boss_sprite.size.x > top_sprite.size.x, "Boss muss in Phase 2 sichtbar groesser als seine Verstaerkungen bleiben.")
+            _check(absf(top_sprite.size.x - 72.0) < 0.01 and absf(bottom_sprite.size.x - 72.0) < 0.01, "Verstaerkungen muessen die normale Spritegroesse behalten.")
+            _check(boss_sprite.position.x > top_sprite.position.x, "Boss muss in der Boss+2-Formation staerker zur Kampfmitte stehen.")
+
+            for add: Dictionary in created:
+                var add_id: String = str(add.get("id", ""))
+                var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + add_id) as Polygon2D
+                _check(shadow != null, "Jede Verstaerkung braucht einen am Sprite verankerten Schatten.")
+
+    _finish(battle)
+
+
+func _finish(battle) -> void:
+    battle.queue_free()
+    if failures == 0:
+        print("Battle boss reinforcement test: PASS")
+        quit(0)
+    else:
+        push_error("Battle boss reinforcement test: %d Fehler" % failures)
+        quit(1)
+
+
+func _check(condition: bool, message: String) -> void:
+    if condition:
+        return
+    failures += 1
+    push_error(message)
