@@ -12,6 +12,20 @@ extends "res://scripts/demo_route_clean_stage_header_v1.gd"
 
 const BossReinforcementRules = preload("res://scripts/route_boss_rules.gd")
 
+# Regular script variables are intentionally used here: RunSaveManager stores
+# them automatically together with the rest of the active adventure.
+var route_difficulty_key: String = "normal"
+var route_difficulty_level_offset: int = 0
+
+
+func set_route_difficulty(difficulty_key: String, level_offset: int) -> void:
+    route_difficulty_key = difficulty_key
+    route_difficulty_level_offset = clampi(level_offset, -2, 4)
+
+
+func _enemy_party_for_stage(current_stage: int) -> Array:
+    return _apply_route_difficulty(super._enemy_party_for_stage(current_stage))
+
 
 func _active_event_choice(kind: String, current_stage: int) -> Dictionary:
     var choice: Dictionary = super._active_event_choice(kind, current_stage)
@@ -35,7 +49,36 @@ func _start_special_battle(kind: String, enemy_party: Array, heading: String) ->
     var decorated_party: Array = enemy_party.duplicate(true)
     if kind == EVENT_RARE:
         decorated_party = _decorate_standard_boss_reinforcement_contract(decorated_party)
+    decorated_party = _apply_route_difficulty(decorated_party)
     super._start_special_battle(kind, decorated_party, heading)
+
+
+func _apply_route_difficulty(enemy_party: Array) -> Array:
+    var result: Array = enemy_party.duplicate(true)
+    for index: int in range(result.size()):
+        var enemy_value: Variant = result[index]
+        if not (enemy_value is Dictionary):
+            continue
+
+        var enemy: Dictionary = enemy_value as Dictionary
+        # Special battles are saved after this adjustment and may later re-enter
+        # this method on resume. The marker prevents applying the offset twice.
+        if bool(enemy.get("_route_difficulty_applied", false)):
+            continue
+
+        enemy["level"] = maxi(
+            1,
+            int(enemy.get("level", 1)) + route_difficulty_level_offset
+        )
+        if enemy.has("boss_reinforcement_level"):
+            enemy["boss_reinforcement_level"] = maxi(
+                1,
+                int(enemy.get("boss_reinforcement_level", 1)) + route_difficulty_level_offset
+            )
+        enemy["_route_difficulty_applied"] = true
+        result[index] = enemy
+
+    return result
 
 
 func _decorate_standard_boss_reinforcement_contract(enemy_party: Array) -> Array:
