@@ -24,10 +24,11 @@ func _initialize() -> void:
         _check(route.ACTIVE_ROUTE_EVENTS.has(kind), "Aktiver Wegpool fehlt: %s" % kind)
     _check(not route.ACTIVE_ROUTE_EVENTS.has(route.EVENT_DIRECT), "Direkter Pfad darf nicht mehr im aktiven Wegpool sein.")
     _check(not route.ACTIVE_ROUTE_EVENTS.has(route.EVENT_DANGEROUS), "Gefährlicher Pfad darf nicht mehr im aktiven Wegpool sein.")
+    _check(route.FIRST_SPECIAL_ENCOUNTER_STAGE == 10, "Die erste feste Besondere Begegnung muss auf Etappe 10 liegen.")
 
-    # Stages 1-10 are protected: the boss is excluded, but the remaining four
+    # Stages 1-9 are protected: the boss is excluded, but the remaining four
     # events stay fully random and three distinct choices are shown.
-    for stage: int in [1, 5, 10]:
+    for stage: int in [1, 5, 9]:
         var early_pool: Array[String] = route._route_event_pool_for_stage(stage)
         _check(early_pool.size() == 4, "Etappe %d muss genau vier mögliche Wegereignisse im geschützten Pool haben." % stage)
         _check(not early_pool.has(route.EVENT_RARE), "Etappe %d darf keinen Boss im Wegpool haben." % stage)
@@ -46,6 +47,21 @@ func _initialize() -> void:
                 _check(not early_kinds.has(kind), "Etappe %d darf kein Wegereignis doppelt anbieten: %s" % [stage, kind])
                 early_kinds.append(kind)
 
+    # Stage 10 is the first fixed special encounter. It must never be replaced
+    # by a random route choice and therefore exposes only the boss event.
+    var stage10_pool: Array[String] = route._route_event_pool_for_stage(10)
+    _check(stage10_pool.size() == 1, "Etappe 10 muss genau ein festes Wegereignis besitzen.")
+    _check(stage10_pool[0] == route.EVENT_RARE, "Etappe 10 muss zwingend die Besondere Begegnung verwenden.")
+
+    for _sample: int in range(40):
+        var stage10_choices: Array[Dictionary] = route._choices_for_stage(10)
+        _check(stage10_choices.size() == 1, "Etappe 10 darf nur eine Wegoption anzeigen.")
+        if not stage10_choices.is_empty():
+            var stage10_choice: Dictionary = stage10_choices[0]
+            _check(str(stage10_choice.get("kind", "")) == route.EVENT_RARE, "Etappe 10 muss immer die Besondere Begegnung anbieten.")
+            _check(str(stage10_choice.get("label", "")).contains("Besondere Begegnung"), "Die feste Etappe-10-Option muss als Besondere Begegnung beschriftet sein.")
+            _check(str(stage10_choice.get("hint", "")).contains("Level +5"), "Etappe 10 muss die bestehende Bossregel höchstes eigenes Level +5 anzeigen.")
+
     # Stage 11 switches to the full five-event pool. From there every event,
     # including the boss, must be reachable in the fully random selection.
     var stage11_pool: Array[String] = route._route_event_pool_for_stage(11)
@@ -55,7 +71,7 @@ func _initialize() -> void:
     var seen: Dictionary = {}
     for _sample: int in range(160):
         var choices: Array[Dictionary] = route._choices_for_stage(25)
-        _check(choices.size() == 3, "Jede Etappe ab 11 muss genau drei Wegoptionen anbieten.")
+        _check(choices.size() == 3, "Jede reguläre Etappe ab 11 muss genau drei Wegoptionen anbieten.")
 
         var kinds: Array[String] = []
         for choice: Dictionary in choices:
