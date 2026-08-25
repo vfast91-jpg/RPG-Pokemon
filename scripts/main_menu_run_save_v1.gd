@@ -313,7 +313,7 @@ func _show_adventure_intro() -> void:
     _adventure_intro_overlay.visible = true
     if _adventure_intro_start_button != null:
         _adventure_intro_start_button.disabled = false
-        _adventure_intro_start_button.grab_focus()
+        _adventure_intro_start_button.release_focus()
 
 
 func _hide_adventure_intro() -> void:
