@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -22,7 +22,8 @@
       "trigger_remaining_bars": 1,
       "count": 2,
       "species_mode": "same_as_boss",
-      "level_mode": "player_max",
+      "level_mode": "player_max_offset",
+      "level_offset": -5,
       "hp_multiplier": 1.0,
       "start_atb_percent": 0.0
     }
