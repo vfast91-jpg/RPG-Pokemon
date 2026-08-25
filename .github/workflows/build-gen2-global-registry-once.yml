@@ -1,4 +1,4 @@
-name: Build Gen2 Global Registry Once
+name: Inspect Gen2 Registry Builder Once
 
 on:
   push:
@@ -6,15 +6,13 @@ on:
       - main
     paths:
       - .github/workflows/build-gen2-global-registry-once.yml
-      - tools/build_gen2_registry_once.py.bz2.b64
-      - data/gen2_species_payload_v1.part*.b64
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-registry:
+  inspect-builder:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -24,61 +22,23 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Restore one-shot builder
+      - name: Restore and inspect builder
         shell: bash
         run: |
           python3 - <<'PY'
           import base64, bz2
           from pathlib import Path
           source = Path('tools/build_gen2_registry_once.py.bz2.b64')
-          target = Path('tools/build_gen2_registry_once.py')
+          target = Path('/tmp/build_gen2_registry_once.py')
           target.write_bytes(bz2.decompress(base64.b64decode(source.read_text().strip())))
-
-          # Three source-approved species currently have no dedicated image in
-          # assets/monsters. They remain fully registered and use the existing
-          # runtime sprite fallback until their artwork is added. Any OTHER
-          # missing Gen2-family sprite is still a hard build error.
           text = target.read_text()
-          needle = 'raise RuntimeError(f"Missing Gen2-family sprites: {missing_sprites}")'
-          replacement = '''unexpected_missing_sprites = [\n                item for item in missing_sprites\n                if not item.startswith(("hoppspross:", "snubbull:", "ursaluna:"))\n            ]\n            if unexpected_missing_sprites:\n                raise RuntimeError(f"Missing Gen2-family sprites: {unexpected_missing_sprites}")\n            print(f"Gen2 sprite fallback active for: {missing_sprites}")'''
-          if needle not in text:
-              raise RuntimeError('Expected sprite validation hook not found in Gen2 builder')
-          target.write_text(text.replace(needle, replacement))
+          lines = text.splitlines()
+          print('BUILDER_LINES', len(lines))
+          for i, line in enumerate(lines, 1):
+              low = line.lower()
+              if any(k in low for k in ('missing_sprites', 'expected_species', 'species_count', 'family_count', '282', '185', 'ursaluna', 'payload', 'evolution')):
+                  lo=max(1,i-2); hi=min(len(lines),i+3)
+                  print(f'--- {lo}:{hi} ---')
+                  for n in range(lo,hi+1):
+                      print(f'{n:04d}: {lines[n-1]}')
           PY
-          python3 -m py_compile tools/build_gen2_registry_once.py
-
-      - name: Build and validate global Gen2 registry
-        run: python3 tools/build_gen2_registry_once.py
-
-      - name: Inspect generated evolution source fields
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import glob, json
-          wanted = {"chikorita", "bayleef", "hoppip", "snubbull", "teddiursa", "ursaring", "ursaluna"}
-          for path in sorted(glob.glob('data/gen2_species_v1_*.json')):
-              data = json.load(open(path, encoding='utf-8'))
-              species = data.get('species', {})
-              for sid in sorted(wanted & set(species)):
-                  entry = species[sid]
-                  print('EVOLUTION_SOURCE', sid, json.dumps({k:v for k,v in entry.items() if 'evol' in k.lower() or 'family' in k.lower()}, ensure_ascii=False, sort_keys=True))
-          PY
-
-      - name: Commit generated registry to main
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tools/build_gen2_registry_once.py
-          git add data/pokemon_species_master_v2.json
-          git add data/pokemon_family_meta_v2.json
-          git add data/pokemon_database_manifest_v1.json
-          git add data/gen2_species_v1_*.json
-          git add data/gen2_registry_build_report_v1.json
-          if git diff --cached --quiet; then
-            echo "No generated changes to commit."
-            exit 0
-          fi
-          git commit -m "Implement complete Gen2 global species registry"
-          git push origin HEAD:main
