@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -16,7 +16,16 @@
     "level_offset": 5,
     "hp_multiplier": 2.0,
     "hp_bars": 2,
-    "species_mode": "random_non_legendary"
+    "species_mode": "random_non_legendary",
+    "reinforcements": {
+      "enabled": true,
+      "trigger_remaining_bars": 1,
+      "count": 2,
+      "species_mode": "same_as_boss",
+      "level_mode": "player_max",
+      "hp_multiplier": 1.0,
+      "start_atb_percent": 0.0
+    }
   },
   "planned_endgame": {
     "enabled": true,
