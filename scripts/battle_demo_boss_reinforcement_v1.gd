@@ -4,12 +4,11 @@ extends "res://scripts/battle_demo_status_stage_scaling_v1.gd"
 #
 # Contract comes from the route layer. When the first of the two boss HP bars is
 # depleted, Timeflow freezes briefly, the boss visibly calls for help and two
-# normal same-species combatants join the enemy side. Their species is never
+# normal-stat same-species combatants join the enemy side. Their species is never
 # resolved through evolution rules; only their level is changed.
 
 const BOSS_REINFORCEMENT_MAX_ENEMY_COUNT: int = 4
-const BOSS_REINFORCEMENT_BOSS_SPRITE_SCALE: float = 1.32
-const BOSS_REINFORCEMENT_BOSS_INWARD_SHIFT: float = 42.0
+const BOSS_REINFORCEMENT_ADD_SPRITE_SCALE: float = 0.66
 const BOSS_REINFORCEMENT_CARD_EDGE_MARGIN: float = 4.0
 const BOSS_REINFORCEMENT_ANGER_SECONDS: float = 0.34
 const BOSS_REINFORCEMENT_FADE_SECONDS: float = 0.28
@@ -259,6 +258,10 @@ func _apply_boss_reinforcement_formation(boss: Dictionary) -> void:
     if adds.size() < 2:
         return
 
+    # The boss keeps the exact route-boss center geometry it already had in
+    # phase 1. The weaker helpers use smaller presentation-only sprites in the
+    # top/bottom slots, which prevents sprite, shadow and status-card collisions
+    # inside the fixed 640x216 battle area without changing their combat stats.
     _position_reinforcement_slot(area, adds[0], "top", false)
     _position_reinforcement_slot(area, boss, "center", true)
     _position_reinforcement_slot(area, adds[1], "bottom", false)
@@ -310,15 +313,14 @@ func _position_reinforcement_slot(
                 maxf(0.0, area.size.y - card.size.y)
             )
 
-    var sprite_scale: float = BOSS_REINFORCEMENT_BOSS_SPRITE_SCALE if boss_slot else 1.0
+    var sprite_scale: float = (
+        ROUTE_BOSS_SPRITE_SCALE if boss_slot else BOSS_REINFORCEMENT_ADD_SPRITE_SCALE
+    )
     var sprite_size: Vector2 = Vector2(ROSTER_SPRITE_SIDE, ROSTER_SPRITE_SIDE) * sprite_scale
     sprite.custom_minimum_size = sprite_size
     sprite.size = sprite_size
 
-    var sprite_x: float = (
-        card.position.x + ROSTER_CARD_WIDTH + ROSTER_CARD_SPRITE_GAP
-        + (BOSS_REINFORCEMENT_BOSS_INWARD_SHIFT if boss_slot else 0.0)
-    )
+    var sprite_x: float = card.position.x + ROSTER_CARD_WIDTH + ROSTER_CARD_SPRITE_GAP
     var sprite_y: float = clampf(
         card.position.y + (card.size.y - sprite.size.y) * 0.5,
         0.0,
@@ -350,7 +352,7 @@ func _position_boss_reinforcement_shadow(
     )
 
     if not boss_slot:
-        shadow.scale = Vector2.ONE
+        shadow.scale = Vector2.ONE * sprite_scale
         return
 
     var route_scale_span: float = maxf(0.001, ROUTE_BOSS_SPRITE_SCALE - 1.0)
