@@ -3,8 +3,10 @@ extends "res://scripts/demo_route_fundstelle_rewards_v2.gd"
 # Active 100-stage route layer.
 # Stages 1-90 keep the established route flow.
 # Stages 91-100 are a mandatory superboss gauntlet with no normal path choice.
-# All ten bosses are currently random non-legendary Pokemon. The data file keeps
-# future legendary markers for stages 96-100 without requiring those species yet.
+# Stages 91-95 use random non-legendary bosses. Stages 96-98 draw three unique
+# available bosses from the configured 580 BST legendary pool, while stages
+# 99-100 draw two unique available bosses from the 680 BST pool. Future pool
+# members are harmless until their species are actually playable.
 
 const EndgameBossRules = preload("res://scripts/route_boss_rules.gd")
 
@@ -14,7 +16,10 @@ const EndgameBossRules = preload("res://scripts/route_boss_rules.gd")
 const ENDGAME_ROUTE_STAGE_COUNT: int = 100
 const ENDGAME_STAGE_START: int = 91
 const ENDGAME_STAGE_END: int = 100
+const ENDGAME_LEGENDARY_STAGE_START: int = 96
 const ENDGAME_POST_BATTLE_SETTLE_SECONDS: float = 0.65
+
+var _endgame_pool_picks: Dictionary = {}
 
 
 func _show_stage_choices(message: String = "") -> void:
@@ -22,6 +27,12 @@ func _show_stage_choices(message: String = "") -> void:
 
     title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
     progress_label.text = _progress_text()
+
+    # A fresh run reaches stages below 96 before any legendary-pool selection.
+    # Clearing here also makes the in-scene restart path safe without needing to
+    # know which inherited restart method created the new run.
+    if stage < ENDGAME_LEGENDARY_STAGE_START:
+        _endgame_pool_picks.clear()
 
     if stage < ENDGAME_STAGE_START:
         return
@@ -96,7 +107,7 @@ func _begin_endgame_boss() -> void:
     var species_id: String = _endgame_species_for_profile(profile, boss_level)
     if species_id.is_empty():
         event_label.text = (
-            "Für den Superboss auf Level %d ist noch keine vollständig spielbare nicht-legendäre Spezies verfügbar."
+            "Für den Superboss auf Level %d ist aktuell keine vollständig spielbare Spezies verfügbar."
             % boss_level
         )
         return
@@ -119,6 +130,54 @@ func _endgame_species_for_profile(profile: Dictionary, boss_level: int) -> Strin
         if not fixed_id.is_empty() and battle_demo.route_species_is_available(fixed_id):
             return fixed_id
 
+    if mode == "random_legendary_pool":
+        var pool_id: String = str(profile.get("legendary_pool", "")).strip_edges().to_lower()
+        var unique_within_pool: bool = bool(profile.get("unique_within_pool", true))
+        var legendary_pick: String = _pick_available_legendary_pool_species(
+            pool_id,
+            unique_within_pool
+        )
+        if not legendary_pick.is_empty():
+            return legendary_pick
+
+        # Missing future species must never break the run. Until a pool contains
+        # enough playable unique members, the stage gracefully uses the normal
+        # non-legendary superboss pool. Once the species exist, no code change is
+        # needed: they automatically become eligible for the legendary draw.
+        if str(profile.get("fallback_mode", "random_non_legendary")) != "random_non_legendary":
+            return ""
+
+    return _random_non_legendary_endgame_species(boss_level)
+
+
+func _pick_available_legendary_pool_species(pool_id: String, unique_within_pool: bool) -> String:
+    if pool_id.is_empty() or battle_demo == null:
+        return ""
+
+    var used: Array = []
+    var used_value: Variant = _endgame_pool_picks.get(pool_id, [])
+    if used_value is Array:
+        used = (used_value as Array).duplicate()
+
+    var candidates: Array[String] = []
+    for species_id: String in EndgameBossRules.legendary_pool_species_ids(pool_id):
+        if not battle_demo.route_species_is_available(species_id):
+            continue
+        if unique_within_pool and used.has(species_id):
+            continue
+        candidates.append(species_id)
+
+    if candidates.is_empty():
+        return ""
+
+    var selected: String = str(candidates.pick_random())
+    if unique_within_pool:
+        used.append(selected)
+        _endgame_pool_picks[pool_id] = used
+    return selected
+
+
+func _random_non_legendary_endgame_species(boss_level: int) -> String:
     var candidates: Array = _standard_combat_candidates(
         battle_demo.route_species_ids_for_level(boss_level)
     )
