@@ -321,6 +321,8 @@ func _position_reinforcement_slot(
     sprite.size = sprite_size
 
     var sprite_x: float = card.position.x + ROSTER_CARD_WIDTH + ROSTER_CARD_SPRITE_GAP
+    if not boss_slot:
+        sprite_x += 44.0
     var sprite_y: float = clampf(
         card.position.y + (card.size.y - sprite.size.y) * 0.5,
         0.0,
