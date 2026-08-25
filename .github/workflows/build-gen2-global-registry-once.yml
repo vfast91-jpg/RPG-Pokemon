@@ -1,0 +1,56 @@
+name: Build Gen2 Global Registry Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-gen2-global-registry-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build-registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Restore one-shot builder
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, bz2
+          from pathlib import Path
+          source = Path('tools/build_gen2_registry_once.py.bz2.b64')
+          target = Path('tools/build_gen2_registry_once.py')
+          target.write_bytes(bz2.decompress(base64.b64decode(source.read_text().strip())))
+          PY
+          python3 -m py_compile tools/build_gen2_registry_once.py
+
+      - name: Build and validate global Gen2 registry
+        run: python3 tools/build_gen2_registry_once.py
+
+      - name: Commit generated registry to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/build_gen2_registry_once.py
+          git add data/pokemon_species_master_v2.json
+          git add data/pokemon_family_meta_v2.json
+          git add data/pokemon_database_manifest_v1.json
+          git add data/gen2_species_v1_*.json
+          git add data/gen2_registry_build_report_v1.json
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git commit -m "Implement complete Gen2 global species registry"
+          git push origin HEAD:main
