@@ -1,18 +1,21 @@
 extends "res://scripts/battle_demo_boss_reinforcement_v1.gd"
 
-# Final route-boss Aggro invariant.
+# Optional route-boss Aggro lock.
 #
-# Every combatant carrying the existing `boss` marker stays at exactly Aggro 1.
-# This is deliberately enforced around the battle tick as well as card refreshes:
-# inherited mechanics may add/reduce Aggro during an action, but no later target
-# selection is allowed to observe a route boss at any other value.
+# IMPORTANT: the generic `boss` marker only controls boss presentation/rules and
+# must NOT freeze Aggro. Ordinary route bosses and the milestone double bosses
+# on stages 20/40/60/80 use the same dynamic Aggro system as every other
+# combatant. A fixed Aggro value is therefore opt-in through the explicit
+# `boss_aggro_lock` marker only.
 
 const ROUTE_BOSS_LOCKED_AGGRO: float = 1.0
 const REINFORCEMENT_MIN_START_AGGRO: float = 2.0
+const ROUTE_BOSS_AGGRO_LOCK_KEY: String = "boss_aggro_lock"
 
 
 func _route_begin_wave() -> void:
     super._route_begin_wave()
+    _bind_explicit_route_boss_aggro_lock()
     _enforce_route_boss_aggro()
 
 
@@ -30,16 +33,37 @@ func _refresh_cards() -> void:
 
 func _spawn_boss_reinforcements(boss: Dictionary) -> Array[Dictionary]:
     var created: Array[Dictionary] = super._spawn_boss_reinforcements(boss)
-    for reinforcement: Dictionary in created:
-        # The companions enter with normal calculated Aggro, but their initial
-        # value must always outrank the boss's fixed 1. Afterwards they use the
-        # ordinary dynamic Aggro rules like every other non-boss combatant.
-        reinforcement["aggro"] = maxf(
-            REINFORCEMENT_MIN_START_AGGRO,
-            float(reinforcement.get("aggro", 0.0))
-        )
+    if _uses_route_boss_aggro_lock(boss):
+        for reinforcement: Dictionary in created:
+            # Only an explicitly Aggro-locked boss needs its reinforcements to
+            # start above the fixed value of 1. Normal bosses/reinforcements keep
+            # their completely ordinary calculated/dynamic Aggro values.
+            reinforcement["aggro"] = maxf(
+                REINFORCEMENT_MIN_START_AGGRO,
+                float(reinforcement.get("aggro", 0.0))
+            )
     _enforce_route_boss_aggro()
     return created
+
+
+func _bind_explicit_route_boss_aggro_lock() -> void:
+    if not route_mode:
+        return
+
+    var count: int = mini(enemy_team.size(), _route_enemy_party.size())
+    for index: int in range(count):
+        var source_value: Variant = _route_enemy_party[index]
+        var combatant_value: Variant = enemy_team[index]
+        if not (source_value is Dictionary) or not (combatant_value is Dictionary):
+            continue
+
+        var source: Dictionary = source_value as Dictionary
+        var combatant: Dictionary = combatant_value as Dictionary
+        if not bool(source.get("boss", false)) or not bool(combatant.get("boss", false)):
+            continue
+
+        if bool(source.get(ROUTE_BOSS_AGGRO_LOCK_KEY, false)):
+            combatant[ROUTE_BOSS_AGGRO_LOCK_KEY] = true
 
 
 func _enforce_route_boss_aggro() -> void:
@@ -47,5 +71,11 @@ func _enforce_route_boss_aggro() -> void:
         if not (combatant_value is Dictionary):
             continue
         var combatant: Dictionary = combatant_value as Dictionary
-        if bool(combatant.get("boss", false)):
+        if _uses_route_boss_aggro_lock(combatant):
             combatant["aggro"] = ROUTE_BOSS_LOCKED_AGGRO
+
+
+func _uses_route_boss_aggro_lock(combatant: Dictionary) -> bool:
+    return bool(combatant.get("boss", false)) and bool(
+        combatant.get(ROUTE_BOSS_AGGRO_LOCK_KEY, false)
+    )
