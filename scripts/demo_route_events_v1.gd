@@ -258,7 +258,7 @@ func _apply_healing_item(team_index: int, item: Dictionary) -> void:
 
 func _apply_vitamin(team_index: int, vitamin: Dictionary) -> void:
     var boss_reward: bool = _boss_fundstelle_pending
-    super._apply_vitamin(entry, team_index)
+    super._apply_vitamin(team_index, vitamin)
     if boss_reward and continue_button.visible:
         _prepare_boss_reward_finish(event_label.text)
 
