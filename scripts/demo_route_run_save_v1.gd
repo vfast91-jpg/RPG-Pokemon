@@ -65,6 +65,8 @@ func continue_saved_route() -> void:
                 )
             else:
                 _show_special_battle_resume()
+        "boss_reward_pending":
+            _show_boss_reward_pending_resume()
         "boss_fundstelle":
             _show_boss_fundstelle_resume()
         "boss_reward_complete":
@@ -156,8 +158,13 @@ func _autosave_run(checkpoint: String = "autosave") -> void:
     if _boss_fundstelle_pending:
         if _boss_fundstelle_choices_remaining > 0:
             effective_checkpoint = "boss_fundstelle"
-        else:
+        elif not _boss_fundstelle_final_reward_text.is_empty():
             effective_checkpoint = "boss_reward_complete"
+        else:
+            # Boss victory is already committed, but the post-victory progression
+            # presentation may still be running and the Fundstelle may not have
+            # rolled its offers yet. Never mistake this window for a completed reward.
+            effective_checkpoint = "boss_reward_pending"
     elif not pending_capture.is_empty():
         effective_checkpoint = "pending_capture"
     elif (
@@ -220,6 +227,23 @@ func _show_special_battle_resume() -> void:
     resume_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     resume_button.pressed.connect(_resume_saved_special_battle)
     path_box.add_child(resume_button)
+    _refresh_team_panel()
+
+
+func _show_boss_reward_pending_resume() -> void:
+    _prepare_resume_surface()
+    path_box.visible = false
+    continue_button.visible = false
+
+    if not _boss_fundstelle_pending:
+        _show_stage_choices(
+            "[b]Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
+        )
+        return
+
+    # The boss victory and its team/progression changes are already in the save.
+    # Only the not-yet-rolled reward screen still has to begin.
+    _begin_fundstelle()
     _refresh_team_panel()
 
 
