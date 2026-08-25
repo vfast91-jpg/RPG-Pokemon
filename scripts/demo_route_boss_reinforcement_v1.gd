@@ -7,8 +7,10 @@ extends "res://scripts/demo_route_clean_stage_header_v1.gd"
 # superboss gauntlet (91-100) stay separate encounter categories.
 #
 # Reinforcements copy the boss species verbatim and use exactly the highest
-# player-team level. Species and level stay independent, so an underleveled
-# evolved boss species is never reverse-evolved for this special spawn.
+# player-team level as their BASE level. Species and level stay independent, so
+# an underleveled evolved boss species is never reverse-evolved for this special
+# spawn. The global route difficulty is applied afterwards to every enemy,
+# including these reinforcements.
 
 const BossReinforcementRules = preload("res://scripts/route_boss_rules.gd")
 
@@ -40,7 +42,8 @@ func _active_event_choice(kind: String, current_stage: int) -> Dictionary:
     choice["hint"] = (
         "Boss mit doppelten KP auf dem höchsten eigenen Level +5. "
         + "Beim Wechsel auf die zweite KP-Leiste ruft er %d gleichartige Verstärkungen "
-        + "auf deinem höchsten Teamlevel. Sieg gibt normale Etappen-EP und danach eine Fundstelle."
+        + "auf deinem höchsten Teamlevel. Der gewählte Schwierigkeitsgrad skaliert alle Gegner. "
+        + "Sieg gibt normale Etappen-EP und danach eine Fundstelle."
     ) % count
     return choice
 
@@ -62,15 +65,24 @@ func _apply_route_difficulty(enemy_party: Array) -> Array:
 
         var enemy: Dictionary = enemy_value as Dictionary
         # Special battles are saved after this adjustment and may later re-enter
-        # this method on resume. The marker prevents double-scaling of the enemy
-        # itself. Reinforcement level is deliberately NOT difficulty-scaled:
-        # its hard contract is exactly the highest player-team level.
+        # this method on resume. Separate markers prevent both double-scaling and
+        # missing the reinforcement level if that contract is added afterwards.
         if not bool(enemy.get("_route_difficulty_level_applied", false)):
             enemy["level"] = maxi(
                 1,
                 int(enemy.get("level", 1)) + route_difficulty_level_offset
             )
             enemy["_route_difficulty_level_applied"] = true
+
+        if (
+            enemy.has("boss_reinforcement_level")
+            and not bool(enemy.get("_route_difficulty_reinforcement_applied", false))
+        ):
+            enemy["boss_reinforcement_level"] = maxi(
+                1,
+                int(enemy.get("boss_reinforcement_level", 1)) + route_difficulty_level_offset
+            )
+            enemy["_route_difficulty_reinforcement_applied"] = true
 
         result[index] = enemy
 
