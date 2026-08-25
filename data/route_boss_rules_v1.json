@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -9,7 +9,13 @@
       "zapdos",
       "moltres",
       "mew",
-      "mewtwo"
+      "mewtwo",
+      "raikou",
+      "entei",
+      "suicune",
+      "lugia",
+      "ho-oh",
+      "celebi"
     ]
   },
   "standard_special_boss": {
@@ -36,17 +42,32 @@
       "hp_multiplier": 4.0,
       "hp_bars": 4
     },
+    "legendary_pools": {
+      "bst_580": [
+        "articuno",
+        "zapdos",
+        "moltres",
+        "raikou",
+        "entei",
+        "suicune"
+      ],
+      "bst_680": [
+        "mewtwo",
+        "lugia",
+        "ho-oh"
+      ]
+    },
     "stages": [
       {"stage": 91, "species_mode": "random_non_legendary"},
       {"stage": 92, "species_mode": "random_non_legendary"},
       {"stage": 93, "species_mode": "random_non_legendary"},
       {"stage": 94, "species_mode": "random_non_legendary"},
       {"stage": 95, "species_mode": "random_non_legendary"},
-      {"stage": 96, "species_mode": "fixed", "species_id": "articuno", "display_name": "Arktos", "landscape_id": "glacier"},
-      {"stage": 97, "species_mode": "fixed", "species_id": "zapdos", "display_name": "Zapdos", "landscape_id": "industry"},
-      {"stage": 98, "species_mode": "fixed", "species_id": "moltres", "display_name": "Lavados", "landscape_id": "volcano"},
-      {"stage": 99, "species_mode": "fixed", "species_id": "mew", "display_name": "Mew", "landscape_id": "mystic"},
-      {"stage": 100, "species_mode": "fixed", "species_id": "mewtwo", "display_name": "Mewtu", "landscape_id": "cave"}
+      {"stage": 96, "species_mode": "random_legendary_pool", "legendary_pool": "bst_580", "unique_within_pool": true, "fallback_mode": "random_non_legendary"},
+      {"stage": 97, "species_mode": "random_legendary_pool", "legendary_pool": "bst_580", "unique_within_pool": true, "fallback_mode": "random_non_legendary"},
+      {"stage": 98, "species_mode": "random_legendary_pool", "legendary_pool": "bst_580", "unique_within_pool": true, "fallback_mode": "random_non_legendary"},
+      {"stage": 99, "species_mode": "random_legendary_pool", "legendary_pool": "bst_680", "unique_within_pool": true, "fallback_mode": "random_non_legendary"},
+      {"stage": 100, "species_mode": "random_legendary_pool", "legendary_pool": "bst_680", "unique_within_pool": true, "fallback_mode": "random_non_legendary"}
     ]
   }
 }
