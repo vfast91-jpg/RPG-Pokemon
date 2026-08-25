@@ -41,12 +41,13 @@ func _enemy_party_for_stage(current_stage: int) -> Array:
             break
 
         var target_slot: int = result.size()
-        result.append({
+        var mirror_enemy: Dictionary = {
             "species_id": STAGE50_MIRROR_SPECIES_ID,
-            "level": base_level,
-            STAGE50_MIRROR_MARKER: true,
-            STAGE50_MIRROR_TARGET_SLOT: target_slot
-        })
+            "level": base_level
+        }
+        mirror_enemy[STAGE50_MIRROR_MARKER] = true
+        mirror_enemy[STAGE50_MIRROR_TARGET_SLOT] = target_slot
+        result.append(mirror_enemy)
 
     # A valid route always has at least one team member. Keep a defensive
     # fallback so corrupt/legacy state can never turn stage 50 into an auto-win.
