@@ -235,28 +235,28 @@ func _build_difficulty_overlay() -> void:
     content.add_child(grid)
 
     _difficulty_first_button = _make_difficulty_button(
-        "LOCKER\nGegner · 2 Level niedriger",
-        "locker",
-        -2,
+        "🌱  ENTSPANNT\nGegner · 1 Level niedriger",
+        "entspannt",
+        -1,
         Color("244035")
     )
     grid.add_child(_difficulty_first_button)
     grid.add_child(_make_difficulty_button(
-        "NORMAL\nStandard-Schwierigkeit",
+        "⚔️  NORMAL\nStandard-Schwierigkeit",
         "normal",
         0,
         Color("20362d")
     ))
     grid.add_child(_make_difficulty_button(
-        "SCHWER\nGegner · 2 Level höher",
+        "🔥  SCHWER\nGegner · 1 Level höher",
         "schwer",
-        2,
+        1,
         Color("3b3225")
     ))
     grid.add_child(_make_difficulty_button(
-        "MEISTER\nGegner · 4 Level höher",
+        "⭐  MEISTER\nGegner · 2 Level höher",
         "meister",
-        4,
+        2,
         Color("40292a")
     ))
 
