@@ -1,6 +1,7 @@
 extends SceneTree
 
-const BattleScript = preload("res://scripts/battle_demo_boss_reinforcement_v1.gd")
+const BattleScript = preload("res://scripts/battle_demo_boss_aggro_lock_v1.gd")
+const SingleTargetAggroRules = preload("res://scripts/battle/single_target_aggro_rules.gd")
 
 var failures: int = 0
 
@@ -40,6 +41,19 @@ func _initialize() -> void:
     _check(bool(boss.get("boss_reinforcement_enabled", false)), "Boss muss den Routen-Verstaerkungsvertrag in den Kampf uebernehmen.")
     _check(int(boss.get("level", 0)) == 17, "Boss muss Lv.17 bleiben.")
     _check(str(boss.get("species_id", "")) == "charmeleon", "Boss-Spezies muss Glutexo bleiben.")
+    _check(is_equal_approx(float(boss.get("aggro", -1.0)), 1.0), "Boss muss den Kampf mit exakt Aggro 1 beginnen.")
+
+    boss["aggro"] = 99.0
+    battle._enforce_route_boss_aggro()
+    _check(is_equal_approx(float(boss.get("aggro", -1.0)), 1.0), "Boss-Aggro muss nach jeder Veraenderung hart auf 1 zurueckgesetzt werden.")
+
+    var boss_relief_probe: Dictionary = {"boss": true, "aggro": 1.0}
+    SingleTargetAggroRules.reduce(boss_relief_probe)
+    _check(is_equal_approx(float(boss_relief_probe.get("aggro", -1.0)), 1.0), "Single-Target-Aggroabbau darf Boss-Aggro 1 nicht halbieren.")
+
+    var normal_relief_probe: Dictionary = {"boss": false, "aggro": 20.0}
+    SingleTargetAggroRules.reduce(normal_relief_probe)
+    _check(is_equal_approx(float(normal_relief_probe.get("aggro", -1.0)), 10.0), "Normale Pokemon muessen weiterhin die bestehende Aggro-Halbierung erhalten.")
 
     var base_max_hp: int = maxi(1, int(boss.get("boss_base_max_hp", 0)))
     _check(int(boss.get("max_hp", 0)) == base_max_hp * 2, "Boss muss weiterhin exakt zwei normale KP-Leisten besitzen.")
@@ -55,12 +69,13 @@ func _initialize() -> void:
         {"species_id": "charmeleon", "level": 12}
     )
     var expected_normal_hp: int = int(normal_probe.get("max_hp", 0))
-    var expected_start_aggro: float = float(normal_probe.get("aggro", -1.0))
+    var expected_start_aggro: float = maxf(2.0, float(normal_probe.get("aggro", -1.0)))
 
     boss["boss_reinforcement_started"] = true
     var created: Array[Dictionary] = battle._spawn_boss_reinforcements(boss)
     _check(created.size() == 2, "Boss muss genau zwei Verstaerkungen erzeugen.")
     _check(battle.enemy_team.size() == 3, "Phase 2 muss aus 1 Boss + 2 Verstaerkungen bestehen.")
+    _check(is_equal_approx(float(boss.get("aggro", -1.0)), 1.0), "Boss muss auch nach dem Spawn der Verstaerkungen exakt Aggro 1 behalten.")
 
     for index: int in range(created.size()):
         var add: Dictionary = created[index]
@@ -70,7 +85,8 @@ func _initialize() -> void:
         _check(bool(add.get("boss_reinforcement", false)), "Verstaerkung #%d braucht die Laufzeit-Markierung." % (index + 1))
         _check(int(add.get("max_hp", 0)) == expected_normal_hp, "Verstaerkung #%d muss normale statt verdoppelte KP besitzen." % (index + 1))
         _check(is_equal_approx(float(add.get("atb", -1.0)), 0.0), "Verstaerkung #%d muss mit 0 Prozent ATB starten." % (index + 1))
-        _check(is_equal_approx(float(add.get("aggro", -2.0)), expected_start_aggro), "Verstaerkung #%d muss die bestehende zentrale Start-Aggro-Berechnung verwenden." % (index + 1))
+        _check(is_equal_approx(float(add.get("aggro", -2.0)), expected_start_aggro), "Verstaerkung #%d muss die zentrale Start-Aggro verwenden und beim Eintritt sicher ueber Boss-Aggro 1 liegen." % (index + 1))
+        _check(float(add.get("aggro", 0.0)) > float(boss.get("aggro", 1.0)), "Verstaerkung #%d muss beim Eintritt mehr Aggro als der Boss besitzen." % (index + 1))
 
     battle._layout_reinforcement_visuals(created)
     boss["boss_reinforcement_spawned"] = true
