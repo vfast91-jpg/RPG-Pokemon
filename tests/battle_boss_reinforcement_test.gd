@@ -25,7 +25,7 @@ func _initialize() -> void:
         "boss_reinforcement_enabled": true,
         "boss_reinforcement_count": 2,
         "boss_reinforcement_species_id": "charmeleon",
-        "boss_reinforcement_level": 7,
+        "boss_reinforcement_level": 12,
         "boss_reinforcement_hp_multiplier": 1.0,
         "boss_reinforcement_start_atb": 0.0,
         "boss_reinforcement_trigger_remaining_bars": 1
@@ -74,7 +74,7 @@ func _initialize() -> void:
     var normal_probe: Dictionary = battle._make_combatant(
         "enemy",
         99,
-        {"species_id": "charmeleon", "level": 7}
+        {"species_id": "charmeleon", "level": 12}
     )
     var expected_normal_hp: int = int(normal_probe.get("max_hp", 0))
     var expected_start_aggro: float = maxf(2.0, float(normal_probe.get("aggro", -1.0)))
@@ -88,7 +88,7 @@ func _initialize() -> void:
     for index: int in range(created.size()):
         var add: Dictionary = created[index]
         _check(str(add.get("species_id", "")) == "charmeleon", "Verstaerkung #%d muss Glutexo bleiben und darf nicht zu Glumanda rueckentwickelt werden." % (index + 1))
-        _check(int(add.get("level", 0)) == 7, "Verstaerkung #%d muss bei Spieler-Maxlevel Lv.12 genau Lv.7 sein." % (index + 1))
+        _check(int(add.get("level", 0)) == 12, "Verstaerkung #%d muss bei Spieler-Maxlevel Lv.12 exakt Lv.12 sein." % (index + 1))
         _check(not bool(add.get("boss", true)), "Verstaerkung #%d darf keinen Bossstatus besitzen." % (index + 1))
         _check(bool(add.get("boss_reinforcement", false)), "Verstaerkung #%d braucht die Laufzeit-Markierung." % (index + 1))
         _check(int(add.get("max_hp", 0)) == expected_normal_hp, "Verstaerkung #%d muss normale statt verdoppelte KP besitzen." % (index + 1))
