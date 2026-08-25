@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import base64, bz2
+          import base64, bz2, re
           from pathlib import Path
 
           source = Path('tools/build_gen2_registry_once.py.bz2.b64')
@@ -44,6 +44,22 @@ jobs:
               if old not in text:
                   raise RuntimeError(f'Expected builder marker missing: {old}')
               text = text.replace(old, new, 1)
+
+          # Ursaluna was the only later-generation member removed from this build,
+          # so every builder expectation that explicitly describes the later split
+          # changes from 16 to 15 while the 81 original Gen-2 species stay unchanged.
+          patched_lines = []
+          later_split_patches = 0
+          for line in text.splitlines(True):
+              if 'later' in line.lower() and re.search(r'\b16\b', line):
+                  new_line = re.sub(r'\b16\b', '15', line)
+                  if new_line != line:
+                      later_split_patches += 1
+                      line = new_line
+              patched_lines.append(line)
+          text = ''.join(patched_lines)
+          if later_split_patches < 1:
+              raise RuntimeError('Later-generation split expectation (16) not found')
 
           payload_marker = '    species = payload.get("species", payload)\n'
           payload_patch = '''    species = payload.get("species", payload)\n    # Ursaluna is intentionally deferred until its full authoritative data is supplied.\n    # Keep the Teddiursa family active, but make Ursaring the current terminal stage.\n    if isinstance(species, dict):\n        species.pop("ursaluna", None)\n        ursaring = species.get("ursaring")\n        if isinstance(ursaring, dict):\n            evolution = ursaring.get("evolution")\n            if isinstance(evolution, dict):\n                evolution["evolution_level"] = None\n                evolution["evolves_into"] = "none"\n                evolution["mandatory"] = False\n                evolution["method"] = "none"\n                evolution["requirement"] = None\n            notes = str(ursaring.get("notes", "")).strip()\n            defer_note = "Ursaluna ist vorerst bewusst zurückgestellt; Ursaring ist aktuell die Endstufe."\n            ursaring["notes"] = (notes + " " + defer_note).strip()\n            tags = ursaring.get("tags", [])\n            if isinstance(tags, list) and "ursaluna_deferred" not in tags:\n                tags.append("ursaluna_deferred")\n'''
