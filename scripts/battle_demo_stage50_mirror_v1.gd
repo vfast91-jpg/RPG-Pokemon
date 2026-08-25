@@ -1,9 +1,9 @@
 extends "res://scripts/battle_demo_gen2_moves_v23_v1.gd"
 
-# Etappe 50: sichtbarer Ditto-Spiegelkampf vor dem eigentlichen Kampfbeginn.
+# Wiederkehrender sichtbarer Ditto-Spiegelkampf auf Etappe 30/50/70/90.
 #
 # Der Route-Layer liefert echte Ditto-Gegner plus eine rein encounter-lokale
-# Slot-Markierung. Dieser Battle-Layer unterdrueckt fuer genau diesen Kampf die
+# Slot-Markierung. Dieser Battle-Layer unterdrueckt fuer genau diese Kaempfe die
 # erste Runde-0-Erzeugung, sperrt Eingaben, laesst die Dittos kurz unverwandelt
 # sichtbar und wendet danach die bereits zentrale Wandler-Implementierung auf
 # Ditto N -> Spieler-Slot N an. Anschliessend wird Runde 0 aus den verwandelten
@@ -11,6 +11,7 @@ extends "res://scripts/battle_demo_gen2_moves_v23_v1.gd"
 
 const STAGE50_MIRROR_MARKER: String = "stage50_mirror"
 const STAGE50_MIRROR_TARGET_SLOT: String = "stage50_mirror_target_slot"
+const STAGE50_MIRROR_STAGE_KEY: String = "stage50_mirror_stage"
 const STAGE50_MIRROR_DITTO_REVEAL_SECONDS: float = 0.50
 const STAGE50_MIRROR_TRANSFORM_STEP_SECONDS: float = 0.42
 const STAGE50_MIRROR_FINAL_HOLD_SECONDS: float = 0.24
@@ -19,6 +20,7 @@ var _stage50_mirror_setup_in_progress: bool = false
 var _stage50_mirror_target_slots: Array[int] = []
 var _stage50_mirror_intro_serial: int = 0
 var _stage50_mirror_input_blocker: Control
+var _stage50_mirror_stage: int = 50
 
 
 func start_route_battle_party(team_state: Array, enemy_party: Array) -> void:
@@ -28,6 +30,7 @@ func start_route_battle_party(team_state: Array, enemy_party: Array) -> void:
 
     _stage50_mirror_target_slots = _stage50_extract_target_slots(enemy_party)
     _stage50_mirror_setup_in_progress = not _stage50_mirror_target_slots.is_empty()
+    _stage50_mirror_stage = _stage50_extract_mirror_stage(enemy_party)
 
     super.start_route_battle_party(team_state, enemy_party)
 
@@ -47,7 +50,7 @@ func start_route_battle_party(team_state: Array, enemy_party: Array) -> void:
     paused = true
     _stage50_install_input_blocker()
     _set_log(
-        "[b]ETAPPE 50 · SPIEGELKAMPF[/b]\n"
+        "[b]ETAPPE %d · SPIEGELKAMPF[/b]\n" % _stage50_mirror_stage
         + "Die gegnerischen Ditto richten sich auf dein Team aus …"
     )
     call_deferred("_stage50_run_mirror_intro", serial)
@@ -84,13 +87,23 @@ func _stage50_extract_target_slots(enemy_party: Array) -> Array[int]:
     return slots
 
 
+func _stage50_extract_mirror_stage(enemy_party: Array) -> int:
+    for enemy_value: Variant in enemy_party:
+        if not (enemy_value is Dictionary):
+            continue
+        var enemy: Dictionary = enemy_value as Dictionary
+        if bool(enemy.get(STAGE50_MIRROR_MARKER, false)):
+            return maxi(1, int(enemy.get(STAGE50_MIRROR_STAGE_KEY, 50)))
+    return 50
+
+
 func _stage50_install_input_blocker() -> void:
     _stage50_remove_input_blocker()
     if battle_panel == null:
         return
 
     var blocker := ColorRect.new()
-    blocker.name = "Stage50MirrorInputBlocker"
+    blocker.name = "MirrorBattleInputBlocker"
     blocker.color = Color(0.0, 0.0, 0.0, 0.0)
     blocker.mouse_filter = Control.MOUSE_FILTER_STOP
     blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -114,7 +127,10 @@ func _stage50_run_mirror_intro(serial: int) -> void:
         return
 
     if not has_method("_ditto_apply_transform"):
-        push_error("Etappe 50: Zentrale Ditto/Wandler-Funktion fehlt im aktiven Battle-Stack.")
+        push_error(
+            "Etappe %d: Zentrale Ditto/Wandler-Funktion fehlt im aktiven Battle-Stack."
+            % _stage50_mirror_stage
+        )
         _stage50_finish_mirror_intro(serial, false)
         return
 
@@ -136,10 +152,10 @@ func _stage50_run_mirror_intro(serial: int) -> void:
         var target: Dictionary = target_value as Dictionary
 
         # The central Wandler implementation correctly rejects K.O. targets in
-        # ordinary combat. Stage 50 mirrors team slots before combat, including
-        # a travelling K.O. slot. Temporarily expose only the target's alive flag
-        # so the exact same copy routine can read its battle profile; immediately
-        # restore the real K.O. state afterwards.
+        # ordinary combat. Mirror milestones copy team slots before combat,
+        # including a travelling K.O. slot. Temporarily expose only the target's
+        # alive flag so the same copy routine can read its battle profile; restore
+        # the real K.O. state immediately afterwards.
         var target_alive_before: bool = bool(target.get("alive", false))
         if not target_alive_before:
             target["alive"] = true
@@ -200,7 +216,7 @@ func _stage50_finish_mirror_intro(serial: int, transformed: bool) -> void:
         )
     else:
         _set_log(
-            "[b]Etappe 50[/b] konnte Wandler nicht vorbereiten. "
+            "[b]Etappe %d[/b] konnte Wandler nicht vorbereiten. " % _stage50_mirror_stage
             + "Der Kampf wird ohne automatische Spiegelung fortgesetzt."
         )
 
