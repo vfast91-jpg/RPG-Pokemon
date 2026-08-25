@@ -88,7 +88,7 @@ func _show_tm_offer_buttons() -> void:
             str(entry.get("name", entry.get("move_id", "TM")))
         ]
         button.custom_minimum_size = Vector2(0, 28)
-        button.tooltip_text = _tm_recipient_hint(recipients)
+        button.tooltip_text = _tm_offer_tooltip(entry, recipients)
         button.pressed.connect(_choose_tm_offer.bind(entry))
         capture_actions.add_child(button)
 
@@ -247,6 +247,48 @@ func _tm_recipient_hint(recipients: Array[Dictionary]) -> String:
         if member_value is Dictionary:
             names.append(str((member_value as Dictionary).get("name", "Pokémon")))
     return "Mögliche Empfänger: " + ", ".join(names)
+
+
+func _tm_offer_tooltip(entry: Dictionary, recipients: Array[Dictionary]) -> String:
+    var recipient_hint: String = _tm_recipient_hint(recipients)
+    var attack_hint: String = _tm_attack_tooltip(entry)
+    if attack_hint.is_empty():
+        return recipient_hint
+    return recipient_hint + "\n\nAttacke:\n" + attack_hint
+
+
+func _tm_attack_tooltip(entry: Dictionary) -> String:
+    if battle_demo == null:
+        return ""
+
+    var move_id: String = str(entry.get("move_id", ""))
+    if move_id.is_empty():
+        return ""
+
+    var runtime_data_value: Variant = battle_demo.get("data")
+    if not (runtime_data_value is Dictionary):
+        return ""
+    var runtime_moves_value: Variant = (runtime_data_value as Dictionary).get("moves", {})
+    if not (runtime_moves_value is Dictionary):
+        return ""
+
+    var move_value: Variant = (runtime_moves_value as Dictionary).get(move_id, {})
+    if not (move_value is Dictionary):
+        return ""
+    var move: Dictionary = move_value
+
+    # Reuse the central battle tooltip instead of maintaining a second move
+    # description system for Fundstelle rewards. This keeps special mechanics,
+    # AP/time cost, targets and future presentation fixes consistent everywhere.
+    if battle_demo.has_method("_move_tooltip"):
+        var standardized: String = str(battle_demo.call("_move_tooltip", move)).strip_edges()
+        if not standardized.is_empty():
+            return standardized
+
+    # Defensive legacy fallback: if an isolated old BattleDemo layer does not
+    # expose the standardized tooltip yet, keep the Fundstelle usable and show
+    # a player-facing database description when one exists.
+    return str(move.get("description", "")).strip_edges()
 
 
 func _reload_tm_catalog() -> void:
