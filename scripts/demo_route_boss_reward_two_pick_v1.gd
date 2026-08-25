@@ -5,8 +5,9 @@ extends "res://scripts/demo_route_viewport_guard_v1.gd"
 # Normal Fundstellen remain unchanged: one successful reward choice.
 # A Fundstelle earned after a successful Besondere Begegnung uses the exact
 # same rolled reward set, but the player may take two successful rewards from it.
-# Non-TM rewards may be chosen twice. A TM offer is consumed after it is actually
-# assigned to a Pokemon, so the second choice may only use the remaining TM offers.
+# Healing items and revives may be chosen twice. TM and vitamin offers are
+# consumed after they are actually granted, so each one-time offer can only be
+# used once across the two boss-reward picks.
 #
 # The rolled offers and the remaining-choice counter are regular script state so
 # RunSaveManager persists them. This prevents reroll/reload exploits between the
@@ -18,6 +19,7 @@ var _boss_fundstelle_choices_remaining: int = 0
 var _boss_fundstelle_last_reward: String = ""
 var _boss_fundstelle_final_reward_text: String = ""
 var _boss_fundstelle_consumed_tm_keys: Array[String] = []
+var _boss_fundstelle_consumed_vitamin_keys: Array[String] = []
 
 
 func _reset_fundstelle_state() -> void:
@@ -30,6 +32,7 @@ func _clear_boss_fundstelle_choice_state() -> void:
     _boss_fundstelle_last_reward = ""
     _boss_fundstelle_final_reward_text = ""
     _boss_fundstelle_consumed_tm_keys.clear()
+    _boss_fundstelle_consumed_vitamin_keys.clear()
 
 
 func _begin_fundstelle() -> void:
@@ -38,6 +41,7 @@ func _begin_fundstelle() -> void:
         _boss_fundstelle_last_reward = ""
         _boss_fundstelle_final_reward_text = ""
         _boss_fundstelle_consumed_tm_keys.clear()
+        _boss_fundstelle_consumed_vitamin_keys.clear()
     else:
         _clear_boss_fundstelle_choice_state()
 
@@ -71,8 +75,8 @@ func _show_fundstelle_options() -> void:
         + "\n\n[b]🎁 Fundstelle · Bossbelohnung[/b]\n"
         + choice_text
         + last_reward_text
-        + "\nHeilitem, Beleber und Vitamin dürfen erneut gewählt werden. "
-        + "Eine bereits vergebene TM ist für die zweite Auswahl verbraucht."
+        + "\nHeilitem und Beleber dürfen erneut gewählt werden. "
+        + "Eine bereits vergebene TM oder ein bereits genommenes Vitamin ist für die zweite Auswahl verbraucht."
     )
 
 
@@ -146,12 +150,17 @@ func _apply_vitamin(team_index: int, vitamin: Dictionary) -> void:
         super._apply_vitamin(team_index, vitamin)
         return
 
+    var used_vitamin_key: String = _fundstelle_vitamin_offer_key(vitamin)
+
     _boss_fundstelle_pending = false
     super._apply_vitamin(team_index, vitamin)
     _boss_fundstelle_pending = true
 
     if not _fundstelle_reward_application_succeeded():
         return
+
+    if not used_vitamin_key.is_empty() and not _boss_fundstelle_consumed_vitamin_keys.has(used_vitamin_key):
+        _boss_fundstelle_consumed_vitamin_keys.append(used_vitamin_key)
 
     var reward_text: String = event_label.text
     var reward_label: String = "%s %s" % [
@@ -224,15 +233,34 @@ func _fundstelle_tm_offer_key(entry: Dictionary) -> String:
     return number + "|" + move_id
 
 
+func _fundstelle_vitamin_offer_key(vitamin: Dictionary) -> String:
+    var vitamin_id: String = str(vitamin.get("id", "")).strip_edges()
+    var stat_key: String = str(vitamin.get("stat", "")).strip_edges()
+    var name: String = str(vitamin.get("name", "")).strip_edges()
+    if vitamin_id.is_empty() and stat_key.is_empty() and name.is_empty():
+        return ""
+    return vitamin_id + "|" + stat_key + "|" + name
+
+
 func _remove_consumed_boss_tm_offers() -> void:
-    if _boss_fundstelle_consumed_tm_keys.is_empty() or _fundstelle_tm_offers.is_empty():
-        return
+    # Kept under its existing name because the run-save resume layer already
+    # calls this helper. It now filters all one-time boss reward offers.
+    if not _boss_fundstelle_consumed_tm_keys.is_empty() and not _fundstelle_tm_offers.is_empty():
+        var remaining_tm_offers: Array[Dictionary] = []
+        for offer: Dictionary in _fundstelle_tm_offers:
+            if not _boss_fundstelle_consumed_tm_keys.has(_fundstelle_tm_offer_key(offer)):
+                remaining_tm_offers.append(offer)
 
-    var remaining_offers: Array[Dictionary] = []
-    for offer: Dictionary in _fundstelle_tm_offers:
-        if not _boss_fundstelle_consumed_tm_keys.has(_fundstelle_tm_offer_key(offer)):
-            remaining_offers.append(offer)
+        _fundstelle_tm_offers.clear()
+        for offer: Dictionary in remaining_tm_offers:
+            _fundstelle_tm_offers.append(offer)
 
-    _fundstelle_tm_offers.clear()
-    for offer: Dictionary in remaining_offers:
-        _fundstelle_tm_offers.append(offer)
+    if not _boss_fundstelle_consumed_vitamin_keys.is_empty() and not _fundstelle_vitamin_offers.is_empty():
+        var remaining_vitamin_offers: Array[Dictionary] = []
+        for vitamin: Dictionary in _fundstelle_vitamin_offers:
+            if not _boss_fundstelle_consumed_vitamin_keys.has(_fundstelle_vitamin_offer_key(vitamin)):
+                remaining_vitamin_offers.append(vitamin)
+
+        _fundstelle_vitamin_offers.clear()
+        for vitamin: Dictionary in remaining_vitamin_offers:
+            _fundstelle_vitamin_offers.append(vitamin)
