@@ -6,8 +6,8 @@ extends "res://scripts/demo_route_levelup_evolution_order_fix.gd"
 
 const NORMAL_STAGE_XP_FRACTION: float = 0.50
 const ENCOUNTER_FAMILY_DATA_PATH: String = "res://data/gen1_species_encounter_families_v1.json"
-# Fangwiesen-Gambling: Jede weitere Suche erhöht wie bisher die relative Chance
-# auf seltene Familien, kostet dafür aber bewusst Fanglevel. Die Abstände sind
+# Reisegefährten-Suche: Jede weitere Suche erhöht wie bisher die relative Chance
+# auf seltene Familien, kostet dafür aber bewusst Fundlevel. Die Abstände sind
 # direkt vom höchsten eigenen Pokémon aus definiert, damit sie über den gesamten
 # Run verständlich und konstant bleiben: Suche 1 -1, Suche 2 -3, Suche 3 -5.
 const CAPTURE_SEARCH_LEVEL_OFFSETS: Array[int] = [1, 3, 5]
@@ -27,6 +27,17 @@ func start_route() -> void:
     super.start_route()
 
 
+func _special_event_choice(kind: String, current_stage: int) -> Dictionary:
+    var choice: Dictionary = super._special_event_choice(kind, current_stage)
+    if kind == EVENT_CATCH:
+        choice["label"] = "🌿 Reisegefährten-Suche"
+        choice["hint"] = (
+            "Suche bis zu dreimal nach einem möglichen Reisegefährten. Jede weitere Suche erhöht "
+            + "die Seltenheitschance, senkt aber das Level des nächsten Funds."
+        )
+    return choice
+
+
 func _route_stage_xp(current_stage: int) -> int:
     var previous_stage_xp: int = super._route_stage_xp(current_stage)
     return maxi(
@@ -36,7 +47,7 @@ func _route_stage_xp(current_stage: int) -> int:
 
 
 func _capture_level_for_stage(_current_stage: int) -> int:
-    # Das Basis-Fanglevel entspricht Suche 1: genau ein Level unter dem aktuell
+    # Das Basis-Fundlevel entspricht Suche 1: genau ein Level unter dem aktuell
     # höchsten eigenen Pokémon. Die Etappe selbst verändert dieses Level nicht.
     return maxi(1, _highest_team_level() - CAPTURE_SEARCH_LEVEL_OFFSETS[0])
 
@@ -88,12 +99,12 @@ func _ensure_encounter_family_data() -> void:
 
     var file := FileAccess.open(ENCOUNTER_FAMILY_DATA_PATH, FileAccess.READ)
     if file == null:
-        push_error("Fangwiese: Familien-Fangraten fehlen: " + ENCOUNTER_FAMILY_DATA_PATH)
+        push_error("Reisegefährten-Suche: Familien-Begegnungsraten fehlen: " + ENCOUNTER_FAMILY_DATA_PATH)
         return
 
     var parsed: Variant = JSON.parse_string(file.get_as_text())
     if not (parsed is Dictionary):
-        push_error("Fangwiese: Familien-Fangraten sind ungültig.")
+        push_error("Reisegefährten-Suche: Familien-Begegnungsraten sind ungültig.")
         return
 
     var families_value: Variant = (parsed as Dictionary).get("families", {})
@@ -136,7 +147,7 @@ func _weighted_capture_root(roots: Array, search_number: int) -> String:
             candidates.append(root_id)
 
     # Defensive fallback for a future tiny encounter pool: never make the
-    # Fangwiese unusable merely because every available family was seen once.
+    # Reisegefährten-Suche unusable merely because every available family was seen once.
     if candidates.is_empty():
         for root_value: Variant in roots:
             candidates.append(str(root_value))
@@ -195,13 +206,13 @@ func _offer_capture_search() -> void:
     var max_reachable_level: int = _max_reachable_level_from_stage(capture_level, stage)
     var roots: Array = battle_demo.route_species_ids_valid_through_level(max_reachable_level)
     if roots.is_empty():
-        event_label.text = "An dieser Fangwiese taucht heute kein vollständig spielbares Pokémon auf."
+        event_label.text = "Bei dieser Reisegefährten-Suche zeigt sich heute kein vollständig spielbares Pokémon."
         continue_button.visible = true
         return
 
     var root_id: String = _weighted_capture_root(roots, _capture_search_number)
     if root_id.is_empty():
-        event_label.text = "An dieser Fangwiese konnte keine passende Pokémon-Familie bestimmt werden."
+        event_label.text = "Für diese Reisegefährten-Suche konnte keine passende Pokémon-Familie bestimmt werden."
         continue_button.visible = true
         return
 
@@ -237,13 +248,13 @@ func _show_current_capture_offer() -> void:
     var name: String = str(pending_capture.get("name", "Pokémon"))
     var level: int = maxi(1, int(pending_capture.get("level", 1)))
     event_label.text = (
-        "[b]🌿 Fangwiese · Suche %d/%d[/b]\n"
-        + "%s Lv.%d wurde gefunden. Du kannst es vollständig ansehen und jetzt entscheiden."
+        "[b]🌿 Reisegefährten · Suche %d/%d[/b]\n"
+        + "%s Lv.%d ist dir begegnet. Du kannst es vollständig ansehen und entscheiden, ob es dich begleiten soll."
     ) % [_capture_search_number, CAPTURE_SEARCH_MAX, name, level]
 
     if team.size() < ROUTE_TEAM_MAX:
         var accept_button := Button.new()
-        accept_button.text = "INS TEAM AUFNEHMEN"
+        accept_button.text = "ALS REISEGEFÄHRTEN AUFNEHMEN"
         accept_button.custom_minimum_size = Vector2(0, 28)
         accept_button.pressed.connect(_accept_pending_capture)
         capture_actions.add_child(accept_button)
@@ -261,14 +272,14 @@ func _show_current_capture_offer() -> void:
         search_button.text = "WEITERSUCHEN · HÖHERE SELTENHEITSCHANCE · NÄCHSTER FUND LV.%d" % next_level
         search_button.custom_minimum_size = Vector2(0, 28)
         search_button.tooltip_text = (
-            "Das aktuelle Pokémon wird nicht aufgenommen. Suche %d erhöht relativ die Chance auf "
-            + "schwerer fangbare Pokémon-Familien, der nächste Fund ist dafür fest auf Lv.%d."
+            "Das aktuelle Pokémon schließt sich dir nicht an. Suche %d erhöht relativ die Chance auf "
+            + "seltenere Pokémon-Familien, der nächste Fund ist dafür fest auf Lv.%d."
         ) % [next_search, next_level]
         search_button.pressed.connect(_search_capture_again)
         capture_actions.add_child(search_button)
     else:
         var leave_button := Button.new()
-        leave_button.text = "NICHT AUFNEHMEN · FANGWIESE VERLASSEN"
+        leave_button.text = "NICHT AUFNEHMEN · SUCHE BEENDEN"
         leave_button.custom_minimum_size = Vector2(0, 28)
         leave_button.tooltip_text = "Nach der dritten Suche gibt es keine weitere Suche und keine EP-Trostbelohnung."
         leave_button.pressed.connect(_leave_capture_without_capture)
@@ -297,7 +308,7 @@ func _accept_pending_capture() -> void:
     _capture_preview_team_index = team.size() - 1
     _capture_preview_member = (team[_capture_preview_team_index] as Dictionary).duplicate(true)
     _clear_container(capture_actions)
-    event_label.text = "[b]✓ %s Lv.%d kommt in dein Team.[/b]" % [name, level]
+    event_label.text = "[b]✓ %s Lv.%d schließt sich dir als Reisegefährte an.[/b]" % [name, level]
     continue_button.visible = true
     _refresh_team_panel()
     _add_capture_preview_card()
@@ -312,8 +323,8 @@ func _leave_capture_without_capture() -> void:
     _capture_preview_team_index = -1
     _clear_container(capture_actions)
     event_label.text = (
-        "[b]Fangwiese verlassen.[/b]\n"
-        + "Du nimmst keines der drei gefundenen Pokémon auf. Es gibt dafür keine zusätzliche EP-Belohnung."
+        "[b]Reisegefährten-Suche beendet.[/b]\n"
+        + "Keines der drei gefundenen Pokémon schließt sich dir an. Es gibt dafür keine zusätzliche EP-Belohnung."
     )
     continue_button.visible = true
     _refresh_team_panel()
