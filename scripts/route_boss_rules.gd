@@ -1,9 +1,11 @@
 extends RefCounted
 
 # Central, data-driven route boss policy.
-# The 100-stage endgame is active. Stages 91-95 keep their random non-legendary
-# superboss profiles, while stages 96-100 are fixed legendary bosses defined in
-# data/route_boss_rules_v1.json.
+# The 100-stage endgame is active. Stages 91-95 keep random non-legendary
+# superbosses. Stages 96-98 draw unique bosses from the configured 580 BST
+# legendary pool; stages 99-100 do the same from the configured 680 BST pool.
+# Pool entries may already name future species: runtime selection only uses
+# species that are actually available/playable at that moment.
 
 const RULES_PATH: String = "res://data/route_boss_rules_v1.json"
 
@@ -129,6 +131,32 @@ static func planned_endgame_enabled() -> bool:
     if not (endgame_value is Dictionary):
         return false
     return bool((endgame_value as Dictionary).get("enabled", false))
+
+
+static func legendary_pool_species_ids(pool_id: String) -> Array[String]:
+    var normalized_pool_id: String = pool_id.strip_edges().to_lower()
+    if normalized_pool_id.is_empty():
+        return []
+
+    var rules: Dictionary = _load_rules()
+    var endgame_value: Variant = rules.get("planned_endgame", {})
+    if not (endgame_value is Dictionary):
+        return []
+
+    var pools_value: Variant = (endgame_value as Dictionary).get("legendary_pools", {})
+    if not (pools_value is Dictionary):
+        return []
+
+    var ids_value: Variant = (pools_value as Dictionary).get(normalized_pool_id, [])
+    if not (ids_value is Array):
+        return []
+
+    var ids: Array[String] = []
+    for value: Variant in ids_value:
+        var species_id: String = str(value).strip_edges().to_lower()
+        if not species_id.is_empty() and not ids.has(species_id):
+            ids.append(species_id)
+    return ids
 
 
 static func planned_endgame_profile_for_stage(current_stage: int) -> Dictionary:
