@@ -109,6 +109,39 @@ func _replace_team_member(index: int) -> void:
     super._replace_team_member(index)
 
 
+func _on_route_battle_finished(victory: bool, updated_team: Array) -> void:
+    # The current battle stack returns full member dictionaries, but preserve
+    # this route-owned metadata defensively. A future battle refactor that
+    # rebuilds combatants from a fixed field set must never reset a companion to
+    # a fresh 30 stages simply because it did not know this key.
+    var protected_team: Array = _preserve_companion_duration_metadata(updated_team)
+    super._on_route_battle_finished(victory, protected_team)
+
+
+func _preserve_companion_duration_metadata(updated_team: Array) -> Array:
+    var protected_team: Array = updated_team.duplicate(true)
+    var count: int = mini(team.size(), protected_team.size())
+
+    for index: int in range(count):
+        var current_value: Variant = team[index]
+        var updated_value: Variant = protected_team[index]
+        if not (current_value is Dictionary) or not (updated_value is Dictionary):
+            continue
+
+        var current_member: Dictionary = current_value
+        var updated_member: Dictionary = updated_value
+        if (
+            not updated_member.has(COMPANION_REMAINING_KEY)
+            and current_member.has(COMPANION_REMAINING_KEY)
+        ):
+            updated_member[COMPANION_REMAINING_KEY] = int(
+                current_member.get(COMPANION_REMAINING_KEY, COMPANION_STAGE_LIMIT)
+            )
+            protected_team[index] = updated_member
+
+    return protected_team
+
+
 func _message_with_companion_departures(message: String, departed: Array[String]) -> String:
     if departed.is_empty():
         return message
