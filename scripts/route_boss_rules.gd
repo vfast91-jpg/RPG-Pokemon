@@ -7,11 +7,22 @@ extends RefCounted
 
 const RULES_PATH: String = "res://data/route_boss_rules_v1.json"
 
+const DEFAULT_REINFORCEMENT_PROFILE := {
+    "enabled": true,
+    "trigger_remaining_bars": 1,
+    "count": 2,
+    "species_mode": "same_as_boss",
+    "level_mode": "player_max",
+    "hp_multiplier": 1.0,
+    "start_atb_percent": 0.0
+}
+
 const DEFAULT_STANDARD_PROFILE := {
     "level_offset": 5,
     "hp_multiplier": 2.0,
     "hp_bars": 2,
-    "species_mode": "random_non_legendary"
+    "species_mode": "random_non_legendary",
+    "reinforcements": DEFAULT_REINFORCEMENT_PROFILE
 }
 
 
@@ -36,7 +47,34 @@ static func standard_boss_profile() -> Dictionary:
 
     var profile: Dictionary = DEFAULT_STANDARD_PROFILE.duplicate(true)
     profile.merge((value as Dictionary), true)
+    profile["reinforcements"] = _normalized_reinforcement_profile(
+        (value as Dictionary).get("reinforcements", {})
+    )
     return profile
+
+
+static func standard_reinforcement_profile() -> Dictionary:
+    var profile: Dictionary = standard_boss_profile()
+    return _normalized_reinforcement_profile(profile.get("reinforcements", {}))
+
+
+static func _normalized_reinforcement_profile(value: Variant) -> Dictionary:
+    var result: Dictionary = DEFAULT_REINFORCEMENT_PROFILE.duplicate(true)
+    if value is Dictionary:
+        result.merge((value as Dictionary), true)
+
+    result["enabled"] = bool(result.get("enabled", true))
+    result["trigger_remaining_bars"] = maxi(1, int(result.get("trigger_remaining_bars", 1)))
+    result["count"] = clampi(int(result.get("count", 2)), 1, 3)
+    result["species_mode"] = "same_as_boss"
+    result["level_mode"] = "player_max"
+    result["hp_multiplier"] = maxf(1.0, float(result.get("hp_multiplier", 1.0)))
+    result["start_atb_percent"] = clampf(
+        float(result.get("start_atb_percent", 0.0)),
+        0.0,
+        100.0
+    )
+    return result
 
 
 static func legendary_species_ids() -> Array[String]:
