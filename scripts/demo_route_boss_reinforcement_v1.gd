@@ -20,9 +20,33 @@ var route_difficulty_key: String = "normal"
 var route_difficulty_level_offset: int = 0
 
 
-func set_route_difficulty(difficulty_key: String, level_offset: int) -> void:
-    route_difficulty_key = difficulty_key
-    route_difficulty_level_offset = clampi(level_offset, -2, 4)
+func set_route_difficulty(difficulty_key: String, _level_offset: int) -> void:
+    route_difficulty_key = _canonical_difficulty_key(difficulty_key)
+    route_difficulty_level_offset = _difficulty_offset_for_key(route_difficulty_key)
+
+
+func _canonical_difficulty_key(difficulty_key: String) -> String:
+    match difficulty_key.strip_edges().to_lower():
+        "locker", "entspannt":
+            return "entspannt"
+        "schwer":
+            return "schwer"
+        "meister":
+            return "meister"
+        _:
+            return "normal"
+
+
+func _difficulty_offset_for_key(difficulty_key: String) -> int:
+    match _canonical_difficulty_key(difficulty_key):
+        "entspannt":
+            return -1
+        "schwer":
+            return 1
+        "meister":
+            return 2
+        _:
+            return 0
 
 
 func _enemy_party_for_stage(current_stage: int) -> Array:
@@ -58,31 +82,53 @@ func _start_special_battle(kind: String, enemy_party: Array, heading: String) ->
 
 func _apply_route_difficulty(enemy_party: Array) -> Array:
     var result: Array = enemy_party.duplicate(true)
+
+    # A short-lived earlier build accidentally used -2 / +2 / +4. Normalize
+    # both the run state and already-adjusted saved special enemies to the
+    # intended difficulty contract: -1 / 0 / +1 / +2.
+    var stored_offset: int = route_difficulty_level_offset
+    var canonical_key: String = _canonical_difficulty_key(route_difficulty_key)
+    var difficulty_offset: int = _difficulty_offset_for_key(canonical_key)
+    route_difficulty_key = canonical_key
+    route_difficulty_level_offset = difficulty_offset
+
     for index: int in range(result.size()):
         var enemy_value: Variant = result[index]
         if not (enemy_value is Dictionary):
             continue
 
         var enemy: Dictionary = enemy_value as Dictionary
-        # Special battles are saved after this adjustment and may later re-enter
-        # this method on resume. Separate markers prevent both double-scaling and
-        # missing the reinforcement level if that contract is added afterwards.
-        if not bool(enemy.get("_route_difficulty_level_applied", false)):
+        # Special battles are saved after adjustment and may later re-enter this
+        # method on resume. If an old save already contains the former wrong
+        # offset, correct only the difference instead of applying difficulty twice.
+        if bool(enemy.get("_route_difficulty_level_applied", false)):
+            if stored_offset != difficulty_offset:
+                enemy["level"] = maxi(
+                    1,
+                    int(enemy.get("level", 1)) + difficulty_offset - stored_offset
+                )
+        else:
             enemy["level"] = maxi(
                 1,
-                int(enemy.get("level", 1)) + route_difficulty_level_offset
+                int(enemy.get("level", 1)) + difficulty_offset
             )
             enemy["_route_difficulty_level_applied"] = true
 
-        if (
-            enemy.has("boss_reinforcement_level")
-            and not bool(enemy.get("_route_difficulty_reinforcement_applied", false))
-        ):
-            enemy["boss_reinforcement_level"] = maxi(
-                1,
-                int(enemy.get("boss_reinforcement_level", 1)) + route_difficulty_level_offset
-            )
-            enemy["_route_difficulty_reinforcement_applied"] = true
+        if enemy.has("boss_reinforcement_level"):
+            if bool(enemy.get("_route_difficulty_reinforcement_applied", false)):
+                if stored_offset != difficulty_offset:
+                    enemy["boss_reinforcement_level"] = maxi(
+                        1,
+                        int(enemy.get("boss_reinforcement_level", 1))
+                        + difficulty_offset
+                        - stored_offset
+                    )
+            else:
+                enemy["boss_reinforcement_level"] = maxi(
+                    1,
+                    int(enemy.get("boss_reinforcement_level", 1)) + difficulty_offset
+                )
+                enemy["_route_difficulty_reinforcement_applied"] = true
 
         result[index] = enemy
 
