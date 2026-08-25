@@ -71,6 +71,8 @@ jobs:
         run: ./godot --headless --path . --script tests/periodic_wait_effects_test.gd
       - name: Combat roster layout regression test
         run: ./godot --headless --path . --script tests/combat_roster_layout_test.gd
+      - name: Boss reinforcement combat regression test
+        run: ./godot --headless --path . --script tests/battle_boss_reinforcement_test.gd
       - name: Combat connector horizontal regression test
         run: ./godot --headless --path . --script tests/combat_connector_horizontal_test.gd
       - name: Move preview accuracy regression test
@@ -111,6 +113,8 @@ jobs:
         run: ./godot --headless --path . --script tests/route_tm_database_bridge_test.gd
       - name: Route event pool and boss regression test
         run: ./godot --headless --path . --script tests/route_event_pool_boss_test.gd
+      - name: Route boss reinforcement contract regression test
+        run: ./godot --headless --path . --script tests/route_boss_reinforcement_test.gd
       - name: Route rebalance integration test
         run: ./godot --headless --path . --script tests/route_rebalance_integration_test.gd
       - name: Route fixed meadow landscape test
