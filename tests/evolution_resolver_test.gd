@@ -73,10 +73,76 @@ func _initialize() -> void:
     assert(str(evolution.get("target_species_id", "")) == "metapod", "Ziel auf Level 7 muss Safcon sein.")
     assert(not bool(evolution.get("requires_player_choice", false)), "Lineare Entwicklung darf keine Auswahl verlangen.")
 
+    _test_canonical_runtime_evolutions(resolver)
     _test_branching_evolutions(resolver)
 
     print("Evolution resolver tests: OK")
     quit(0)
+
+
+func _test_canonical_runtime_evolutions(resolver) -> void:
+    # Gen-2 entries reach the resolver through the normalized runtime registry.
+    # That schema uses target_species_id + level instead of the source-pack keys
+    # evolves_into + evolution_level.
+    var hoothoot_species: Dictionary = {
+        "hoothoot": {
+            "evolution": {
+                "target_species_id": "noctowl",
+                "level": 20,
+                "mandatory": true
+            }
+        },
+        "noctowl": {}
+    }
+
+    assert(
+        resolver.resolve_species_for_level("hoothoot", 19, hoothoot_species) == "hoothoot",
+        "Hoothoot muss vor Level 20 Hoothoot bleiben."
+    )
+    assert(
+        resolver.resolve_species_for_level("hoothoot", 20, hoothoot_species) == "noctowl",
+        "Hoothoot muss mit Runtime-Evolutionsdaten ab Level 20 zu Noctuh werden."
+    )
+
+    var hoothoot_evolution: Dictionary = resolver.required_level_evolution(
+        "hoothoot",
+        20,
+        hoothoot_species
+    )
+    assert(
+        str(hoothoot_evolution.get("target_species_id", "")) == "noctowl",
+        "Die Etappen-Entwicklung muss Noctuh als verpflichtendes Ziel erhalten."
+    )
+
+    var gen2_starter_species: Dictionary = {
+        "chikorita": {
+            "evolution": {
+                "target_species_id": "bayleef",
+                "level": 16,
+                "mandatory": true
+            }
+        },
+        "bayleef": {
+            "evolution": {
+                "target_species_id": "meganium",
+                "level": 32,
+                "mandatory": true
+            }
+        },
+        "meganium": {}
+    }
+    assert(
+        resolver.resolve_species_for_level("chikorita", 15, gen2_starter_species) == "chikorita",
+        "Endivie muss vor Level 16 Endivie bleiben."
+    )
+    assert(
+        resolver.resolve_species_for_level("chikorita", 16, gen2_starter_species) == "bayleef",
+        "Endivie muss ab Level 16 zu Lorblatt werden."
+    )
+    assert(
+        resolver.resolve_species_for_level("chikorita", 50, gen2_starter_species) == "meganium",
+        "Ein Gen-2-Starter muss auf Level 50 bis zur korrekten Endentwicklung aufgelöst werden."
+    )
 
 
 func _test_branching_evolutions(resolver) -> void:
