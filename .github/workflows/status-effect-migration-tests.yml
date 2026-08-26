@@ -34,3 +34,6 @@ jobs:
 
       - name: Status effect migration regression test
         run: ./godot --headless --path . --script tests/status_effect_migration_test.gd
+
+      - name: Major-status Aggro integrity regression test
+        run: ./godot --headless --path . --script tests/status_aggro_integrity_test.gd
