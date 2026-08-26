@@ -183,7 +183,7 @@ func _decorate_standard_boss_reinforcement_contract(enemy_party: Array) -> Array
 
 
 func _stage_uses_standard_boss_reinforcements(current_stage: int) -> bool:
-    if current_stage <= 10:
+    if current_stage < 10:
         return false
     if current_stage >= ENDGAME_STAGE_START:
         return false
