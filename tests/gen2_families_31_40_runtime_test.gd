@@ -13,8 +13,8 @@ const DETAIL_PATHS: Array[String] = [
 
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 280
-const EXPECTED_RUNTIME_ROOT_COUNT: int = 128
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 const NEW_ROOTS: Array[String] = [
 	"sneasel", "teddiursa", "slugma", "swinub", "corsola",
 	"remoraid", "delibird", "mantyke", "skarmory", "houndour"

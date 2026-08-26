@@ -6,8 +6,10 @@ const GLOBAL_MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.js
 const EXTENSION_MANIFEST_PATH: String = "res://data/pokemon_database_extension_41_50_v1.json"
 const EXPECTED_BASE_SPECIES_COUNT: int = 266
 const EXPECTED_BASE_ROOT_COUNT: int = 118
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 280
-const EXPECTED_RUNTIME_ROOT_COUNT: int = 128
+const EXPECTED_EXTENSION_RUNTIME_SPECIES_COUNT: int = 280
+const EXPECTED_EXTENSION_RUNTIME_ROOT_COUNT: int = 128
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 const NEW_ROOTS: Array[String] = [
 	"phanpy", "stantler", "smeargle", "miltank", "raikou",
 	"entei", "suicune", "larvitar", "lugia", "ho-oh"
@@ -30,8 +32,8 @@ func _initialize() -> void:
 	var extension: Dictionary = _read_json(EXTENSION_MANIFEST_PATH)
 	assert(int(extension.get("extension_species_count", -1)) == NEW_SPECIES.size())
 	assert(int(extension.get("extension_route_root_count", -1)) == NEW_ROOTS.size())
-	assert(int(extension.get("runtime_species_count", -1)) == EXPECTED_RUNTIME_SPECIES_COUNT)
-	assert(int(extension.get("runtime_route_root_count", -1)) == EXPECTED_RUNTIME_ROOT_COUNT)
+	assert(int(extension.get("runtime_species_count", -1)) == EXPECTED_EXTENSION_RUNTIME_SPECIES_COUNT)
+	assert(int(extension.get("runtime_route_root_count", -1)) == EXPECTED_EXTENSION_RUNTIME_ROOT_COUNT)
 
 	var core: Dictionary = _read_json(str(extension.get("species_master_extension_file", "")))
 	var core_species: Dictionary = core.get("species", {})
@@ -85,7 +87,7 @@ func _initialize() -> void:
 	for species_id: String in NEW_SPECIES:
 		assert(runtime_species.has(species_id), "Gen2-41-50-Pokemon fehlt in Runtime: " + species_id)
 		assert(battle.lab_species_ids.has(species_id), "Gen2-41-50-Pokemon fehlt im Kampflabor: " + species_id)
-	assert(not runtime_species.has("celebi"))
+	assert(runtime_species.has("celebi"), "Celebi muss im finalen Gen-2-Runtime-Pool aktiv sein.")
 	assert(not runtime_species.has("ursaluna"))
 
 	assert(battle.route_resolve_species_for_level("phanpy", 24) == "phanpy")

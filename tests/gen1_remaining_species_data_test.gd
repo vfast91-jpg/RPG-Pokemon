@@ -16,8 +16,8 @@ const GEN2_DETAIL_PATHS: Array[String] = [
 ]
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 280
-const EXPECTED_RUNTIME_ROOT_COUNT: int = 128
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 
 const LATER_GEN1_FAMILY_MEMBERS: Array[String] = [
 	"crobat", "pichu", "cleffa", "igglybuff", "bellossom", "politoed", "espeon", "umbreon",
@@ -62,6 +62,11 @@ func _initialize() -> void:
 	assert(int(manifest.get("species_count", -1)) == EXPECTED_SPECIES_COUNT, "Globaler Pool muss 266 Pokémon enthalten.")
 	assert(int(manifest.get("move_count", -1)) > 0, "Manifest muss einen positiven globalen Attackenbestand deklarieren.")
 	assert(int(manifest.get("route_root_count", -1)) == EXPECTED_ROOT_COUNT, "Globaler Familiengraph muss 118 Wurzeln enthalten.")
+	assert(int(manifest.get("runtime_species_count", -1)) == EXPECTED_RUNTIME_SPECIES_COUNT)
+	assert(int(manifest.get("runtime_route_root_count", -1)) == EXPECTED_RUNTIME_ROOT_COUNT)
+	var extension_manifests: Array = manifest.get("species_extension_manifests", [])
+	assert(extension_manifests.has("res://data/pokemon_database_extension_41_50_v1.json"))
+	assert(extension_manifests.has("res://data/pokemon_database_extension_51_v1.json"))
 
 	var pool_policy_value: Variant = manifest.get("pool_policy", {})
 	assert(pool_policy_value is Dictionary, "Das globale Manifest braucht eine Pool-Richtlinie.")
@@ -157,8 +162,10 @@ func _initialize() -> void:
 	for species_id: String in GEN2_SPECIES:
 		assert(runtime_species.has(species_id), "Gen-2-Pokémon fehlt in Runtime: " + species_id)
 		assert(battle.lab_species_ids.has(species_id), "Gen-2-Pokémon fehlt im Kampflabor: " + species_id)
+	assert(runtime_species.has("celebi"), "Celebi muss als finale Gen-2-Familie im Runtime-Pool aktiv sein.")
+	assert(battle.lab_species_ids.has("celebi"), "Celebi muss im Kampflabor aktiv sein.")
 
-	print("Global Pokemon runtime pool contract passed: 280 species, 128 families, Gen2 families 01-50 active; base master 266 + append-only 41-50 extension.")
+	print("Global Pokemon runtime pool contract passed: 281 species, 129 families, Gen2 families 01-51 active; base master 266 + append-only 41-50 and Celebi extensions.")
 	battle.queue_free()
 	quit(0)
 
