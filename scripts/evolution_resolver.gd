@@ -209,8 +209,9 @@ func _rule_for_species(species_id: String, available_species: Dictionary) -> Dic
     if explicit_value is Dictionary and not (explicit_value as Dictionary).is_empty():
         return (explicit_value as Dictionary).duplicate(true)
 
-    # Fallback for future species packs. Both the legacy single-target format
-    # and the branching `choices` format are accepted here.
+    # Fallback for species packs that are not present in the explicit rule file.
+    # Accept source/detail evolution data as well as the canonical runtime shape
+    # produced by the global Pokemon registry.
     var species_value: Variant = available_species.get(species_id, {})
     if not (species_value is Dictionary):
         return {}
@@ -231,10 +232,18 @@ func _rule_for_species(species_id: String, available_species: Dictionary) -> Dic
     if method != "level":
         return {}
 
+    var target_id: String = str(
+        evolution.get("target_species_id", evolves_into_value)
+    ).strip_edges()
+    var required_level: int = int(
+        evolution.get("level", evolution.get("evolution_level", 0))
+    )
+
     return {
-        "target": str(evolves_into_value),
-        "level": int(evolution.get("evolution_level", 0)),
-        "method": method
+        "target": target_id,
+        "level": required_level,
+        "method": method,
+        "mandatory": bool(evolution.get("mandatory", true))
     }
 
 
