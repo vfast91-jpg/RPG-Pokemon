@@ -1,0 +1,169 @@
+{
+  "schema_version": 3,
+  "source": "Gen2 missing moves V24 · requested block 05/05 · Timeflow runtime integration",
+  "moves": {
+    "psyshield_bash": {
+      "schema_version": 3,
+      "id": "psyshield_bash",
+      "name": "Psycho-Schildstoß",
+      "description": "Rammt das Ziel mit psychischer Kraft und erhöht nach einem erfolgreichen Treffer die eigene Verteidigung.",
+      "emoji": "🛡️",
+      "type": "psychic",
+      "category": "physical",
+      "power": 70,
+      "accuracy": 90,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Die eigene Verteidigungssteigerung folgt der zentralen Statuswert-Kurve mit 1× Gewicht.",
+      "aggro": {"from_damage": true, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Nach einem tatsächlich verbundenen Treffer steigt die einheitliche Timeflow-Verteidigung des Anwenders.",
+        "Treffer gegen einen Delegator zählt als verbundener Treffer; Miss, Immunität und vollständiger Schutz lösen den Buff nicht aus.",
+        "Nicht stapelbar; erneuter erfolgreicher Einsatz erneuert den Verteidigungsbonus für 3 eigene Aktionen."
+      ],
+      "optional_tags": ["damage", "contact", "self_defense_up", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_psyshield_bash": true}
+    },
+    "quash": {
+      "schema_version": 3,
+      "id": "quash",
+      "name": "Verzögerung",
+      "description": "Unterdrückt das Ziel und setzt seine aktuelle Aktionsleiste auf 0 % zurück.",
+      "emoji": "⏳",
+      "type": "dark",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "pp": 15,
+      "ap": 6,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_quash"}
+      ],
+      "status_scaling": "Keine Statusskalierung; die Zeitkontrolle ist eine feste Regelwirkung.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Timeflow-Übersetzung der Originalregel 'handelt in dieser Runde zuletzt': aktuelle ATB-/Aktionsleiste des Ziels wird auf 0 % gesetzt.",
+        "Die Wirkung stapelt nicht und verändert nicht die nächste AP-basierte Erholungsdauer des Ziels.",
+        "Ist die aktuelle Aktionsleiste bereits bei 0 %, entsteht keine zusätzliche Wirkungs-Aggro."
+      ],
+      "optional_tags": ["status", "atb_reset", "control"],
+      "runtime": {"runtime_supported": true, "v24_quash": true}
+    },
+    "role_play": {
+      "schema_version": 3,
+      "id": "role_play",
+      "name": "Rollentausch",
+      "description": "Übernimmt die aktuell laufenden temporären Attributsveränderungen des Ziels samt ihrer Restdauer.",
+      "emoji": "🎭",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_role_play"}
+      ],
+      "status_scaling": "Keine Statusskalierung; exakte aktive Modifier und ihre Restdauer werden kopiert.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Pokémon Timeflow besitzt kein Fähigkeitssystem. Die Fähigkeit-kopierende Originalwirkung wird deshalb über den bereits etablierten temporären Attributszustand übersetzt.",
+        "Eigene laufende Angriffs-, Verteidigungs-, Genauigkeits- und Geschwindigkeitsmodifier werden durch die entsprechenden aktiven Modifier des Ziels ersetzt.",
+        "Positive und negative Modifier werden mit ihrer verbleibenden Aktionsdauer kopiert; Hauptstatus, KP, Aggro und Feldzustände werden nicht kopiert."
+      ],
+      "optional_tags": ["status", "copy_modifiers", "ability_system_translation"],
+      "runtime": {"runtime_supported": true, "v24_role_play": true}
+    },
+    "tearful_look": {
+      "schema_version": 3,
+      "id": "tearful_look",
+      "name": "Tränendrüse",
+      "description": "Bringt das Ziel aus dem Konzept und senkt dessen Angriff.",
+      "emoji": "😢",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 20,
+      "ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_tearful_look", "multiplier_from_special": -1.0}
+      ],
+      "status_scaling": "Die Angriffsreduktion folgt der zentralen Statuswert-Kurve mit 1× Gewicht.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Der Originaleffekt senkt Angriff und Spezial-Angriff. Timeflow besitzt nur einen einheitlichen Angriffswert, deshalb wird dieser genau einmal gesenkt.",
+        "Trifft ohne normalen Genauigkeitswurf.",
+        "Nicht stapelbar; erneuter Einsatz erneuert den Angriffsdebuff für 3 eigene Zielaktionen."
+      ],
+      "optional_tags": ["status", "attack_down", "always_hit", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_tearful_look": true}
+    },
+    "twin_beam": {
+      "schema_version": 3,
+      "id": "twin_beam",
+      "name": "Doppelstrahl",
+      "description": "Feuert zwei psychische Strahlen nacheinander auf das Ziel.",
+      "emoji": "✨",
+      "type": "psychic",
+      "category": "special",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Trifft exakt zweimal.",
+        "Ein Genauigkeitswurf pro Attacke; Volltreffer werden pro Einzeltreffer bestimmt.",
+        "Die bestehende zentrale Mehrfachtreffer-, Delegator- und Aggro-Logik bleibt maßgeblich."
+      ],
+      "optional_tags": ["damage", "multi_hit", "fixed_two_hits"],
+      "runtime": {
+        "runtime_supported": true,
+        "multi_hit": {
+          "hit_counts": [2],
+          "weights": [1.0],
+          "repeat_kinds": ["damage"],
+          "crit_each_hit": true
+        }
+      }
+    }
+  }
+}
