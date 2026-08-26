@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/main_menu_click_difficulty_v1.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/battle_demo_gen2_missing_moves_v24_25_v1.gd" id="2_battle"]
+[ext_resource type="Script" path="res://scripts/battle_demo_accuracy_null_guard_v1.gd" id="2_battle"]
 [ext_resource type="Script" path="res://scripts/demo_route_capture_button_fix_v1.gd" id="3_route"]
 
 [node name="Main" type="Node2D"]
