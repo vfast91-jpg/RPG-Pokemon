@@ -59,9 +59,13 @@ func _initialize() -> void:
     _check(int(difficulty_boss_second_pass.get("level", 0)) == 21, "Boss-Schwierigkeit darf bei erneutem Anwenden nicht doppelt addiert werden.")
     _check(int(difficulty_boss_second_pass.get("boss_reinforcement_level", 0)) == 16, "Verstaerkungs-Schwierigkeit darf bei erneutem Anwenden nicht doppelt addiert werden.")
 
-    route.stage = 10
+    route.stage = 9
     var too_early: Array = route._decorate_standard_boss_reinforcement_contract(standard_party)
-    _check(not bool((too_early[0] as Dictionary).get("boss_reinforcement_enabled", false)), "Vor Etappe 11 darf kein Standard-Verstaerkungsboss entstehen.")
+    _check(not bool((too_early[0] as Dictionary).get("boss_reinforcement_enabled", false)), "Vor Etappe 10 darf kein Standard-Verstaerkungsboss entstehen.")
+
+    route.stage = 10
+    var stage10: Array = route._decorate_standard_boss_reinforcement_contract(standard_party)
+    _check(bool((stage10[0] as Dictionary).get("boss_reinforcement_enabled", false)), "Etappe 10 muss denselben Standard-Verstaerkungsvertrag wie andere Besondere Begegnungen erhalten.")
 
     route.stage = 20
     var milestone_like: Array = route._decorate_standard_boss_reinforcement_contract(standard_party)
