@@ -1,0 +1,170 @@
+{
+  "schema_version": 3,
+  "source": "Gen2 missing moves V24 · requested block 03/05 · Timeflow runtime integration",
+  "moves": {
+    "arm_thrust": {
+      "schema_version": 3,
+      "id": "arm_thrust",
+      "name": "Armstoß",
+      "description": "Stößt das Ziel zwei- bis fünfmal hintereinander mit den Armen.",
+      "emoji": "👊",
+      "type": "fighting",
+      "category": "physical",
+      "power": 15,
+      "accuracy": 100,
+      "pp": 20,
+      "ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Trifft 2–5-mal mit der etablierten Verteilung 3/8, 3/8, 1/8, 1/8.",
+        "Ein Genauigkeitswurf pro Attacke; Volltreffer werden pro Einzeltreffer bestimmt.",
+        "Die bestehende zentrale Mehrfachtreffer- und Aggro-Logik bleibt maßgeblich."
+      ],
+      "optional_tags": ["damage", "contact", "multi_hit"],
+      "runtime": {
+        "runtime_supported": true,
+        "multi_hit": {
+          "hit_counts": [2, 3, 4, 5],
+          "weights": [0.375, 0.375, 0.125, 0.125],
+          "repeat_kinds": ["damage"],
+          "crit_each_hit": true
+        }
+      }
+    },
+    "baby_doll_eyes": {
+      "schema_version": 3,
+      "id": "baby_doll_eyes",
+      "name": "Kulleraugen",
+      "description": "Schüchtert das Ziel mit Kulleraugen ein und senkt dessen Angriff. Die Attacke besitzt erhöhte Priorität.",
+      "emoji": "🥺",
+      "type": "fairy",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "pp": 30,
+      "ap": 3,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 1,
+      "opening": true,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_baby_doll_eyes", "multiplier_from_special": -1.0}
+      ],
+      "status_scaling": "Die Angriffsreduktion folgt der zentralen Statuswert-Kurve mit 1× Gewicht.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Priorität +1 wird in Timeflow über die Verfügbarkeit in Runde 0 abgebildet.",
+        "Die Priorität verändert die RPG-AP nicht; PP 30 entsprechen RPG-AP 3.",
+        "Der nicht stapelbare Angriffsdebuff wird bei erneutem Erfolg erneuert und hält 3 eigene Zielaktionen."
+      ],
+      "optional_tags": ["attack_down", "priority", "opening", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_baby_doll_eyes": true}
+    },
+    "boomburst": {
+      "schema_version": 3,
+      "id": "boomburst",
+      "name": "Überschallknall",
+      "description": "Erzeugt eine verheerende Schallwelle, die alle Gegner trifft.",
+      "emoji": "📢",
+      "type": "normal",
+      "category": "special",
+      "power": 140,
+      "accuracy": 100,
+      "pp": 10,
+      "ap": 7,
+      "target": "all_enemies",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Timeflow-Teamkampf-Adaption: trifft alle Gegner, aber keine Verbündeten.",
+        "Schall-Angriff; die zentrale Flächenschadenslogik bleibt maßgeblich."
+      ],
+      "optional_tags": ["damage", "area", "sound"],
+      "runtime": {"runtime_supported": true, "sound": true}
+    },
+    "comeuppance": {
+      "schema_version": 3,
+      "id": "comeuppance",
+      "name": "Retourkutsche",
+      "description": "Zahlt dem letzten Angreifer den tatsächlich erlittenen Schaden mit 1,5-facher Stärke zurück.",
+      "emoji": "↩️",
+      "type": "dark",
+      "category": "physical",
+      "power": null,
+      "accuracy": 100,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_comeuppance"}
+      ],
+      "status_scaling": "Keine Statusskalierung; der Rückschaden basiert ausschließlich auf tatsächlich verlorenen KP.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Speichert den tatsächlichen Pokémon-KP-Verlust der letzten gegnerischen Attacke seit der vorherigen eigenen Aktion.",
+        "Fehlschlag, Immunität, vollständiger Schutz und reine Delegator-Treffer erzeugen keinen gespeicherten Rückschaden.",
+        "Mehrfachtreffer werden als Gesamtschaden der gegnerischen Attacke gespeichert.",
+        "Verursacht floor(1,5 × gespeicherter Schaden), begrenzt auf die aktuellen KP des letzten Angreifers.",
+        "Scheitert, wenn seit der vorherigen eigenen Aktion kein gegnerischer Angriff tatsächliche Pokémon-KP abgezogen hat oder der letzte Angreifer nicht mehr gültig ist."
+      ],
+      "optional_tags": ["retaliation", "fixed_damage", "last_attacker", "received_damage"],
+      "runtime": {"runtime_supported": true, "v24_comeuppance": true}
+    },
+    "cotton_guard": {
+      "schema_version": 3,
+      "id": "cotton_guard",
+      "name": "Watteschild",
+      "description": "Hüllt den Anwender in weiche Watte und erhöht seine Verteidigung massiv.",
+      "emoji": "☁️",
+      "type": "grass",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_cotton_guard", "multiplier_from_special": -3.0}
+      ],
+      "status_scaling": "Die Verteidigungssteigerung folgt der zentralen Statuswert-Kurve mit 3× Gewicht.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Entspricht der starken +3-Verteidigungswirkung durch 3× Statuswert-Gewicht.",
+        "Nicht stapelbar; erneuter Einsatz erneuert den Effekt statt ihn mehrfach zu multiplizieren.",
+        "Hält 3 eigene Aktionen des Anwenders."
+      ],
+      "optional_tags": ["defense_up", "self_buff", "status_weight_3x", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_cotton_guard": true}
+    }
+  }
+}
