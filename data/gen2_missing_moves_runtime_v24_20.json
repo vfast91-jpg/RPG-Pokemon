@@ -1,0 +1,161 @@
+{
+  "schema_version": 3,
+  "source": "Gen2 missing moves V24 · requested block 04/05 · Timeflow runtime integration",
+  "moves": {
+    "headlong_rush": {
+      "schema_version": 3,
+      "id": "headlong_rush",
+      "name": "Schmetterramme",
+      "description": "Stürzt sich mit voller Wucht in das Ziel und senkt danach die eigene Verteidigung.",
+      "emoji": "💥",
+      "type": "ground",
+      "category": "physical",
+      "power": 120,
+      "accuracy": 100,
+      "pp": 5,
+      "ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Der anschließende eigene Verteidigungs-Debuff folgt der zentralen Statuswert-Kurve mit 1× Gewicht.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Nach einem verbundenen Treffer sinkt die einheitliche Timeflow-Verteidigung des Anwenders.",
+        "Der Originaleffekt auf Verteidigung und Spezial-Verteidigung wird wegen der einheitlichen Timeflow-Verteidigung genau einmal angewendet.",
+        "Nicht stapelbar; erneuter Erfolg erneuert den Effekt für 3 eigene Aktionen."
+      ],
+      "optional_tags": ["damage", "contact", "self_defense_down", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_headlong_rush": true}
+    },
+    "hone_claws": {
+      "schema_version": 3,
+      "id": "hone_claws",
+      "name": "Klauenwetzer",
+      "description": "Schärft die Klauen und erhöht Angriff sowie Genauigkeit des Anwenders.",
+      "emoji": "🦞",
+      "type": "dark",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 15,
+      "ap": 6,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_hone_claws"}
+      ],
+      "status_scaling": "Angriff und Genauigkeit verwenden denselben Statuswert-Snapshot mit jeweils 1× Gewicht.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Erhöht die einheitliche Timeflow-Angriffsseite und die Genauigkeit des Anwenders.",
+        "Beide Komponenten verwenden denselben Statuswert-Snapshot.",
+        "Nicht stapelbar; erneuter Einsatz erneuert beide Effekte für 3 eigene Aktionen."
+      ],
+      "optional_tags": ["attack_up", "accuracy_up", "self_buff", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_hone_claws": true}
+    },
+    "hyper_drill": {
+      "schema_version": 3,
+      "id": "hyper_drill",
+      "name": "Hyperbohrer",
+      "description": "Bohrt sich durch das Ziel und durchdringt gegnerische Schutzattacken.",
+      "emoji": "🌀",
+      "type": "normal",
+      "category": "physical",
+      "power": 100,
+      "accuracy": 100,
+      "pp": 5,
+      "ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Ignoriert den zentralen Schutz-/Protect-Abbruch dieser Attacke.",
+        "Delegator bleibt eine getrennte Mechanik und wird nicht ignoriert.",
+        "Alle übrigen Treffer-, Immunitäts-, Schadens- und Aggroregeln bleiben zentral maßgeblich."
+      ],
+      "optional_tags": ["damage", "contact", "bypass_protection"],
+      "runtime": {"runtime_supported": true, "v24_hyper_drill_bypass_protection": true}
+    },
+    "power_split": {
+      "schema_version": 3,
+      "id": "power_split",
+      "name": "Kraftteiler",
+      "description": "Teilt die Angriffskraft von Anwender und Ziel gleichmäßig auf.",
+      "emoji": "⚖️",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_power_split"}
+      ],
+      "status_scaling": "Keine Statusskalierung; die Rohwerte beider Beteiligten werden gemittelt.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Timeflow besitzt einen einheitlichen Angriffswert; deshalb wird genau dieser Rohwert von Anwender und Ziel gemittelt.",
+        "Beide erhalten floor((Angriff Anwender + Angriff Ziel) / 2).",
+        "Bereits aktive temporäre Angriffsmodifier bleiben bestehen und werden nicht gelöscht."
+      ],
+      "optional_tags": ["attack_average", "shared_power", "raw_stat_change"],
+      "runtime": {"runtime_supported": true, "v24_power_split": true}
+    },
+    "power_trick": {
+      "schema_version": 3,
+      "id": "power_trick",
+      "name": "Krafttrick",
+      "description": "Vertauscht die eigene Angriffskraft und Verteidigung.",
+      "emoji": "🔄",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_power_trick"}
+      ],
+      "status_scaling": "Keine Statusskalierung; die beiden Rohwerte werden direkt vertauscht.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Vertauscht den einheitlichen battle-lokalen Timeflow-Angriff und die einheitliche Verteidigung des Anwenders.",
+        "Temporäre Angriffs- und Verteidigungsmodifier bleiben an ihren jeweiligen Modifier-Kanälen erhalten.",
+        "Erneuter Einsatz vertauscht die dann aktuellen Rohwerte erneut."
+      ],
+      "optional_tags": ["attack_defense_swap", "self_status", "raw_stat_swap"],
+      "runtime": {"runtime_supported": true, "v24_power_trick": true}
+    }
+  }
+}
