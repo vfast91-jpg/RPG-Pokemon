@@ -8,6 +8,8 @@ const DETAIL_PATH: String = "res://data/gen2_species_families_01_10_v1.json"
 
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 280
+const EXPECTED_RUNTIME_ROOT_COUNT: int = 128
 const NEW_ROOTS: Array[String] = [
 	"chikorita", "cyndaquil", "totodile", "sentret", "hoothoot",
 	"ledyba", "spinarak", "chinchou", "togepi", "natu"
@@ -59,9 +61,9 @@ func _initialize() -> void:
 	var runtime_species_value: Variant = battle.data.get("species", {})
 	assert(runtime_species_value is Dictionary)
 	var runtime_species: Dictionary = runtime_species_value
-	assert(runtime_species.size() == EXPECTED_SPECIES_COUNT)
-	assert(battle.species_ids.size() == EXPECTED_ROOT_COUNT)
-	assert(battle.lab_species_ids.size() == EXPECTED_SPECIES_COUNT)
+	assert(runtime_species.size() == EXPECTED_RUNTIME_SPECIES_COUNT)
+	assert(battle.species_ids.size() == EXPECTED_RUNTIME_ROOT_COUNT)
+	assert(battle.lab_species_ids.size() == EXPECTED_RUNTIME_SPECIES_COUNT)
 
 	for species_id: String in NEW_SPECIES:
 		assert(runtime_species.has(species_id), "Gen-2-Pokémon fehlt in Runtime: " + species_id)

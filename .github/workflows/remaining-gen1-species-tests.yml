@@ -48,5 +48,8 @@ jobs:
       - name: Validate Gen2 families 31-40
         run: ./godot --headless --path . --script tests/gen2_families_31_40_runtime_test.gd
 
+      - name: Validate Gen2 families 41-50
+        run: ./godot --headless --path . --script tests/gen2_families_41_50_runtime_test.gd
+
       - name: Validate Zubat-to-Poliwag attack block
         run: ./godot --headless --path . --script tests/zubat_to_poliwag_moves_runtime_test.gd

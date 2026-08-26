@@ -16,6 +16,8 @@ const GEN2_DETAIL_PATHS: Array[String] = [
 ]
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 280
+const EXPECTED_RUNTIME_ROOT_COUNT: int = 128
 
 const LATER_GEN1_FAMILY_MEMBERS: Array[String] = [
 	"crobat", "pichu", "cleffa", "igglybuff", "bellossom", "politoed", "espeon", "umbreon",
@@ -149,14 +151,14 @@ func _initialize() -> void:
 	var runtime_species_value: Variant = battle.data.get("species", {})
 	assert(runtime_species_value is Dictionary)
 	var runtime_species: Dictionary = runtime_species_value
-	assert(runtime_species.size() == EXPECTED_SPECIES_COUNT)
-	assert(battle.species_ids.size() == EXPECTED_ROOT_COUNT)
-	assert(battle.lab_species_ids.size() == EXPECTED_SPECIES_COUNT)
+	assert(runtime_species.size() == EXPECTED_RUNTIME_SPECIES_COUNT)
+	assert(battle.species_ids.size() == EXPECTED_RUNTIME_ROOT_COUNT)
+	assert(battle.lab_species_ids.size() == EXPECTED_RUNTIME_SPECIES_COUNT)
 	for species_id: String in GEN2_SPECIES:
 		assert(runtime_species.has(species_id), "Gen-2-Pokémon fehlt in Runtime: " + species_id)
 		assert(battle.lab_species_ids.has(species_id), "Gen-2-Pokémon fehlt im Kampflabor: " + species_id)
 
-	print("Global Pokemon pool contract passed: 266 species, 118 families, Gen2 families 01-40 active; Ursaluna deferred.")
+	print("Global Pokemon runtime pool contract passed: 280 species, 128 families, Gen2 families 01-50 active; base master 266 + append-only 41-50 extension.")
 	battle.queue_free()
 	quit(0)
 

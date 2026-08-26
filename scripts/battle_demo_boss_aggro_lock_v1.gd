@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_boss_reinforcement_v1.gd"
+extends "res://scripts/battle_demo_gen2_species_41_50_v1.gd"
 
 # Route-boss Aggro lock with a deliberately narrow scope.
 #
