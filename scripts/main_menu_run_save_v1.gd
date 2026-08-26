@@ -64,7 +64,7 @@ func _build_adventure_intro_overlay() -> void:
     _adventure_intro_overlay.add_child(center)
 
     # Sized deliberately for the project's 640x360 internal viewport.
-    # There is no ScrollContainer: title, four cards and button stay visible together.
+    # There is no ScrollContainer: title, five cards and button stay visible together.
     var panel := PanelContainer.new()
     panel.custom_minimum_size = Vector2(596, 324)
     panel.add_theme_stylebox_override(
@@ -74,7 +74,7 @@ func _build_adventure_intro_overlay() -> void:
     center.add_child(panel)
 
     var content := VBoxContainer.new()
-    content.add_theme_constant_override("separation", 6)
+    content.add_theme_constant_override("separation", 4)
     panel.add_child(content)
 
     var title := Label.new()
@@ -96,7 +96,7 @@ func _build_adventure_intro_overlay() -> void:
     cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     cards.size_flags_vertical = Control.SIZE_EXPAND_FILL
     cards.add_theme_constant_override("h_separation", 8)
-    cards.add_theme_constant_override("v_separation", 8)
+    cards.add_theme_constant_override("v_separation", 6)
     content.add_child(cards)
 
     cards.add_child(_make_adventure_intro_card(
@@ -105,16 +105,24 @@ func _build_adventure_intro_overlay() -> void:
     ))
     cards.add_child(_make_adventure_intro_card(
         "🗺️  LANDSCHAFTEN",
-        "Die Landschaft bestimmt, welche Gegner erscheinen und welche Pokémon du fangen kannst."
+        "Die Landschaft bestimmt, welche Gegner erscheinen und welchen Reisegefährten du begegnen kannst."
     ))
     cards.add_child(_make_adventure_intro_card(
         "🔎  SUCHEN",
-        "Beim Fangen kannst du bis zu 3-mal suchen. Mehr Suchen erhöht die Chance auf seltene Pokémon, senkt aber ihr Level."
+        "Bei „Reisegefährten suchen“ kannst du bis zu 3-mal suchen. Mehr Suchen erhöht die Chance auf seltene Pokémon, senkt aber ihr Level."
     ))
     cards.add_child(_make_adventure_intro_card(
         "✨  FORTSCHRITT",
-        "Je weiter du kommst, desto häufiger findest du beim Fangen seltene Pokémon. Gegnerkämpfe bleiben davon unberührt."
+        "Je weiter du kommst, desto häufiger begegnest du beim Suchen seltenen Pokémon. Gegnerkämpfe bleiben davon unberührt."
     ))
+
+    var companion_card := _make_adventure_intro_card(
+        "🧭  REISEGEFÄHRTEN",
+        "Pokémon begleiten dich 30 gemeinsame Etappen. Danach ziehen sie weiter. 🧭 zeigt dir, wie lange ihr noch gemeinsam reist."
+    )
+    companion_card.custom_minimum_size = Vector2(0, 52)
+    companion_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    content.add_child(companion_card)
 
     _adventure_intro_start_button = Button.new()
     _adventure_intro_start_button.text = "JETZT GEHT'S LOS!"
@@ -147,7 +155,7 @@ func _build_adventure_intro_overlay() -> void:
 
 func _make_adventure_intro_card(title_text: String, body_text: String) -> PanelContainer:
     var card := PanelContainer.new()
-    card.custom_minimum_size = Vector2(0, 82)
+    card.custom_minimum_size = Vector2(0, 70)
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     card.size_flags_vertical = Control.SIZE_EXPAND_FILL
     card.add_theme_stylebox_override(
