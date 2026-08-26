@@ -47,6 +47,11 @@ func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
     # "ad modifier" into the combat UI.
     if _contains_internal_infobox_token(text) or _contains_untranslated_runtime_family_label(text):
         return true
+    # A move name is not an explanation. Some imported Status moves currently
+    # carry their own name as the compact effect (for example Ladevorgang). If a
+    # readable description or player rule exists, use that instead.
+    if _infobox_summary_only_repeats_move_name(move, text) and _move_has_readable_player_fallback(move):
+        return true
     if text.is_empty():
         return _move_has_complex_player_rule(move)
     if (
@@ -56,6 +61,14 @@ func _summary_needs_player_fallback(move: Dictionary, text: String) -> bool:
     ):
         return true
     return false
+
+
+func _infobox_summary_only_repeats_move_name(move: Dictionary, text: String) -> bool:
+    var summary: String = text.strip_edges().trim_suffix(".").strip_edges().to_lower()
+    if summary.is_empty():
+        return false
+    var move_name: String = _move_display_name(move).strip_edges().trim_suffix(".").strip_edges().to_lower()
+    return not move_name.is_empty() and summary == move_name
 
 
 func _contains_untranslated_runtime_family_label(source: String) -> bool:
