@@ -6,8 +6,8 @@ const MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.json"
 const META_PATH: String = "res://data/pokemon_family_meta_v1.json"
 const DETAIL_PATH: String = "res://data/gen2_species_families_01_10_v1.json"
 
-const EXPECTED_SPECIES_COUNT: int = 232
-const EXPECTED_ROOT_COUNT: int = 98
+const EXPECTED_SPECIES_COUNT: int = 266
+const EXPECTED_ROOT_COUNT: int = 118
 const NEW_ROOTS: Array[String] = [
 	"chikorita", "cyndaquil", "totodile", "sentret", "hoothoot",
 	"ledyba", "spinarak", "chinchou", "togepi", "natu"

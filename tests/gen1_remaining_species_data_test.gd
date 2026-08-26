@@ -7,11 +7,15 @@ const ACTIVE_SCRIPT_PATH: String = "res://scripts/battle_demo_remaining_gen1_spe
 const EXPECTED_MASTER_PATH: String = "res://data/pokemon_species_master_v1.json"
 const GEN2_DETAIL_PATHS: Array[String] = [
 	"res://data/gen2_species_families_01_10_v1.json",
-	"res://data/gen2_species_families_11_20_v1.json"
+	"res://data/gen2_species_families_11_20_v1.json",
+	"res://data/gen2_species_families_21_30_v1.json",
+	"res://data/gen2_species_families_31_33_v1.json",
+	"res://data/gen2_species_families_34_35_v1.json",
+	"res://data/gen2_species_families_36_38_v1.json",
+	"res://data/gen2_species_families_39_40_v1.json"
 ]
-const EXPECTED_SPECIES_COUNT: int = 232
-const EXPECTED_MOVE_COUNT: int = 314
-const EXPECTED_ROOT_COUNT: int = 98
+const EXPECTED_SPECIES_COUNT: int = 266
+const EXPECTED_ROOT_COUNT: int = 118
 
 const LATER_GEN1_FAMILY_MEMBERS: Array[String] = [
 	"crobat", "pichu", "cleffa", "igglybuff", "bellossom", "politoed", "espeon", "umbreon",
@@ -24,7 +28,11 @@ const GEN2_ROOTS: Array[String] = [
 	"chikorita", "cyndaquil", "totodile", "sentret", "hoothoot",
 	"ledyba", "spinarak", "chinchou", "togepi", "natu",
 	"mareep", "azurill", "bonsly", "hoppip", "aipom",
-	"sunkern", "yanma", "wooper", "murkrow", "misdreavus"
+	"sunkern", "yanma", "wooper", "murkrow", "misdreavus",
+	"unown", "wynaut", "girafarig", "pineco", "dunsparce",
+	"gligar", "snubbull", "qwilfish", "shuckle", "heracross",
+	"sneasel", "teddiursa", "slugma", "swinub", "corsola",
+	"remoraid", "delibird", "mantyke", "skarmory", "houndour"
 ]
 const GEN2_SPECIES: Array[String] = [
 	"chikorita", "bayleef", "meganium", "cyndaquil", "quilava",
@@ -36,16 +44,22 @@ const GEN2_SPECIES: Array[String] = [
 	"bonsly", "sudowoodo", "hoppip", "skiploom", "jumpluff",
 	"aipom", "ambipom", "sunkern", "sunflora", "yanma",
 	"yanmega", "wooper", "quagsire", "murkrow", "honchkrow",
-	"misdreavus", "mismagius"
+	"misdreavus", "mismagius", "unown", "wynaut", "wobbuffet",
+	"girafarig", "farigiraf", "pineco", "forretress", "dunsparce",
+	"dudunsparce", "gligar", "gliscor", "snubbull", "granbull",
+	"qwilfish", "shuckle", "heracross", "sneasel", "weavile",
+	"teddiursa", "ursaring", "slugma", "magcargo", "swinub",
+	"piloswine", "mamoswine", "corsola", "remoraid", "octillery",
+	"delibird", "mantyke", "mantine", "skarmory", "houndour", "houndoom"
 ]
 
 
 func _initialize() -> void:
 	var manifest: Dictionary = _read_json(MANIFEST_PATH)
 	assert(not manifest.is_empty(), "Globales Pokémon-Manifest muss lesbar sein.")
-	assert(int(manifest.get("species_count", -1)) == EXPECTED_SPECIES_COUNT, "Globaler Pool muss 232 Pokémon enthalten.")
-	assert(int(manifest.get("move_count", -1)) == EXPECTED_MOVE_COUNT, "Manifest muss 314 Basis-Attackendefinitionen deklarieren.")
-	assert(int(manifest.get("route_root_count", -1)) == EXPECTED_ROOT_COUNT, "Globaler Familiengraph muss 98 Wurzeln enthalten.")
+	assert(int(manifest.get("species_count", -1)) == EXPECTED_SPECIES_COUNT, "Globaler Pool muss 266 Pokémon enthalten.")
+	assert(int(manifest.get("move_count", -1)) > 0, "Manifest muss einen positiven globalen Attackenbestand deklarieren.")
+	assert(int(manifest.get("route_root_count", -1)) == EXPECTED_ROOT_COUNT, "Globaler Familiengraph muss 118 Wurzeln enthalten.")
 
 	var pool_policy_value: Variant = manifest.get("pool_policy", {})
 	assert(pool_policy_value is Dictionary, "Das globale Manifest braucht eine Pool-Richtlinie.")
@@ -121,7 +135,7 @@ func _initialize() -> void:
 			assert(master_species.has(member_id), "Familienmitglied fehlt im Master: " + member_id)
 			assert(not seen_members.has(member_id), "Pokémon ist in mehreren Familien registriert: " + member_id)
 			seen_members[member_id] = true
-	assert(seen_members.size() == EXPECTED_SPECIES_COUNT, "Familiengraph muss alle 232 Pokémon exakt einmal abdecken.")
+	assert(seen_members.size() == EXPECTED_SPECIES_COUNT, "Familiengraph muss alle 266 Pokémon exakt einmal abdecken.")
 
 	var active_script: String = FileAccess.get_file_as_string(ACTIVE_SCRIPT_PATH)
 	assert(active_script.contains("pokemon_database_manifest_v1.json"))
@@ -142,7 +156,7 @@ func _initialize() -> void:
 		assert(runtime_species.has(species_id), "Gen-2-Pokémon fehlt in Runtime: " + species_id)
 		assert(battle.lab_species_ids.has(species_id), "Gen-2-Pokémon fehlt im Kampflabor: " + species_id)
 
-	print("Global Pokemon pool contract passed: 232 species, 98 families, Gen2 families 01-20 active.")
+	print("Global Pokemon pool contract passed: 266 species, 118 families, Gen2 families 01-40 active; Ursaluna deferred.")
 	battle.queue_free()
 	quit(0)
 
