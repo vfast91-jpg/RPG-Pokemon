@@ -1,0 +1,163 @@
+{
+  "schema_version": 3,
+  "source": "Gen2 missing moves V24 · requested block 02/05 · Timeflow runtime integration",
+  "moves": {
+    "power_swap": {
+      "schema_version": 3,
+      "id": "power_swap",
+      "name": "Krafttausch",
+      "description": "Vertauscht die aktuellen Angriffsänderungen des Anwenders mit denen des Ziels. Stärke und verbleibende Dauer bleiben erhalten.",
+      "emoji": "🔄",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_power_swap"}
+      ],
+      "status_scaling": "Keine Statusskalierung; vorhandene Angriffsänderungen werden unverändert versetzt.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Vertauscht ausschließlich aktive temporäre Angriffsmodifikatoren (outgoing_damage_mod).",
+        "Multiplikator, Quelle und verbleibende Dauer jedes Effekts bleiben erhalten.",
+        "Basis-Angriff und andere Kampfzustände werden nicht vertauscht."
+      ],
+      "optional_tags": ["modifier_swap", "offense", "preserve_duration"],
+      "runtime": {"runtime_supported": true, "v24_power_swap": true}
+    },
+    "psycho_shift": {
+      "schema_version": 3,
+      "id": "psycho_shift",
+      "name": "Psycho-Shift",
+      "description": "Überträgt den eigenen Hauptstatus auf das Ziel. Nur eine erfolgreiche Übertragung entfernt den Status beim Anwender.",
+      "emoji": "🌀",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_psycho_shift"}
+      ],
+      "status_scaling": "Keine Statusskalierung; der vorhandene Hauptstatus wird übertragen.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Überträgt Gift, schwere Vergiftung, Verbrennung, Paralyse, Schlaf oder Einfrieren.",
+        "Statusimmunität, bereits vorhandener Hauptstatus und Statusschutz des Ziels verhindern die Übertragung.",
+        "Bei Fehlschlag behält der Anwender seinen Status vollständig.",
+        "Schlaf-Restdauer und Toxik-Stufe werden bei erfolgreicher Übertragung mitgenommen."
+      ],
+      "optional_tags": ["status_transfer", "major_status"],
+      "runtime": {"runtime_supported": true, "v24_psycho_shift": true}
+    },
+    "shadow_sneak": {
+      "schema_version": 3,
+      "id": "shadow_sneak",
+      "name": "Schattenstoß",
+      "description": "Ein blitzschneller Angriff aus dem Schatten. Besitzt erhöhte Priorität und besonders kurze Erholung.",
+      "emoji": "👻",
+      "type": "ghost",
+      "category": "physical",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 30,
+      "ap": 1,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 1,
+      "opening": true,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "damage"}
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
+      "special_rules": [
+        "Priorität +1.",
+        "RPG-AP 1 als Timeflow-Sonderregel für die besonders kurze Erholung einer Prioritätsattacke.",
+        "In Runde 0 verwendbar; danach normale Schadensauflösung über das zentrale Kampfsystem."
+      ],
+      "optional_tags": ["damage", "contact", "priority", "opening"],
+      "runtime": {"runtime_supported": true}
+    },
+    "sticky_web": {
+      "schema_version": 3,
+      "id": "sticky_web",
+      "name": "Klebenetz",
+      "description": "Spannt ein Klebenetz auf der gegnerischen Seite. Bodengebundene Gegner werden beim Ausführen physischer Kontaktaktionen verlangsamt.",
+      "emoji": "🕸️",
+      "type": "bug",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 20,
+      "ap": 5,
+      "target": "self",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_sticky_web", "multiplier_from_special": 1.0}
+      ],
+      "status_scaling": "Die Stärke der Verlangsamung folgt der zentralen Statuswert-Kurve; das Feld selbst ist nicht stapelbar.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Timeflow-Feldgefahr: löst nicht beim Wechsel, sondern bei einer bodengebundenen physischen Kontaktaktion auf der betroffenen Seite aus.",
+        "Nicht stapelbar; erneutes Auslegen auf derselben Seite hat keinen zusätzlichen Feldeffekt.",
+        "Jede Auslösung erneuert den nicht stapelbaren Klebenetz-Geschwindigkeitsdebuff statt ihn mehrfach zu stapeln.",
+        "Turbodreher entfernt das Klebenetz der eigenen Seite; Auflockern entfernt beide Seiten."
+      ],
+      "optional_tags": ["hazard", "speed_down", "grounded", "contact_trigger", "nonstacking"],
+      "runtime": {"runtime_supported": true, "v24_sticky_web": true}
+    },
+    "toxic_thread": {
+      "schema_version": 3,
+      "id": "toxic_thread",
+      "name": "Giftfaden",
+      "description": "Umschlingt das Ziel mit giftigen Fäden. Versucht es zu vergiften und verlangsamt es zusätzlich.",
+      "emoji": "🧵",
+      "type": "poison",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "pp": 20,
+      "ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {"kind": "v24_toxic_thread", "multiplier_from_special": 1.0}
+      ],
+      "status_scaling": "Die Vergiftung ist binär; die Geschwindigkeitsreduktion folgt der zentralen Statuswert-Kurve.",
+      "aggro": {"from_damage": false, "from_status": true, "from_healing": false},
+      "special_rules": [
+        "Gift und Geschwindigkeitsreduktion werden unabhängig voneinander geprüft und angewendet.",
+        "Gift-/Stahl-Immunität oder ein vorhandener Hauptstatus verhindern nur die Vergiftung, nicht automatisch die Verlangsamung.",
+        "Aggro entsteht ausschließlich aus tatsächlich angewendeten Teilwirkungen."
+      ],
+      "optional_tags": ["poison", "speed_down", "dual_effect"],
+      "runtime": {"runtime_supported": true, "v24_toxic_thread": true}
+    }
+  }
+}
