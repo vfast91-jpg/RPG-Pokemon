@@ -1,4 +1,4 @@
-extends "res://scripts/battle_demo_zf_status_v1.gd"
+extends "res://scripts/battle_demo_status_aggro_integrity_v1.gd"
 
 # Pay Day is a move-owned, immediate item purchase. It deliberately reuses the
 # active route's Fundstelle healing resolver instead of duplicating stage rules.
