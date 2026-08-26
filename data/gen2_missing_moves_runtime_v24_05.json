@@ -1,0 +1,229 @@
+{
+  "schema_version": 3,
+  "source": "Gen2 missing moves V24 · block 01/05 · approved Timeflow designs",
+  "moves": {
+    "eruption": {
+      "schema_version": 3,
+      "id": "eruption",
+      "name": "Eruption",
+      "description": "Eine gewaltige Eruption trifft alle Gegner. Je mehr KP der Anwender noch besitzt, desto stärker ist die Attacke.",
+      "emoji": "🌋",
+      "type": "fire",
+      "category": "special",
+      "power": 150,
+      "accuracy": 100,
+      "pp": 5,
+      "ap": 8,
+      "target": "all_enemies",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Stärke = max(1, floor(150 × aktuelle KP / Max-KP)).",
+        "Die bestehende zentrale Flächen-/Schadenslogik bleibt maßgeblich."
+      ],
+      "optional_tags": [
+        "damage",
+        "area",
+        "variable_power",
+        "hp_scaled_power"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "v24_hp_scaled_power": true
+      }
+    },
+    "fairy_wind": {
+      "schema_version": 3,
+      "id": "fairy_wind",
+      "name": "Feenbrise",
+      "description": "Der Anwender entfesselt einen magischen Feenwind gegen das Ziel.",
+      "emoji": "🧚",
+      "type": "fairy",
+      "category": "special",
+      "power": 40,
+      "accuracy": 100,
+      "pp": 30,
+      "ap": 3,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Keine zusätzlichen Effekte."
+      ],
+      "optional_tags": [
+        "damage",
+        "ranged"
+      ],
+      "runtime": {
+        "runtime_supported": true
+      }
+    },
+    "guard_swap": {
+      "schema_version": 3,
+      "id": "guard_swap",
+      "name": "Schutztausch",
+      "description": "Vertauscht die aktuellen Verteidigungsänderungen des Anwenders mit denen des Ziels. Stärke und verbleibende Dauer bleiben erhalten.",
+      "emoji": "🔄",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {
+          "kind": "v24_guard_swap"
+        }
+      ],
+      "status_scaling": "Keine Statusskalierung; vorhandene Verteidigungsänderungen werden unverändert versetzt.",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Vertauscht ausschließlich aktive temporäre Verteidigungsmodifikatoren (incoming_damage_mod).",
+        "Multiplikator, Quelle und verbleibende Dauer jedes Effekts bleiben erhalten.",
+        "Basis-Verteidigung, Schutzschild, Delegator, Barrieren und andere Schadensregeln werden nicht vertauscht."
+      ],
+      "optional_tags": [
+        "modifier_swap",
+        "defense",
+        "preserve_duration"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "v24_guard_swap": true
+      }
+    },
+    "infestation": {
+      "schema_version": 3,
+      "id": "infestation",
+      "name": "Plage",
+      "description": "Befällt das Ziel und bindet es für 4–5 eigene Aktionen. Nach jeder dieser Aktionen erleidet es zusätzlichen Schaden.",
+      "emoji": "🕸️",
+      "type": "bug",
+      "category": "special",
+      "power": 20,
+      "accuracy": 100,
+      "pp": 20,
+      "ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "binding",
+          "min_ticks": 4,
+          "max_ticks": 5,
+          "damage_fraction": 0.125
+        }
+      ],
+      "status_scaling": "Keine Statusskalierung.",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Verwendet die zentrale Fesselungsmechanik: 4–5 eigene Aktionen des Ziels.",
+        "Nach jeder Zielaktion 1/8 der Max-KP als periodischer Schaden.",
+        "Eine aktive Fesselung stapelt oder erneuert sich nicht."
+      ],
+      "optional_tags": [
+        "damage",
+        "contact",
+        "binding",
+        "periodic_damage"
+      ],
+      "runtime": {
+        "runtime_supported": true
+      }
+    },
+    "magic_room": {
+      "schema_version": 3,
+      "id": "magic_room",
+      "name": "Magieraum",
+      "description": "Erschafft einen Magieraum, in dem die Effekte getragener Items vorübergehend unterdrückt werden. Erneuter Einsatz beendet den Raum.",
+      "emoji": "🔮",
+      "type": "psychic",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "pp": 10,
+      "ap": 7,
+      "target": "self",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "opening_only": false,
+      "mechanics": [
+        {
+          "kind": "v24_magic_room"
+        }
+      ],
+      "status_scaling": "Keine Statusskalierung; binäre globale Feldregel.",
+      "aggro": {
+        "from_damage": false,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Aktiv für 50 aktive Kampfsekunden; pausierte Kampfzeit zählt nicht.",
+        "Unterdrückt passive/automatische Effekte getragener Pokémon-Items, ohne Items zu entfernen.",
+        "Trainer-Inventaraktionen sind nicht betroffen.",
+        "Erneuter Einsatz während eines aktiven Magieraums beendet ihn sofort statt die Dauer zu erneuern."
+      ],
+      "optional_tags": [
+        "field",
+        "global_room",
+        "held_item_suppression"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "v24_magic_room_seconds": 50.0
+      }
+    }
+  }
+}
