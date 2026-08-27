@@ -16,7 +16,7 @@ const GEN2_DETAIL_PATHS: Array[String] = [
 ]
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 282
 const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 
 const LATER_GEN1_FAMILY_MEMBERS: Array[String] = [
@@ -67,6 +67,7 @@ func _initialize() -> void:
 	var extension_manifests: Array = manifest.get("species_extension_manifests", [])
 	assert(extension_manifests.has("res://data/pokemon_database_extension_41_50_v1.json"))
 	assert(extension_manifests.has("res://data/pokemon_database_extension_51_v1.json"))
+	assert(extension_manifests.has("res://data/pokemon_database_extension_ursaluna_v1.json"))
 
 	var pool_policy_value: Variant = manifest.get("pool_policy", {})
 	assert(pool_policy_value is Dictionary, "Das globale Manifest braucht eine Pool-Richtlinie.")
@@ -113,7 +114,7 @@ func _initialize() -> void:
 		assert(master_species.has(species_id))
 	for species_id: String in GEN2_SPECIES:
 		assert(master_species.has(species_id), "Gen-2-Pokémon fehlt im Master: " + species_id)
-	assert(not master_species.has("ursaluna"), "Ursaluna soll in diesem Implementierungsschritt noch nicht enthalten sein.")
+	assert(not master_species.has("ursaluna"), "Ursaluna bleibt absichtlich außerhalb des validierten 266er-Basismasters und wird append-only ergänzt.")
 
 	for path_value: Variant in detail_paths:
 		var path: String = str(path_value)
@@ -164,8 +165,10 @@ func _initialize() -> void:
 		assert(battle.lab_species_ids.has(species_id), "Gen-2-Pokémon fehlt im Kampflabor: " + species_id)
 	assert(runtime_species.has("celebi"), "Celebi muss als finale Gen-2-Familie im Runtime-Pool aktiv sein.")
 	assert(battle.lab_species_ids.has("celebi"), "Celebi muss im Kampflabor aktiv sein.")
+	assert(runtime_species.has("ursaluna"), "Ursaluna muss als Erweiterung der Teddiursa-Familie im Runtime-Pool aktiv sein.")
+	assert(battle.lab_species_ids.has("ursaluna"), "Ursaluna muss im Kampflabor aktiv sein.")
 
-	print("Global Pokemon runtime pool contract passed: 281 species, 129 families, Gen2 families 01-51 active; base master 266 + append-only 41-50 and Celebi extensions.")
+	print("Global Pokemon runtime pool contract passed: 282 species, 129 families; Ursaluna completes Teddiursa -> Ursaring -> Ursaluna.")
 	battle.queue_free()
 	quit(0)
 
