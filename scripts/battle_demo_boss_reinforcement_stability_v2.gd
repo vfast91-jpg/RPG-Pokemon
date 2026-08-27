@@ -22,7 +22,7 @@ const STABLE_REINFORCEMENT_BOTTOM_CENTER_RATIO: float = 0.75
 const STABLE_REINFORCEMENT_EDGE_PADDING: float = 8.0
 # The boss holds the rear line close to its status card while both bodyguards
 # stand clearly farther toward the player's team.
-const STABLE_REINFORCEMENT_BOSS_BACK_OFFSET: float = 12.0
+const STABLE_REINFORCEMENT_BOSS_BACK_OFFSET: float = 0.0
 const STABLE_REINFORCEMENT_FORWARD_OFFSET: float = 42.0
 const STABLE_REINFORCEMENT_CONNECTOR_MAX_WIDTH: float = 2.0
 const STABLE_REINFORCEMENT_CONNECTOR_MAX_ALPHA: float = 0.78
