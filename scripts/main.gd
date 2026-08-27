@@ -105,7 +105,7 @@ func _build_main_menu() -> void:
     menu_root.add_child(center)
 
     var frame := PanelContainer.new()
-    frame.custom_minimum_size = Vector2(420, 310)
+    frame.custom_minimum_size = Vector2(420, 270)
     frame.add_theme_stylebox_override("panel", _panel(Color("172823"), Color("e0c95f"), 12, 14.0))
     center.add_child(frame)
 
