@@ -8,7 +8,7 @@ const DETAIL_PATH: String = "res://data/gen2_species_families_21_30_v1.json"
 
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 282
 const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 const NEW_ROOTS: Array[String] = [
 	"unown", "wynaut", "girafarig", "pineco", "dunsparce",
@@ -85,8 +85,7 @@ func _initialize() -> void:
 
 	var girafarig_tms: Array = battle._lab_available_tm_moves("girafarig")
 	assert(girafarig_tms.has("protect"))
-
-	assert(not runtime_species.has("ursaluna"), "Ursaluna bleibt absichtlich zurückgestellt.")
+	assert(runtime_species.has("ursaluna"), "Ursaluna muss als Familienerweiterung im finalen Runtime-Pool aktiv sein.")
 
 	print("Gen2 families 21-30 registry/runtime: PASS")
 	battle.queue_free()
