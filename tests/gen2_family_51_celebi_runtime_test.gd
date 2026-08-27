@@ -6,14 +6,16 @@ const GLOBAL_MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.js
 const EXTENSION_MANIFEST_PATH: String = "res://data/pokemon_database_extension_51_v1.json"
 const EXPECTED_BASE_SPECIES_COUNT: int = 280
 const EXPECTED_BASE_ROOT_COUNT: int = 128
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
-const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
+const EXPECTED_CELEBI_EXTENSION_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_CELEBI_EXTENSION_RUNTIME_ROOT_COUNT: int = 129
+const EXPECTED_FINAL_RUNTIME_SPECIES_COUNT: int = 282
+const EXPECTED_FINAL_RUNTIME_ROOT_COUNT: int = 129
 
 
 func _initialize() -> void:
 	var global_manifest: Dictionary = _read_json(GLOBAL_MANIFEST_PATH)
-	assert(int(global_manifest.get("runtime_species_count", -1)) == EXPECTED_RUNTIME_SPECIES_COUNT)
-	assert(int(global_manifest.get("runtime_route_root_count", -1)) == EXPECTED_RUNTIME_ROOT_COUNT)
+	assert(int(global_manifest.get("runtime_species_count", -1)) == EXPECTED_FINAL_RUNTIME_SPECIES_COUNT)
+	assert(int(global_manifest.get("runtime_route_root_count", -1)) == EXPECTED_FINAL_RUNTIME_ROOT_COUNT)
 	assert((global_manifest.get("species_extension_manifests", []) as Array).has(EXTENSION_MANIFEST_PATH))
 
 	var extension: Dictionary = _read_json(EXTENSION_MANIFEST_PATH)
@@ -21,8 +23,8 @@ func _initialize() -> void:
 	assert(int(extension.get("expected_base_route_root_count", -1)) == EXPECTED_BASE_ROOT_COUNT)
 	assert(int(extension.get("extension_species_count", -1)) == 1)
 	assert(int(extension.get("extension_route_root_count", -1)) == 1)
-	assert(int(extension.get("runtime_species_count", -1)) == EXPECTED_RUNTIME_SPECIES_COUNT)
-	assert(int(extension.get("runtime_route_root_count", -1)) == EXPECTED_RUNTIME_ROOT_COUNT)
+	assert(int(extension.get("runtime_species_count", -1)) == EXPECTED_CELEBI_EXTENSION_RUNTIME_SPECIES_COUNT)
+	assert(int(extension.get("runtime_route_root_count", -1)) == EXPECTED_CELEBI_EXTENSION_RUNTIME_ROOT_COUNT)
 
 	var core: Dictionary = _read_json(str(extension.get("species_master_extension_file", "")))
 	var core_species: Dictionary = core.get("species", {})
@@ -66,15 +68,15 @@ func _initialize() -> void:
 	root.add_child(battle)
 	assert(battle.pokemon_registry_ready())
 	var runtime_species: Dictionary = battle.data.get("species", {})
-	assert(runtime_species.size() == EXPECTED_RUNTIME_SPECIES_COUNT)
-	assert(battle.species_ids.size() == EXPECTED_RUNTIME_ROOT_COUNT)
-	assert(battle.lab_species_ids.size() == EXPECTED_RUNTIME_SPECIES_COUNT)
+	assert(runtime_species.size() == EXPECTED_FINAL_RUNTIME_SPECIES_COUNT)
+	assert(battle.species_ids.size() == EXPECTED_FINAL_RUNTIME_ROOT_COUNT)
+	assert(battle.lab_species_ids.size() == EXPECTED_FINAL_RUNTIME_SPECIES_COUNT)
 	assert(runtime_species.has("celebi"))
 	assert(battle.species_ids.has("celebi"))
 	assert(battle.lab_species_ids.has("celebi"))
 	assert(battle.route_resolve_species_for_level("celebi", 1) == "celebi")
 	assert(battle.route_resolve_species_for_level("celebi", 100) == "celebi")
-	assert(not runtime_species.has("ursaluna"), "Ursaluna bleibt absichtlich zurückgestellt.")
+	assert(runtime_species.has("ursaluna"), "Ursaluna muss nach Celebi als Teddiursa-Familienerweiterung aktiv sein.")
 
 	var route_moves: Array = battle.route_moves_for_level("celebi", 30)
 	assert(route_moves.has("confusion"))
@@ -85,7 +87,7 @@ func _initialize() -> void:
 	var runtime_tms: Array = battle._lab_available_tm_moves("celebi")
 	assert(runtime_tms.has("protect"))
 
-	print("Celebi final Gen2 family 51 registry/runtime: PASS")
+	print("Celebi family 51 + final Ursaluna extension registry/runtime: PASS")
 	battle.queue_free()
 	quit(0)
 
