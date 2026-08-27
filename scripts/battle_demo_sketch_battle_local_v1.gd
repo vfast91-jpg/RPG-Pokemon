@@ -1,17 +1,19 @@
 extends "res://scripts/battle_demo_aggro_rules_final_v2.gd"
 
-# Farbeagle / Nachahmer (Sketch): copied moves belong to one battle only.
+# Farbeagle / Nachahmer (Sketch): one battle-local move-pool copy.
 #
-# The older V23 layer intentionally persisted copied moves in the route team
-# state. That makes a bad copy survive into later encounters and can eventually
-# remove Sketch permanently after four copies. This leaf keeps the established
-# in-battle behavior (up to four different copies), but strips that transient
-# state whenever a new combatant/wave is built and after route state is stored.
-# It also patches the player-facing move text so UI and runtime describe the
-# same battle-local rule.
+# Nachahmer is a deliberate setup action: once per battle, Farbeagle copies all
+# currently known, copyable moves of the enemy selected by the normal
+# enemy_highest_aggro targeting rule. The copied moves remain available only for
+# this battle. Nachahmer itself is consumed immediately after the attempt and is
+# restored for the next battle.
+#
+# This leaf also cleans legacy V23 route state where individual Sketch copies
+# were persisted between encounters.
 
 const SKETCH_MOVE_ID: String = "sketch"
 const SKETCH_STATE_KEY: String = "v23_sketch_learned_moves"
+const SKETCH_USED_KEY: String = "sketch_battle_used"
 
 
 func _load_data() -> void:
@@ -22,21 +24,24 @@ func _load_data() -> void:
 
 func route_new_member(species_id: String, level: int) -> Dictionary:
     var member: Dictionary = super.route_new_member(species_id, level)
-    # Never seed a newly obtained Pokemon with the legacy persistent-copy key.
+    # Never seed a newly obtained Pokemon with battle-local/legacy Sketch state.
     member.erase(SKETCH_STATE_KEY)
+    member.erase(SKETCH_USED_KEY)
     return member
 
 
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
     # Old route saves can contain both the legacy copy list and those same move
     # ids in the normal move array. Let the inherited stack build normally, then
-    # remove exactly the ids that were recorded as Sketch copies.
+    # strip that stale state and start a fresh once-per-battle Sketch charge.
     var legacy_copies: Array[String] = _v23_string_array(
         setup.get(SKETCH_STATE_KEY, [])
     )
+    var legacy_used: bool = bool(setup.get(SKETCH_USED_KEY, false))
     var combatant: Dictionary = super._make_combatant(side, index, setup)
-    _sketch_clear_legacy_copies(combatant, legacy_copies)
+    _sketch_clear_battle_state(combatant, legacy_copies, legacy_used)
     combatant[SKETCH_STATE_KEY] = []
+    combatant[SKETCH_USED_KEY] = false
     return combatant
 
 
@@ -45,9 +50,9 @@ func _route_begin_wave() -> void:
     if not route_mode:
         return
 
-    # The V23 ancestor reloads the legacy key after combatant construction.
-    # Undo that reload immediately and repair old exhausted Farbeagle by putting
-    # Sketch back once the stale copied moves have been removed.
+    # The V23 ancestor can reload the legacy copy list after combatant
+    # construction. Undo that reload immediately and restore Nachahmer so every
+    # encounter begins with exactly one available use.
     for local_index: int in range(player_team.size()):
         if local_index >= _route_active_indices.size():
             break
@@ -65,16 +70,20 @@ func _route_begin_wave() -> void:
         var legacy_copies: Array[String] = _v23_string_array(
             state.get(SKETCH_STATE_KEY, [])
         )
-        _sketch_clear_legacy_copies(combatant, legacy_copies)
+        var legacy_used: bool = bool(state.get(SKETCH_USED_KEY, false))
+        _sketch_clear_battle_state(combatant, legacy_copies, legacy_used)
         combatant[SKETCH_STATE_KEY] = []
+        combatant[SKETCH_USED_KEY] = false
         state.erase(SKETCH_STATE_KEY)
+        state.erase(SKETCH_USED_KEY)
         _route_team_state[team_index] = state
 
 
 func _route_store_current_state() -> void:
-    # Snapshot the battle-local copies before the V23 ancestor writes them into
-    # route state. Afterwards we remove only those transient ids again.
+    # Snapshot transient copies and the once-per-battle flag before the V23
+    # ancestor writes the combatant's current move array into route state.
     var copies_by_team_index: Dictionary = {}
+    var used_by_team_index: Dictionary = {}
     for local_index: int in range(player_team.size()):
         if local_index >= _route_active_indices.size():
             break
@@ -84,13 +93,15 @@ func _route_store_current_state() -> void:
         var combatant_value: Variant = player_team[local_index]
         if not (combatant_value is Dictionary):
             continue
+        var combatant: Dictionary = combatant_value
         copies_by_team_index[team_index] = _v23_string_array(
-            (combatant_value as Dictionary).get(SKETCH_STATE_KEY, [])
+            combatant.get(SKETCH_STATE_KEY, [])
         )
+        used_by_team_index[team_index] = bool(combatant.get(SKETCH_USED_KEY, false))
 
     super._route_store_current_state()
 
-    for team_index_value: Variant in copies_by_team_index.keys():
+    for team_index_value: Variant in used_by_team_index.keys():
         var team_index: int = int(team_index_value)
         if team_index < 0 or team_index >= _route_team_state.size():
             continue
@@ -102,22 +113,88 @@ func _route_store_current_state() -> void:
         var battle_copies: Array[String] = _v23_string_array(
             copies_by_team_index.get(team_index, [])
         )
-        _sketch_clear_legacy_copies(state, battle_copies)
+        var battle_used: bool = bool(used_by_team_index.get(team_index, false))
+        _sketch_clear_battle_state(state, battle_copies, battle_used)
         state.erase(SKETCH_STATE_KEY)
+        state.erase(SKETCH_USED_KEY)
         _route_team_state[team_index] = state
 
 
-func _sketch_clear_legacy_copies(holder: Dictionary, copied_ids: Array[String]) -> void:
-    if copied_ids.is_empty():
-        return
+func _v23_sketch(actor: Dictionary, target: Dictionary) -> float:
+    if actor.is_empty() or target.is_empty() or not bool(actor.get("alive", false)):
+        return 0.0
 
+    # Safety guard. Nachahmer is normally removed from the move list immediately
+    # after the first attempt, but this prevents a second use through any other
+    # execution path in the same battle.
+    if bool(actor.get(SKETCH_USED_KEY, false)):
+        _spawn_feedback_label(actor, "🎨 BEREITS VERBRAUCHT", Color("d9a5a5"))
+        return 0.0
+
+    actor[SKETCH_USED_KEY] = true
+
+    var actor_moves: Array[String] = _v23_string_array(actor.get("moves", []))
+    var target_moves: Array[String] = _v23_string_array(target.get("moves", []))
+    var temporary_copies: Array[String] = []
+
+    # The move definition targets enemy_highest_aggro. Copy that target's whole
+    # usable move pool instead of only its last action.
+    for move_id: String in target_moves:
+        if not _sketch_move_copyable_in_battle(move_id):
+            continue
+        if actor_moves.has(move_id):
+            continue
+        actor_moves.append(move_id)
+        temporary_copies.append(move_id)
+
+    actor_moves.erase(SKETCH_MOVE_ID)
+    actor["moves"] = actor_moves
+    actor[SKETCH_STATE_KEY] = temporary_copies
+
+    if temporary_copies.is_empty():
+        _spawn_feedback_label(actor, "🎨 NICHTS KOPIERBAR", Color("d9a5a5"))
+        return 0.0
+
+    _spawn_feedback_label(
+        actor,
+        "🎨 " + str(temporary_copies.size()) + " ATTACKEN KOPIERT",
+        Color("d9c6ff")
+    )
+    return 4.0
+
+
+func _sketch_move_copyable_in_battle(move_id: String) -> bool:
+    if not _v23_sketch_copyable(move_id):
+        return false
+    var move: Dictionary = _move_data(move_id)
+    if move.is_empty():
+        return false
+    var runtime_value: Variant = move.get("runtime", {})
+    if runtime_value is Dictionary:
+        var runtime: Dictionary = runtime_value
+        if runtime.has("normal_battle_available") and not bool(runtime.get("normal_battle_available", true)):
+            return false
+    return true
+
+
+func _sketch_clear_battle_state(
+    holder: Dictionary,
+    copied_ids: Array[String],
+    was_used: bool = false
+) -> void:
     var moves: Array[String] = _v23_string_array(holder.get("moves", []))
     for move_id: String in copied_ids:
         moves.erase(move_id)
 
-    # A V23 Farbeagle that already reached four persistent copies had Sketch
-    # removed. Restoring it here makes old route state usable again.
-    if not moves.has(SKETCH_MOVE_ID):
+    # A used Sketch is removed during battle. Restore it between battles even if
+    # the chosen enemy happened to have zero copyable moves. The species check
+    # also repairs old exhausted Farbeagle saves that lost Sketch permanently.
+    var should_restore: bool = (
+        was_used
+        or not copied_ids.is_empty()
+        or str(holder.get("species_id", "")) == "smeargle"
+    )
+    if should_restore and not moves.has(SKETCH_MOVE_ID):
         moves.insert(0, SKETCH_MOVE_ID)
     holder["moves"] = moves
 
@@ -133,18 +210,25 @@ func _sketch_patch_move_text(container: Dictionary) -> void:
 
     var sketch: Dictionary = (sketch_value as Dictionary).duplicate(true)
     sketch["description"] = (
-        "Kopiert die zuletzt vom Ziel eingesetzte kopierbare Attacke für den aktuellen Kampf."
+        "Kopiert einmal pro Kampf alle kopierbaren Attacken des gegnerischen Pokémon mit der höchsten Aggro bis zum Kampfende."
     )
+    sketch["ap"] = 7
+    sketch["pp"] = 1
+    sketch["target"] = "enemy_highest_aggro"
     sketch["special_rules"] = [
-        "Kopierte Attacken gelten nur im aktuellen Kampf und verschwinden danach wieder.",
-        "Pro Kampf können bis zu 4 verschiedene kopierbare Attacken gesammelt werden; nach der vierten erfolgreichen Kopie ist Nachahmer für diesen Kampf verbraucht.",
+        "Nachahmer kann pro Kampf genau einmal eingesetzt werden und ist danach für diesen Kampf verbraucht.",
+        "Beim Einsatz werden alle aktuell bekannten, im normalen Kampf nutzbaren und kopierbaren Attacken des Gegners mit der höchsten Aggro übernommen.",
+        "Die kopierten Attacken gelten nur im aktuellen Kampf und verschwinden danach vollständig; im nächsten Kampf steht wieder nur Nachahmer bereit.",
         "Kopier-/Zufalls-/Meta-Attacken wie Nachahmer, Mimikry, Copycat, Metronom und Schlafrede sind nicht kopierbar."
     ]
 
     var tags: Array[String] = _v23_string_array(sketch.get("optional_tags", []))
     tags.erase("persistent_copy")
-    if not tags.has("battle_local_copy"):
-        tags.append("battle_local_copy")
+    tags.erase("battle_local_copy")
+    if not tags.has("battle_local_move_pool_copy"):
+        tags.append("battle_local_move_pool_copy")
+    if not tags.has("once_per_battle"):
+        tags.append("once_per_battle")
     sketch["optional_tags"] = tags
 
     var runtime_value: Variant = sketch.get("runtime", {})
@@ -154,6 +238,8 @@ func _sketch_patch_move_text(container: Dictionary) -> void:
     )
     runtime["v23_sketch"] = true
     runtime["battle_local_copy"] = true
+    runtime["copy_all_target_moves"] = true
+    runtime["once_per_battle"] = true
     sketch["runtime"] = runtime
 
     moves[SKETCH_MOVE_ID] = sketch
