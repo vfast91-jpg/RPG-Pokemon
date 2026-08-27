@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const BattleScript = preload("res://scripts/battle_demo_boss_reinforcement_stability_v2.gd")
 const VisibleLayout = preload("res://scripts/ui/visible_texture_layout.gd")
@@ -6,9 +6,15 @@ const VisibleLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 var failures: int = 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
+    # Run as an ordinary project scene (not `--script`) so project autoloads
+    # such as TypeSystem are initialized exactly like they are in the game.
+    call_deferred("_run_regression")
+
+
+func _run_regression() -> void:
     var battle = BattleScript.new()
-    root.add_child(battle)
+    add_child(battle)
 
     battle.start_route_battle_party(
         [{"species_id": "bulbasaur", "level": 11, "hp": 28, "max_hp": 28}],
@@ -190,10 +196,10 @@ func _finish(battle) -> void:
     battle.queue_free()
     if failures == 0:
         print("Stage 10 boss reinforcement stability v2 test: PASS")
-        quit(0)
+        get_tree().quit(0)
     else:
         push_error("Stage 10 boss reinforcement stability v2 test: %d Fehler" % failures)
-        quit(1)
+        get_tree().quit(1)
 
 
 func _check(condition: bool, message: String) -> void:
