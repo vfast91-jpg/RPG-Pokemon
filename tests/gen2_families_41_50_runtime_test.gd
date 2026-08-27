@@ -8,7 +8,7 @@ const EXPECTED_BASE_SPECIES_COUNT: int = 266
 const EXPECTED_BASE_ROOT_COUNT: int = 118
 const EXPECTED_EXTENSION_RUNTIME_SPECIES_COUNT: int = 280
 const EXPECTED_EXTENSION_RUNTIME_ROOT_COUNT: int = 128
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 282
 const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 const NEW_ROOTS: Array[String] = [
 	"phanpy", "stantler", "smeargle", "miltank", "raikou",
@@ -41,7 +41,7 @@ func _initialize() -> void:
 	for species_id: String in NEW_SPECIES:
 		assert(core_species.has(species_id), "Gen2-41-50-Core fehlt: " + species_id)
 	assert(not core_species.has("celebi"), "Celebi gehört erst in den nächsten Block.")
-	assert(not core_species.has("ursaluna"), "Ursaluna bleibt zurückgestellt.")
+	assert(not core_species.has("ursaluna"), "Ursaluna gehört in das separate Teddiursa-Familien-Extensionpaket.")
 
 	var family_meta: Dictionary = _read_json(str(extension.get("family_meta_extension_file", "")))
 	var new_roots: Array = family_meta.get("route_roots", [])
@@ -88,7 +88,7 @@ func _initialize() -> void:
 		assert(runtime_species.has(species_id), "Gen2-41-50-Pokemon fehlt in Runtime: " + species_id)
 		assert(battle.lab_species_ids.has(species_id), "Gen2-41-50-Pokemon fehlt im Kampflabor: " + species_id)
 	assert(runtime_species.has("celebi"), "Celebi muss im finalen Gen-2-Runtime-Pool aktiv sein.")
-	assert(not runtime_species.has("ursaluna"))
+	assert(runtime_species.has("ursaluna"), "Ursaluna muss im finalen Runtime-Pool aktiv sein.")
 
 	assert(battle.route_resolve_species_for_level("phanpy", 24) == "phanpy")
 	assert(battle.route_resolve_species_for_level("phanpy", 25) == "donphan")
