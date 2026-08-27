@@ -17,6 +17,7 @@ func _initialize() -> void:
 
 func _base_target() -> Dictionary:
     return {
+        "level": 50,
         "max_hp": 200,
         "speed": 80.0,
         "major_status": "",
@@ -34,16 +35,16 @@ func _test_major_status_scaling(battle) -> void:
     burn_target["major_status"] = "burn"
     assert(is_equal_approx(
         battle._status_aggro_for_transition(burn_target, "burn", burn_before),
-        20.0
-    ), "Verbrennung muss 10 % der Ziel-Max-KP als Anwendungs-Aggro erzeugen.")
+        75.0
+    ), "Verbrennung muss 0,75 × Levelbasis erzeugen.")
 
     var poison_target: Dictionary = _base_target()
     var poison_before: Dictionary = battle._status_aggro_snapshot(poison_target)
     poison_target["major_status"] = "poison"
     assert(is_equal_approx(
         battle._status_aggro_for_transition(poison_target, "poison", poison_before),
-        20.0
-    ), "Vergiftung muss 10 % der Ziel-Max-KP als Anwendungs-Aggro erzeugen.")
+        60.0
+    ), "Vergiftung muss 0,60 × Levelbasis erzeugen.")
 
     var toxic_target: Dictionary = _base_target()
     var toxic_before: Dictionary = battle._status_aggro_snapshot(toxic_target)
@@ -51,8 +52,8 @@ func _test_major_status_scaling(battle) -> void:
     toxic_target["tf_bad_poison_stage"] = 1
     assert(is_equal_approx(
         battle._status_aggro_for_transition(toxic_target, "bad_poison", toxic_before),
-        20.0
-    ), "Schwere Vergiftung muss die zentrale Status-Anwendungs-Aggro verwenden.")
+        90.0
+    ), "Schwere Vergiftung muss 0,90 × Levelbasis erzeugen.")
 
     var paralysis_target: Dictionary = _base_target()
     var paralysis_before: Dictionary = battle._status_aggro_snapshot(paralysis_target)
@@ -64,8 +65,8 @@ func _test_major_status_scaling(battle) -> void:
             "paralysis",
             paralysis_before
         ),
-        60.0
-    ), "Paralyse muss 50 % Tempoverlust + 10 % Ziel-Max-KP werten.")
+        75.0
+    ), "Paralyse muss 0,75 × Levelbasis erzeugen.")
 
 
 func _test_duration_status_scaling(battle) -> void:
@@ -75,8 +76,8 @@ func _test_duration_status_scaling(battle) -> void:
     sleep_target["db_sleep_actions"] = 2
     assert(is_equal_approx(
         battle._status_aggro_for_transition(sleep_target, "sleep", sleep_before),
-        40.0
-    ), "Schlaf muss pro tatsächlich neuer Schlaf-Aktion 10 % Max-KP werten.")
+        100.0
+    ), "Schlaf muss 0,50 × Levelbasis je neuer Schlafaktion werten.")
 
     var freeze_target: Dictionary = _base_target()
     var freeze_before: Dictionary = battle._status_aggro_snapshot(freeze_target)
@@ -84,7 +85,7 @@ func _test_duration_status_scaling(battle) -> void:
     freeze_target["zf_freeze_actions"] = 3
     assert(is_equal_approx(
         battle._status_aggro_for_transition(freeze_target, "freeze", freeze_before),
-        60.0
+        150.0
     ), "Gefroren muss seine tatsächlich verlorenen Aktionsmöglichkeiten werten.")
 
 
@@ -95,8 +96,8 @@ func _test_confusion_extension_only(battle) -> void:
     target["confused_turns"] = 3
     assert(is_equal_approx(
         battle._status_aggro_for_transition(target, "confusion", before),
-        24.0
-    ), "Zwei neue Verwirrungs-Aktionen müssen 2 × 6 % Max-KP werten.")
+        50.0
+    ), "Zwei neue Verwirrungs-Aktionen müssen je 0,25 × Levelbasis werten.")
 
     var no_extension_before: Dictionary = battle._status_aggro_snapshot(target)
     assert(is_zero_approx(

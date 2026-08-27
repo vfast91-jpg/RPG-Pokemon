@@ -147,6 +147,12 @@ func _validate_connector_states(lab, scenario: String) -> void:
     lab.selected_actor = {}
     lab._refresh_cards()
 
+    var neutral_probe := Line2D.new()
+    lab._apply_connector_state(neutral_probe, true, false, 0)
+    _check(_same_color(neutral_probe.default_color, Color("fffdf2")), "%s: Neutrale Verbindungslinie ist nicht deckend weiss." % scenario)
+    _check(absf(neutral_probe.width - 2.5) < 0.01, "%s: Neutrale Verbindungslinie ist auf hellem Hintergrund zu duenn." % scenario)
+    neutral_probe.free()
+
     var found_target: bool = false
     for combatant_value: Variant in lab.combatants:
         if not (combatant_value is Dictionary):

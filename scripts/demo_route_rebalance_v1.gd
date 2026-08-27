@@ -350,7 +350,7 @@ func _add_capture_preview_card() -> void:
 
 
 func _mark_capture_preview_as_found(node: Node) -> bool:
-    if node is Label and (node as Label).text == "✓ GEFANGEN":
+    if node is Label and (node as Label).text == "✓ BEGLEITET DICH JETZT":
         (node as Label).text = "🌿 GEFUNDEN"
         return true
     for child: Node in node.get_children():

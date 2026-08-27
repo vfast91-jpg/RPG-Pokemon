@@ -64,7 +64,7 @@ func _build_adventure_intro_overlay() -> void:
     _adventure_intro_overlay.add_child(center)
 
     # Sized deliberately for the project's 640x360 internal viewport.
-    # There is no ScrollContainer: title, five cards and button stay visible together.
+    # There is no ScrollContainer: title, six cards and button stay visible together.
     var panel := PanelContainer.new()
     panel.custom_minimum_size = Vector2(596, 324)
     panel.add_theme_stylebox_override(
@@ -116,13 +116,14 @@ func _build_adventure_intro_overlay() -> void:
         "Je weiter du kommst, desto häufiger begegnest du beim Suchen seltenen Pokémon. Gegnerkämpfe bleiben davon unberührt."
     ))
 
-    var companion_card := _make_adventure_intro_card(
+    cards.add_child(_make_adventure_intro_card(
         "🧭  REISEGEFÄHRTEN",
         "Pokémon begleiten dich 30 gemeinsame Etappen. Danach ziehen sie weiter. 🧭 zeigt dir, wie lange ihr noch gemeinsam reist."
-    )
-    companion_card.custom_minimum_size = Vector2(0, 52)
-    companion_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    content.add_child(companion_card)
+    ))
+    cards.add_child(_make_adventure_intro_card(
+        "⚖️  GEGNERLEVEL",
+        "Orientiert sich an dem Pokémon in deinem Team mit dem höchsten Level."
+    ))
 
     _adventure_intro_start_button = Button.new()
     _adventure_intro_start_button.text = "JETZT GEHT'S LOS!"
@@ -155,13 +156,13 @@ func _build_adventure_intro_overlay() -> void:
 
 func _make_adventure_intro_card(title_text: String, body_text: String) -> PanelContainer:
     var card := PanelContainer.new()
-    card.custom_minimum_size = Vector2(0, 70)
+    card.custom_minimum_size = Vector2(0, 72)
     card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    card.add_theme_stylebox_override(
-        "panel",
-        _panel(Color("1a3028"), Color("526e62"), 9, 7.0)
-    )
+    var card_style := _panel(Color("1a3028"), Color("526e62"), 9, 7.0)
+    card_style.content_margin_top = 4.0
+    card_style.content_margin_bottom = 4.0
+    card.add_theme_stylebox_override("panel", card_style)
 
     var box := VBoxContainer.new()
     box.add_theme_constant_override("separation", 2)

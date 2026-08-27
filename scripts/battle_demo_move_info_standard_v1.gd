@@ -148,6 +148,191 @@ func _compact_effect_summary(move: Dictionary) -> String:
     return _standardize_effect_summary(move, super._compact_effect_summary(move))
 
 
+func _detail_info(combatant: Dictionary) -> String:
+    # Older mechanic layers built the detail window incrementally. Some of them
+    # appended live effects after the move list, while the base list showed only
+    # move names. Normalize the finished inherited text once, at this central UI
+    # boundary: every live effect belongs below AKTIVE EFFEKTE and every move gets
+    # the same complete explanation used by the battle infobox.
+    return _standardized_combatant_detail(
+        combatant,
+        super._detail_info(combatant)
+    )
+
+
+func _standardized_combatant_detail(
+    combatant: Dictionary,
+    inherited_text: String
+) -> String:
+    var effects_header: String = "[b]AKTIVE EFFEKTE[/b]"
+    var attacks_header: String = "[b]VERFÜGBARE ATTACKEN[/b]"
+    var effects_start: int = inherited_text.find(effects_header)
+    var attacks_start: int = inherited_text.find(attacks_header)
+    if effects_start < 0 or attacks_start < effects_start:
+        return inherited_text
+
+    var overview: String = inherited_text.substr(0, effects_start).strip_edges()
+    var effects_source_start: int = effects_start + effects_header.length()
+    var effects_source: String = inherited_text.substr(
+        effects_source_start,
+        attacks_start - effects_source_start
+    )
+    var attacks_source: String = inherited_text.substr(
+        attacks_start + attacks_header.length()
+    )
+    var trailing_effects: String = _detail_text_without_inherited_move_rows(
+        combatant,
+        attacks_source
+    )
+    if not trailing_effects.strip_edges().is_empty():
+        effects_source += "\n" + trailing_effects
+
+    var effect_lines: Array[String] = _standard_detail_effect_lines(
+        combatant,
+        effects_source
+    )
+    var sections := PackedStringArray()
+    if not overview.is_empty():
+        sections.append(overview)
+    sections.append(effects_header + "\n" + "\n".join(effect_lines))
+    sections.append(
+        attacks_header
+        + "\n"
+        + _standard_detail_move_text(combatant, attacks_source)
+    )
+    return "\n\n".join(sections)
+
+
+func _detail_text_without_inherited_move_rows(
+    combatant: Dictionary,
+    attacks_source: String
+) -> String:
+    # Several newer mechanic layers still append live state after the inherited
+    # name-only attack rows. Remove only those known rows and feed everything
+    # else back into the unified active-effects section.
+    if attacks_source.contains("für den anderen Spieler verborgen"):
+        return ""
+
+    var remaining_names: Array[String] = _move_names(combatant.get("moves", []))
+    var extra_lines := PackedStringArray()
+    for source_line: String in attacks_source.split("\n"):
+        var clean: String = source_line.strip_edges()
+        var move_row_index: int = -1
+        if clean.begins_with("• "):
+            move_row_index = remaining_names.find(clean.trim_prefix("• ").strip_edges())
+        if move_row_index >= 0:
+            remaining_names.remove_at(move_row_index)
+            continue
+        extra_lines.append(source_line)
+    return "\n".join(extra_lines).strip_edges()
+
+
+func _standard_detail_effect_lines(
+    combatant: Dictionary,
+    inherited_effects: String
+) -> Array[String]:
+    var lines: Array[String] = []
+    var saw_empty_placeholder: bool = false
+
+    for source_line: String in inherited_effects.split("\n"):
+        var clean: String = source_line.strip_edges()
+        if clean.is_empty():
+            continue
+        # Historical subheadings such as SONDEREFFEKTE, KONTROLLE or
+        # HAUPTSTATUS describe the same thing. The player gets one stable home.
+        if clean.begins_with("[b]") and clean.ends_with("[/b]"):
+            continue
+        clean = clean.trim_prefix("•").strip_edges()
+        if clean == "Keine aktiven Veränderungen":
+            saw_empty_placeholder = true
+            continue
+        var bullet: String = "• " + clean
+        if not lines.has(bullet):
+            lines.append(bullet)
+
+    for central_line: String in _central_detail_effect_lines(combatant):
+        var bullet: String = "• " + central_line
+        if not lines.has(bullet):
+            lines.append(bullet)
+
+    if lines.is_empty() and saw_empty_placeholder:
+        lines.append("• Keine aktiven Veränderungen")
+    elif lines.is_empty():
+        lines.append("• Keine aktiven Veränderungen")
+    return lines
+
+
+func _central_detail_effect_lines(combatant: Dictionary) -> Array[String]:
+    # These newer battle states expose compact card markers but historically
+    # never contributed a matching explanation to the detail window.
+    var lines: Array[String] = []
+    if bool(combatant.get("f30_destiny_bond_active", false)):
+        lines.append(
+            "🔗 Abgangsbund: Wird dieses Pokémon vor seiner nächsten eigenen "
+            + "Aktionsmöglichkeit durch gegnerischen Schaden kampfunfähig, "
+            + "wird der Angreifer ebenfalls kampfunfähig."
+        )
+    if bool(combatant.get("f30_aqua_ring_active", false)):
+        lines.append(
+            "💍 Wasserring: Heilt nach jeder eigenen Aktion KP; die Heilung "
+            + "hängt vom Statuswert und den maximalen KP ab."
+        )
+    if _tf_has_state(combatant, "minimized"):
+        var minimize_remaining: int = maxi(
+            0,
+            int(combatant.get("f30_minimize_expires_serial", 0))
+            - int(combatant.get("action_serial", 0))
+        )
+        lines.append(
+            "🤏 Komprimiert: Gegnerische Attacken treffen seltener · noch %d "
+            % minimize_remaining
+            + ("eigene Aktion." if minimize_remaining == 1 else "eigene Aktionen.")
+        )
+    if not str(combatant.get("f30_mean_look_source_id", "")).is_empty():
+        lines.append(
+            "👁️ Aggro-Lock: Die Aggro kann nicht unter den beim Einsatz von "
+            + "Horrorblick erreichten Wert fallen, solange die Quelle aktiv ist."
+        )
+    if (
+        bool(combatant.get("ad_short_charging", false))
+        and str(combatant.get("ad_short_charge_move", "")) == "counter"
+    ):
+        lines.append(
+            "🥊 Konter: Wartet auf gegnerischen physischen Schaden und fügt "
+            + "dem Angreifer anschließend das Doppelte der erlittenen KP zu."
+        )
+    return lines
+
+
+func _standard_detail_move_text(
+    combatant: Dictionary,
+    inherited_attack_text: String
+) -> String:
+    # Preserve the local-PvP information barrier from the inherited view.
+    if inherited_attack_text.contains("für den anderen Spieler verborgen"):
+        return "• In Runde 0 für den anderen Spieler verborgen"
+
+    var move_ids_value: Variant = combatant.get("moves", [])
+    if not (move_ids_value is Array) or (move_ids_value as Array).is_empty():
+        return "• Keine Attacken verfügbar"
+
+    var output := PackedStringArray()
+    for move_id_value: Variant in move_ids_value:
+        var move_id: String = str(move_id_value)
+        var move: Dictionary = _move_data(move_id)
+        if move.is_empty():
+            output.append("• " + move_id)
+            continue
+
+        var info_lines: PackedStringArray = _standardized_move_info_text(move).split("\n")
+        for line_index: int in range(info_lines.size()):
+            var info_line: String = info_lines[line_index].strip_edges()
+            if info_line.is_empty():
+                continue
+            output.append(("• " if line_index == 0 else "  ") + info_line)
+    return "\n".join(output)
+
+
 func _standardized_move_info_text(move: Dictionary, touch_confirm: bool = false) -> String:
     var move_id: String = str(move.get("id", ""))
     var move_name: String = str(move.get("name", "Attacke"))
@@ -173,15 +358,21 @@ func _standardized_move_info_text(move: Dictionary, touch_confirm: bool = false)
     )
 
     var combat_bits: Array[String] = []
-    var power_value: Variant = move.get("power", null)
-    if power_value != null:
-        combat_bits.append("Stärke: %d" % int(round(float(power_value))))
+    var power_text: String = _standard_power_text(move)
+    if not power_text.is_empty():
+        combat_bits.append(power_text)
+    var status_percentage_text: String = _standard_status_percentage_text(move)
+    if not status_percentage_text.is_empty():
+        combat_bits.append("Effekt: " + status_percentage_text)
     combat_bits.append("Ziel: " + _target_name(str(move.get("target", "enemy_highest_aggro"))))
     combat_bits.append("Genauigkeit: " + _standard_accuracy_text(move))
     lines.append(" · ".join(combat_bits))
 
     var effect_summary: String = _compact_effect_summary(move).strip_edges()
-    effect_summary = _effect_summary_without_redundant_damage(effect_summary, power_value != null)
+    effect_summary = _effect_summary_without_redundant_damage(
+        effect_summary,
+        not power_text.is_empty()
+    )
     if not effect_summary.is_empty():
         lines.append("Wirkung: " + effect_summary)
 
@@ -193,6 +384,95 @@ func _standardized_move_info_text(move: Dictionary, touch_confirm: bool = false)
         lines.append("Bestätigen: Attacke erneut antippen.")
 
     return "\n".join(lines)
+
+
+func _standard_status_percentage_text(move: Dictionary) -> String:
+    # Put the live, status-based result in the always-visible compact row. The
+    # calculation is delegated to the same central helper used by combat and the
+    # detailed effect text, so preview and execution cannot drift apart.
+    if str(move.get("category", "")) != "status" or selected_actor.is_empty():
+        return ""
+
+    var mechanics_value: Variant = move.get("mechanics", move.get("effects", []))
+    if not (mechanics_value is Array):
+        return ""
+
+    var results: Array[String] = []
+    for mechanic_value: Variant in mechanics_value:
+        if not (mechanic_value is Dictionary):
+            continue
+        var mechanic: Dictionary = mechanic_value as Dictionary
+        var kind: String = str(mechanic.get("kind", ""))
+        var calculation_kind: String = kind
+        if kind == "db_team_modifier":
+            calculation_kind = str(mechanic.get("modifier_kind", ""))
+        if not _is_player_attribute_modifier(calculation_kind):
+            continue
+
+        var result: String = _infobox_attribute_modifier_summary(
+            move,
+            mechanic,
+            calculation_kind,
+            true,
+            true
+        ).strip_edges()
+        result = _space_percentages(result)
+        if result.contains("%") and not results.has(result):
+            results.append(result)
+    return " / ".join(results)
+
+
+func _standard_power_text(move: Dictionary) -> String:
+    var weight_range: String = _standard_weight_power_range(move)
+    if not weight_range.is_empty():
+        return "Stärke: " + weight_range + " (Gewicht)"
+
+    var power_value: Variant = move.get("power", null)
+    if power_value == null:
+        return ""
+    return "Stärke: %d" % int(round(float(power_value)))
+
+
+func _standard_weight_power_range(move: Dictionary) -> String:
+    # Weight-based attacks already expose their tiers as structured runtime data.
+    # Reading that contract keeps the compact UI correct without parsing German
+    # descriptions or hard-coding a particular move id.
+    var runtime_value: Variant = move.get("runtime", {})
+    if not (runtime_value is Dictionary):
+        return ""
+
+    var tiers_value: Variant = (runtime_value as Dictionary).get("weight_power_tiers", [])
+    if not (tiers_value is Array):
+        return ""
+
+    var has_power: bool = false
+    var minimum_power: int = 0
+    var maximum_power: int = 0
+    for tier_value: Variant in tiers_value:
+        if not (tier_value is Array):
+            continue
+        var tier: Array = tier_value as Array
+        if tier.size() < 2:
+            continue
+        var tier_power_value: Variant = tier[1]
+        var power_type: int = typeof(tier_power_value)
+        if power_type != TYPE_INT and power_type != TYPE_FLOAT:
+            continue
+
+        var tier_power: int = int(round(float(tier_power_value)))
+        if not has_power:
+            minimum_power = tier_power
+            maximum_power = tier_power
+            has_power = true
+        else:
+            minimum_power = mini(minimum_power, tier_power)
+            maximum_power = maxi(maximum_power, tier_power)
+
+    if not has_power:
+        return ""
+    if minimum_power == maximum_power:
+        return str(minimum_power)
+    return "%d–%d" % [minimum_power, maximum_power]
 
 
 func _target_name(rule: String) -> String:

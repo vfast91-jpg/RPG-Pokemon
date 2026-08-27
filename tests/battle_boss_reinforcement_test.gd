@@ -2,6 +2,7 @@ extends SceneTree
 
 const BattleScript = preload("res://scripts/battle_demo_boss_aggro_lock_v1.gd")
 const SingleTargetAggroRules = preload("res://scripts/battle/single_target_aggro_rules.gd")
+const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
 var failures: int = 0
 
@@ -122,19 +123,21 @@ func _initialize() -> void:
             _check(boss_card.position.y + boss_card.size.y <= bottom_card.position.y + 0.01, "Bosskarte darf die untere Verstaerkungskarte nicht ueberlappen.")
             _check(top_card.position.y >= -0.01, "Obere Verstaerkungskarte darf nicht aus dem Feld ragen.")
             _check(bottom_card.position.y + bottom_card.size.y <= area.size.y + 0.01, "Untere Verstaerkungskarte darf nicht aus dem Feld ragen.")
+            _check(top_card.position.y >= 10.0, "Obere Verstaerkung darf nicht mehr am extremen oberen Rand kleben.")
+            _check(bottom_card.position.y + bottom_card.size.y <= area.size.y - 10.0, "Untere Verstaerkung darf nicht mehr am extremen unteren Rand kleben.")
             _check((boss_card.position - boss_card_position_before).length() < 0.01, "Bosskarte darf beim Phasenwechsel ihre Position nicht veraendern.")
             _check((boss_card.size - boss_card_size_before).length() < 0.01, "Bosskarte darf beim Phasenwechsel ihre Groesse nicht veraendern.")
 
         if boss_sprite != null and top_sprite != null and bottom_sprite != null:
-            var expected_add_sprite_side: float = 47.52
+            var expected_add_sprite_side: float = 72.0
             _check((boss_sprite.position - boss_sprite_position_before).length() < 0.01, "Boss-Sprite darf beim Erscheinen der Verstaerkungen nicht springen.")
             _check((boss_sprite.size - boss_sprite_size_before).length() < 0.01, "Boss-Sprite darf beim Erscheinen der Verstaerkungen nicht schrumpfen.")
             _check(boss_sprite.size.x > top_sprite.size.x, "Boss muss in Phase 2 sichtbar groesser als seine Verstaerkungen bleiben.")
-            _check(absf(top_sprite.size.x - expected_add_sprite_side) < 0.01 and absf(bottom_sprite.size.x - expected_add_sprite_side) < 0.01, "Verstaerkungssprites muessen die kollisionsfreie Boss+2-Darstellungsgroesse besitzen.")
+            _check(absf(top_sprite.size.x - expected_add_sprite_side) < 0.01 and absf(bottom_sprite.size.x - expected_add_sprite_side) < 0.01, "Verstaerkungssprites muessen wieder die normale gut sichtbare Darstellungsgroesse besitzen.")
 
-            var boss_rect := Rect2(boss_sprite.position, boss_sprite.size)
-            var top_rect := Rect2(top_sprite.position, top_sprite.size)
-            var bottom_rect := Rect2(bottom_sprite.position, bottom_sprite.size)
+            var boss_rect := _visible_global_rect(boss_sprite)
+            var top_rect := _visible_global_rect(top_sprite)
+            var bottom_rect := _visible_global_rect(bottom_sprite)
             _check(not boss_rect.intersects(top_rect), "Boss-Sprite darf die obere Verstaerkung nicht ueberlappen.")
             _check(not boss_rect.intersects(bottom_rect), "Boss-Sprite darf die untere Verstaerkung nicht ueberlappen.")
             _check(not top_rect.intersects(bottom_rect), "Die beiden Verstaerkungssprites duerfen sich nicht ueberlappen.")
@@ -146,11 +149,13 @@ func _initialize() -> void:
                 var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + add_id) as Polygon2D
                 _check(shadow != null, "Jede Verstaerkung braucht einen am Sprite verankerten Schatten.")
                 if shadow != null and add_sprite != null:
-                    var expected_shadow_x: float = add_sprite.position.x + add_sprite.size.x * 0.5
-                    var expected_shadow_y: float = add_sprite.position.y + add_sprite.size.y * ((72.0 - 5.0) / 72.0)
+                    var visible_rect: Rect2 = VisibleTextureLayout.visible_rect(add_sprite)
+                    var expected_foot: Vector2 = VisibleTextureLayout.visible_foot(add_sprite.position, visible_rect)
+                    var expected_shadow_x: float = expected_foot.x
+                    var expected_shadow_y: float = expected_foot.y
                     _check(absf(shadow.position.x - expected_shadow_x) < 0.01, "Verstaerkungsschatten muss horizontal am Spritefuss verankert sein.")
                     _check(absf(shadow.position.y - expected_shadow_y) < 0.01, "Verstaerkungsschatten muss vertikal am Spritefuss verankert sein.")
-                    _check(absf(shadow.scale.x - 0.66) < 0.01 and absf(shadow.scale.y - 0.66) < 0.01, "Verstaerkungsschatten muss zur Darstellungsgroesse des Sprites passen.")
+                    _check(absf(shadow.scale.x - 1.0) < 0.01 and absf(shadow.scale.y - 1.0) < 0.01, "Verstaerkungsschatten muss zur normalen Darstellungsgroesse des Sprites passen.")
 
     _finish(battle)
 
@@ -170,3 +175,8 @@ func _check(condition: bool, message: String) -> void:
         return
     failures += 1
     push_error(message)
+
+
+func _visible_global_rect(sprite: TextureRect) -> Rect2:
+    var visible_rect: Rect2 = VisibleTextureLayout.visible_rect(sprite)
+    return Rect2(sprite.position + visible_rect.position, visible_rect.size)

@@ -12,6 +12,10 @@ func _initialize() -> void:
     assert(StatusEffects.max_hp_heal(200, 75.0, 1.0) == 100)
     assert(StatusEffects.drain_heal(100, 75.0, 1.0) == 50)
     assert(StatusEffects.drain_heal(100, 75.0, 1.5) == 75)
+    assert(
+        StatusEffects.drain_heal(1, 1.0, 1.0) == 1,
+        "Eine positive Status-Entzugheilung darf nicht auf 0 KP abrunden."
+    )
     assert(is_equal_approx(StatusEffects.damage_reduction_multiplier(75.0), 0.50))
     assert(is_equal_approx(StatusEffects.additive_damage_multiplier(75.0, 0.6), 1.30))
     assert(is_equal_approx(StatusEffects.atb_start_percent(75.0, 0.5), 25.0))
@@ -76,6 +80,27 @@ func _initialize() -> void:
     assert(
         not bool(final_runtime.call("_cf_dragon_cheer_eligible", focus_energy_active)),
         "Aktiver Energiefokus muss Drachenjubel blockieren."
+    )
+
+    # Absorber/Megasauger use the later ZF runtime. One point of actual damage
+    # with a small but positive Status share must still restore exactly 1 KP.
+    var drain_actor: Dictionary = {
+        "id": "drain_actor",
+        "hp": 9,
+        "max_hp": 10,
+        "special": 1.0
+    }
+    var drain_target: Dictionary = {"id": "drain_target", "hp": 9}
+    final_runtime.set("_zf_hp_before", {"drain_target": 10})
+    var tiny_drain_heal: float = float(final_runtime.call(
+        "_zf_drain",
+        drain_actor,
+        drain_target,
+        {"status_weight": 1.0}
+    ))
+    assert(
+        int(drain_actor.get("hp", 0)) == 10 and is_equal_approx(tiny_drain_heal, 1.0),
+        "Absorber und Megasauger müssen bei positiver Heilwirkung mindestens 1 KP heilen."
     )
     final_runtime.free()
 

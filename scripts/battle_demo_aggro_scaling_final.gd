@@ -1,17 +1,19 @@
 extends "res://scripts/battle_demo_miss_recovery.gd"
 
+const FinalAggroRules = preload("res://scripts/battle/aggro_rules.gd")
+
 # Final Aggro correction layer.
 #
 # Canonical rule: effect Aggro is based on the EFFECT THAT ACTUALLY HAPPENED.
 # Damage already contributes its real dealt HP, healing its real restored HP and
 # Status-scaled modifiers use their real multiplier delta. This layer removes
 # the remaining legacy +1/+3/+4/+5 effect-Aggro magic numbers from active move
-# mechanics and replaces them with values derived from shield HP, affected HP
-# scale, duration, modifier magnitude, removed ATB or actually changed hazards.
+# mechanics and replaces them with values derived from the shared level basis,
+# duration, modifier magnitude, removed ATB or actually changed hazards.
 #
-# These fractions are balancing coefficients, not flat Aggro awards. Because the
-# base is the live combat state, the resulting Aggro naturally scales with level
-# and attributes.
+# These fractions are balancing coefficients on the central level basis, not
+# flat Aggro awards and not Max-KP fractions. The legacy function name remains
+# temporarily for compatibility with the many existing move implementations.
 
 const AGGRO_STATUS_ACTION_HP_FRACTION: float = 0.10
 const AGGRO_IMMUNITY_ACTION_HP_FRACTION: float = 0.04
@@ -26,8 +28,11 @@ const AGGRO_REST_STATUS_CLEANSE_HP_FRACTION: float = 0.10
 
 
 func _hp_scaled_aggro(combatant: Dictionary, fraction: float, actions: int = 1) -> float:
-    var max_hp: float = maxf(1.0, float(combatant.get("max_hp", 1)))
-    return max_hp * maxf(0.0, fraction) * float(maxi(1, actions))
+    return (
+        FinalAggroRules.level_basis(combatant)
+        * maxf(0.0, fraction)
+        * float(maxi(1, actions))
+    )
 
 
 func _team_max_hp(side: String) -> float:
@@ -82,18 +87,7 @@ func _all_timed_modifier_aggro(target: Dictionary) -> float:
 
 
 func _status_application_aggro(target: Dictionary, status_id: String, actions: int = 1) -> float:
-    match status_id:
-        "paralysis":
-            # Persistent speed loss + action-failure pressure. Speed itself scales
-            # with the Pokemon, while max HP keeps the value visible at high level.
-            var speed_loss: float = maxf(0.0, float(target.get("speed", 0.0)) * 0.5)
-            return speed_loss + _hp_scaled_aggro(target, 0.10)
-        "confusion":
-            return _hp_scaled_aggro(target, 0.06, actions)
-        "sleep":
-            return _hp_scaled_aggro(target, AGGRO_STATUS_ACTION_HP_FRACTION, actions)
-        _:
-            return _hp_scaled_aggro(target, AGGRO_STATUS_ACTION_HP_FRACTION, actions)
+    return FinalAggroRules.status_application(target, status_id, actions)
 
 
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:

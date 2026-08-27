@@ -25,7 +25,7 @@ var _endgame_pool_picks: Dictionary = {}
 func _show_stage_choices(message: String = "") -> void:
     super._show_stage_choices(message)
 
-    title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
+    title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
     progress_label.text = _progress_text()
 
     # A fresh run reaches stages below 96 before any legendary-pool selection.

@@ -39,7 +39,7 @@ func start_route() -> void:
 
 func _show_stage_choices(message: String = "") -> void:
     super._show_stage_choices(message)
-    title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ROUTE_STAGE_COUNT_90]
+    title_label.text = "Etappe %d von %d" % [stage, ROUTE_STAGE_COUNT_90]
     progress_label.text = _progress_text()
 
 

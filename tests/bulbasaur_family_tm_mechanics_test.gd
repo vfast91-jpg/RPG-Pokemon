@@ -62,7 +62,8 @@ func _assert_bad_poison(lab, actor: Dictionary, target: Dictionary) -> void:
     target["max_hp"] = 160
     target["hp"] = 160
     var aggro: float = lab._tf_apply_bad_poison(actor, target)
-    assert(is_equal_approx(aggro, 20.0), "Toxin muss bei erfolgreicher Anwendung 20 Status-Aggro erzeugen.")
+    var expected_aggro: float = float(maxi(1, int(target.get("level", 1)))) * 2.0 * 0.90
+    assert(is_equal_approx(aggro, expected_aggro), "Toxin muss nach Ziellevel skalieren.")
     assert(str(target.get("major_status", "")) == "bad_poison", "Toxin muss schwere Vergiftung setzen.")
     assert(int(target.get("tf_bad_poison_stage", 0)) == 1, "Schwere Vergiftung muss bei Stufe 1 beginnen.")
     var first: int = lab._tf_tick_bad_poison(target)

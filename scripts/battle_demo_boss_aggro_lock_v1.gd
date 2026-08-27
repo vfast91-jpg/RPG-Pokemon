@@ -5,10 +5,10 @@ extends "res://scripts/battle_demo_gen2_species_51_v1.gd"
 # The generic `boss` marker never freezes Aggro. Ordinary route bosses and the
 # milestone double bosses on stages 20/40/60/80 use the normal dynamic Aggro
 # system. The one gameplay exception is the ordinary single boss from
-# "Besondere Begegnung": as soon as its reinforcements actually spawn, the boss
-# is locked to Aggro 1 for the rest of that fight so the helpers can take over
-# normal target pressure. An explicit `boss_aggro_lock` marker remains supported
-# as an opt-in for any future encounter that intentionally wants the same rule.
+# "Besondere Begegnung": its boss is locked to Aggro 1 from the beginning. When
+# reinforcements arrive, their normal higher Aggro makes them the mandatory
+# protectors. An explicit `boss_aggro_lock` marker remains supported as an opt-in
+# for any future encounter that intentionally wants the same rule.
 
 const ROUTE_BOSS_LOCKED_AGGRO: float = 1.0
 const REINFORCEMENT_MIN_START_AGGRO: float = 2.0
@@ -36,9 +36,8 @@ func _refresh_cards() -> void:
 func _spawn_boss_reinforcements(boss: Dictionary) -> Array[Dictionary]:
     var created: Array[Dictionary] = super._spawn_boss_reinforcements(boss)
 
-    # This is the intended origin of the Aggro-1 mechanic: only the standard
-    # single special boss receives `boss_reinforcement_enabled`, and only after
-    # its helpers were successfully created does the permanent lock begin.
+    # Keep the explicit marker for saves and downstream systems. The standard
+    # reinforcement contract already locks Aggro from the start of the fight.
     if not created.is_empty() and _is_standard_reinforcement_boss(boss):
         boss[ROUTE_BOSS_AGGRO_LOCK_KEY] = true
 
@@ -93,4 +92,5 @@ func _enforce_route_boss_aggro() -> void:
 func _uses_route_boss_aggro_lock(combatant: Dictionary) -> bool:
     return bool(combatant.get("boss", false)) and bool(
         combatant.get(ROUTE_BOSS_AGGRO_LOCK_KEY, false)
+            or combatant.get("boss_reinforcement_enabled", false)
     )

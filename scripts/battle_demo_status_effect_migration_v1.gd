@@ -199,6 +199,10 @@ func _resolve_seed_tick(target: Dictionary) -> void:
         source["hp"] = int(source.get("hp", 0)) + healed
         _spawn_feedback_label(source, "🌱 +" + str(healed) + " KP", Color("8fe39b"))
 
+    # Egelsamen remains source-bound: each tick credits exactly the HP effect
+    # that really happened, with no additional placement award.
+    source["aggro"] = float(source.get("aggro", 0.0)) + float(actual + healed)
+
     if int(target.get("hp", 0)) <= 0:
         target["alive"] = false
 

@@ -1,5 +1,7 @@
 extends "res://scripts/battle_demo_zf_registry_v1.gd"
 
+const ZF_StatusEffects = preload("res://scripts/battle/status_effect_runtime.gd")
+
 # Combat mechanics for the Zubat -> Quapsel ten-family attack batch.
 # Generic charge, multi-hit, crit, AP, status-softcap and ATB rules remain in
 # the inherited central runtime; only genuinely new behavior lives here.
@@ -183,7 +185,13 @@ func _zf_drain(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> f
         0,
         int(actor.get("max_hp", 1)) - int(actor.get("hp", 0))
     )
-    var heal: int = mini(missing, int(floor(float(dealt) * ratio)))
+    # Drain healing is a Status-scaled whole-KP effect. Reuse the central
+    # positive-effect rounding rule so every genuinely positive result keeps
+    # its intended minimum impact of 1 KP instead of being floored to zero.
+    var heal: int = mini(
+        missing,
+        ZF_StatusEffects.positive_int(float(dealt) * ratio)
+    )
     if heal <= 0:
         return 0.0
 

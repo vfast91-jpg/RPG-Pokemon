@@ -1,6 +1,7 @@
 extends SceneTree
 
 const RouteScript = preload("res://scripts/demo_route_viewport_guard_v1.gd")
+const RunSaveRouteScript = preload("res://scripts/demo_route_run_save_v1.gd")
 const INTERNAL_VIEWPORT_HEIGHT: float = 360.0
 const FRAME_VERTICAL_MARGIN: float = 8.0
 
@@ -141,6 +142,31 @@ func _initialize() -> void:
         "Lokaler Aktions-Overflow darf die Mindesthöhe des Goldrahmens nicht über den Viewport vergrößern."
     )
 
+    # A saved special encounter is reconstructed directly and historically
+    # skipped the compact route-layout setup. At stage 10 with four team cards,
+    # the otherwise redundant progress row then pushed the main-menu footer out
+    # of the 360px viewport.
+    var resumed_route = RunSaveRouteScript.new()
+    resumed_route._build_ui()
+    resumed_route._tf_install_local_path_viewport()
+    resumed_route._tf_install_local_action_scroll()
+    resumed_route._tf_bound_event_log()
+    resumed_route._tf_install_route_viewport_guard()
+    resumed_route.stage = 10
+    resumed_route.saved_special_battle_heading = "👑 Besondere Begegnung"
+    resumed_route.saved_special_enemy_party = [{"species_id": "tyrogue", "level": 16}]
+    resumed_route._show_special_battle_resume()
+
+    var resumed_frame := resumed_route.root.get_node_or_null("RouteViewportFrame") as PanelContainer
+    assert(resumed_frame != null, "Auch die Spezialkampf-Wiederaufnahme braucht den geschützten Goldrahmen.")
+    assert(not resumed_route.progress_label.visible, "Die Wiederaufnahme darf die redundante Fortschrittszeile nicht einblenden.")
+    assert(resumed_route.path_box.visible, "Der Knopf zum Fortsetzen des Spezialkampfs muss sichtbar bleiben.")
+    assert(resumed_route.path_box.get_child_count() == 1, "Die Wiederaufnahme braucht genau einen Spezialkampf-Knopf.")
+    assert(
+        resumed_frame.get_combined_minimum_size().y <= maximum_frame_height,
+        "Die Spezialkampf-Wiederaufnahme darf den Hauptmenü-Knopf nicht aus dem Viewport drücken."
+    )
+
     # The active route entry may gain future top layers (save system, UI polish,
     # etc.). Do not require main.tscn to point directly at the guard; instead
     # verify that whatever route script is active still inherits the guard API.
@@ -168,6 +194,7 @@ func _initialize() -> void:
     )
 
     active_route.free()
+    resumed_route.free()
     route.free()
     print("Route viewport guard test: OK")
     quit(0)

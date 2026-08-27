@@ -9,7 +9,7 @@ const CAMPFIRE_UNLOCK_STAGE: int = 25
 const CAMPFIRE_EXTENSION_STAGES: int = 5
 
 var _campfire_unlock_announced: bool = false
-var _campfire_unlock_dialog: AcceptDialog
+var _campfire_unlock_overlay: Control
 
 
 func start_route() -> void:
@@ -103,19 +103,18 @@ func _begin_campfire_event() -> void:
         team[index] = member
 
         var remaining: int = int(member.get(COMPANION_REMAINING_KEY, COMPANION_STAGE_LIMIT))
-        var button := Button.new()
-        button.text = "%s · 🧭 %d → %d Etappen" % [
-            str(member.get("name", "Pokémon")),
-            remaining,
-            remaining + CAMPFIRE_EXTENSION_STAGES
-        ]
-        button.custom_minimum_size = Vector2(0, 30)
-        button.tooltip_text = (
-            "%s bleibt nach dieser Rast 5 Etappen länger bei dir."
-            % str(member.get("name", "Dieses Pokémon"))
+        var companion_name: String = str(member.get("name", "Pokémon"))
+        capture_actions.add_child(
+            _make_route_pokemon_choice_card(
+                member,
+                "🔥 Lagerfeuer · 🧭 %d → %d gemeinsame Etappen" % [
+                    remaining,
+                    remaining + CAMPFIRE_EXTENSION_STAGES
+                ],
+                "%s bleibt nach dieser Rast 5 Etappen länger bei dir." % companion_name,
+                _on_campfire_companion_selected.bind(index)
+            )
         )
-        button.pressed.connect(_on_campfire_companion_selected.bind(index))
-        capture_actions.add_child(button)
         added_button = true
 
     if not added_button:
@@ -164,24 +163,121 @@ func _show_campfire_unlock_popup() -> void:
     if stage != CAMPFIRE_UNLOCK_STAGE or not visible:
         return
 
-    var dialog: AcceptDialog = _ensure_campfire_unlock_dialog()
-    dialog.dialog_text = (
-        "Ab jetzt gibt es eine neue Möglichkeit:\n\n"
-        + "🔥 Gemeinsam am Lagerfeuer\n"
-        + "Wähle einen Reisegefährten. Er bleibt 5 weitere Etappen bei dir.\n\n"
-        + "Auf Etappe 25 ist das Lagerfeuer garantiert unter deinen drei Möglichkeiten. "
-        + "Danach kann es immer wieder auftauchen."
+    var overlay: Control = _ensure_campfire_unlock_overlay()
+    overlay.visible = true
+
+
+func _ensure_campfire_unlock_overlay() -> Control:
+    if _campfire_unlock_overlay != null and is_instance_valid(_campfire_unlock_overlay):
+        return _campfire_unlock_overlay
+
+    var overlay := ColorRect.new()
+    overlay.name = "CampfireUnlockOverlay"
+    overlay.color = Color("07100de0")
+    overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    add_child(overlay)
+    overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _campfire_unlock_overlay = overlay
+
+    var center := CenterContainer.new()
+    center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    overlay.add_child(center)
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    var card := PanelContainer.new()
+    card.custom_minimum_size = Vector2(520.0, 0.0)
+    card.add_theme_stylebox_override(
+        "panel",
+        _campfire_unlock_card_style()
     )
-    dialog.popup_centered(Vector2i(500, 230))
+    center.add_child(card)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 8)
+    card.add_child(content)
+
+    var eyebrow := Label.new()
+    eyebrow.text = "ETAPPE 25 · NEUE MÖGLICHKEIT"
+    eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    eyebrow.add_theme_font_size_override("font_size", 10)
+    eyebrow.add_theme_color_override("font_color", Color("e0c968"))
+    content.add_child(eyebrow)
+
+    var title := Label.new()
+    title.text = "🔥  Gemeinsam am Lagerfeuer"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 19)
+    title.add_theme_color_override("font_color", Color("fff0ad"))
+    content.add_child(title)
+
+    var intro := Label.new()
+    intro.text = "Deine Reisegefährten können jetzt länger an deiner Seite bleiben."
+    intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    intro.add_theme_font_size_override("font_size", 11)
+    intro.add_theme_color_override("font_color", Color("dce8e2"))
+    content.add_child(intro)
+
+    var feature := PanelContainer.new()
+    feature.add_theme_stylebox_override(
+        "panel",
+        _panel(Color("182822"), Color("55796a"), 8, 9.0)
+    )
+    content.add_child(feature)
+
+    var feature_row := HBoxContainer.new()
+    feature_row.add_theme_constant_override("separation", 10)
+    feature.add_child(feature_row)
+
+    var icon := Label.new()
+    icon.text = "🧭"
+    icon.custom_minimum_size = Vector2(34.0, 34.0)
+    icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    icon.add_theme_font_size_override("font_size", 22)
+    feature_row.add_child(icon)
+
+    var feature_copy := VBoxContainer.new()
+    feature_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    feature_copy.add_theme_constant_override("separation", 2)
+    feature_row.add_child(feature_copy)
+
+    var feature_title := Label.new()
+    feature_title.text = "+5 gemeinsame Etappen"
+    feature_title.add_theme_font_size_override("font_size", 13)
+    feature_title.add_theme_color_override("font_color", Color("9fe7bd"))
+    feature_copy.add_child(feature_title)
+
+    var feature_text := Label.new()
+    feature_text.text = (
+        "Wähle am Lagerfeuer ein Pokémon aus. Auf Etappe 25 ist diese "
+        + "Möglichkeit garantiert; danach kann sie erneut auftauchen."
+    )
+    feature_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    feature_text.add_theme_font_size_override("font_size", 10)
+    feature_text.add_theme_color_override("font_color", Color("dce8e2"))
+    feature_copy.add_child(feature_text)
+
+    var understood := Button.new()
+    understood.text = "VERSTANDEN  →"
+    understood.custom_minimum_size = Vector2(0.0, 36.0)
+    understood.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    understood.pressed.connect(_dismiss_campfire_unlock_popup)
+    _style_route_decision_button(understood, true)
+    content.add_child(understood)
+
+    return overlay
 
 
-func _ensure_campfire_unlock_dialog() -> AcceptDialog:
-    if _campfire_unlock_dialog != null and is_instance_valid(_campfire_unlock_dialog):
-        return _campfire_unlock_dialog
+func _campfire_unlock_card_style() -> StyleBoxFlat:
+    var style: StyleBoxFlat = _panel(Color("12251f"), Color("e0c968"), 12, 16.0)
+    style.set_border_width_all(2)
+    style.shadow_color = Color("00000099")
+    style.shadow_size = 10
+    return style
 
-    _campfire_unlock_dialog = AcceptDialog.new()
-    _campfire_unlock_dialog.name = "CampfireUnlockDialog"
-    _campfire_unlock_dialog.title = "Neue Möglichkeit freigeschaltet"
-    _campfire_unlock_dialog.ok_button_text = "VERSTANDEN"
-    add_child(_campfire_unlock_dialog)
-    return _campfire_unlock_dialog
+
+func _dismiss_campfire_unlock_popup() -> void:
+    if _campfire_unlock_overlay == null or not is_instance_valid(_campfire_unlock_overlay):
+        return
+    _campfire_unlock_overlay.queue_free()
+    _campfire_unlock_overlay = null

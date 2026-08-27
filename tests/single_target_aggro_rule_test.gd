@@ -12,6 +12,7 @@ func _initialize() -> void:
     _assert_active_move_classification(lab)
     _assert_status_single_target_halves(lab)
     _assert_damage_single_target_halves_once(lab)
+    _assert_multi_hit_attack_halves_once(lab)
     _assert_status_miss_does_not_halve(lab)
     _assert_failed_disable_does_not_halve(lab)
     _assert_mimic_does_not_halve_target(lab)
@@ -145,6 +146,44 @@ func _assert_damage_single_target_halves_once(lab) -> void:
     assert(
         is_equal_approx(float(target.get("aggro", 0.0)), 60.0),
         "Einzelziel-Schaden darf die Ziel-Aggro genau einmal halbieren, nicht doppelt."
+    )
+
+
+func _assert_multi_hit_attack_halves_once(lab) -> void:
+    var actor: Dictionary = _combatant(lab, "player", 0)
+    var target: Dictionary = _combatant(lab, "enemy", 0)
+    target["aggro"] = 120.0
+    _install_teams(lab, [actor], [target])
+
+    var original: Dictionary = _force_accuracy(lab, "fury_attack", null)
+    var move: Dictionary = (lab.data.get("moves", {}) as Dictionary).get("fury_attack", {})
+
+    # This is the state immediately after Furienschlag's first successful hit:
+    # the central single-target rule has already halved the target Aggro once.
+    target["aggro"] = 60.0
+    var hp_before_follow_up: int = int(target.get("hp", 0))
+    var state: Dictionary = {
+        "serial": lab._database_multi_hit_serial,
+        "actor": actor,
+        "move_id": "fury_attack",
+        "move": move.duplicate(true),
+        "targets": [target],
+        "planned_hits": 2,
+        "next_hit": 2,
+        "executed_hits": 1,
+        "total_damage": 0,
+        "guaranteed_crit": false
+    }
+    lab._database_apply_multi_hit(state, 2)
+    _restore_move(lab, "fury_attack", original)
+
+    assert(
+        int(target.get("hp", 0)) < hp_before_follow_up,
+        "Furienschlag muss im Test einen Folgetreffer verursachen."
+    )
+    assert(
+        is_equal_approx(float(target.get("aggro", 0.0)), 60.0),
+        "Furienschlag darf die Ziel-Aggro als gesamte Attacke nur einmal halbieren."
     )
 
 

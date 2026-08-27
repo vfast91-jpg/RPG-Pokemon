@@ -5,7 +5,7 @@ extends RefCounted
 # weights. This is intentionally independent of any individual move.
 #
 # +1 stage: full Status curve contribution (1.00 x R)
-# +2 stages: first stage full + second stage at 25 % (1.25 x R)
+# +/-2 stages: first stage full + second stage at 25 % (1.25 x R)
 #
 # No +3-stage rule is introduced here. Values other than an exact positive
 # two-stage boost keep their existing weight until a separate rule is decided.
@@ -35,7 +35,8 @@ static func is_positive_attribute_boost(kind: String, signed_stages: float) -> b
 
 static func effective_positive_stage_weight(kind: String, signed_stages: float) -> float:
     var magnitude: float = absf(signed_stages)
-    if is_positive_attribute_boost(kind, signed_stages) and is_equal_approx(magnitude, 2.0):
+    # Preserve the direction, but soften the second stage in both directions.
+    if is_equal_approx(magnitude, 2.0):
         return TWO_STAGE_WEIGHT
     return magnitude
 

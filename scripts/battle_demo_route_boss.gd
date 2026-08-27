@@ -8,6 +8,7 @@ const ROUTE_BOSS_CARD_HEIGHT: float = 60.0
 const ROUTE_BOSS_HP_BAR_GAP: float = 8.0
 const ROUTE_BOSS_SHADOW_SCALE: Vector2 = Vector2(1.8, 1.45)
 const ROUTE_BOSS_SHADOW_FOOT_Y_RATIO: float = 0.88
+const RouteBossVisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
 
 func _route_begin_wave() -> void:
@@ -88,17 +89,33 @@ func _decorate_route_boss_cards() -> void:
 
         var area: Control = sprite.get_parent() as Control
         if area != null:
-            # Keep the enlarged sprite vertically centered on its enlarged card.
-            var desired_y: float = card.position.y + (card.size.y - boss_size.y) * 0.5
-            sprite.position.y = clampf(desired_y, 0.0, maxf(0.0, area.size.y - boss_size.y))
+            # Pokemon PNGs use very different transparent margins. Align what
+            # the player can actually see with the card instead of centering the
+            # invisible 108px TextureRect. This fixes compact species such as
+            # Taubsi and Paras without species-specific offsets.
+            var visible_rect: Rect2 = RouteBossVisibleTextureLayout.visible_rect(sprite)
+            sprite.position = RouteBossVisibleTextureLayout.position_visible_right_of_card(
+                area.size,
+                Rect2(card.position, card.size),
+                visible_rect,
+                ROSTER_CARD_SPRITE_GAP
+            )
 
             var connector: Line2D = ui.get("connector") as Line2D
             if connector != null:
-                _update_roster_connector(connector, card, sprite, true)
+                connector.points = RouteBossVisibleTextureLayout.enemy_connector_points(
+                    Rect2(card.position, card.size),
+                    sprite.position,
+                    visible_rect
+                )
 
             var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
             if shadow != null:
-                _position_route_boss_shadow(shadow, sprite)
+                shadow.position = RouteBossVisibleTextureLayout.visible_foot(
+                    sprite.position,
+                    visible_rect
+                )
+                shadow.scale = ROUTE_BOSS_SHADOW_SCALE
 
         cards[combatant_id] = ui
 

@@ -38,7 +38,7 @@ func _initialize() -> void:
     lab._timeflow_spread_damage_target_ids = {}
 
     var status_aggro: float = lab._tf_apply_bad_poison(source, target)
-    assert(is_equal_approx(status_aggro, 20.0), "Schwere Vergiftung muss für den Wartetest erfolgreich anwendbar sein.")
+    assert(is_equal_approx(status_aggro, 9.0), "Schwere Vergiftung muss für den Wartetest mit Levelbasis anwendbar sein.")
     target["tf_curse_effect"] = {"source_id": str(source.get("id", ""))}
 
     lab.battle_active = true

@@ -2,6 +2,7 @@ extends "res://scripts/battle_demo_type_help_button_polish.gd"
 
 const BULBASAUR_TM_MOVE_PATH: String = "res://data/gen1_moves_runtime_v3_bulbasaur_tms.json"
 const BULBASAUR_WEIGHT_PATH: String = "res://data/gen1_species_weights_v4.json"
+const BulbaEndureRules = preload("res://scripts/battle/endure_rules.gd")
 const BULBASAUR_TM_IDS: Array[String] = [
     "take_down", "charm", "protect", "trailblaze", "facade", "magical_leaf",
     "endure", "sunny_day", "bullet_seed", "sleep_talk", "seed_bomb",
@@ -549,15 +550,15 @@ func _damage(actor: Dictionary, target: Dictionary, power: int, move_type: Strin
             _spawn_feedback_label(target, "🧸 −" + str(absorbed) + " KP", Color("edcf9b"))
         return 0
 
-    if hostile and _bulba_endure_active(target):
-        var allowed: int = maxi(0, int(target.get("hp", 0)) - 1)
-        if damage > allowed:
-            damage = allowed
-            _spawn_feedback_label(target, "💪 HÄLT DURCH", Color("f1d88d"))
+    if hostile:
+        var damage_before_endure: int = damage
+        damage = BulbaEndureRules.cap_damage(target, damage)
+        if damage < damage_before_endure:
+            _spawn_feedback_label(target, "💪 HÄLT DURCH · AUSDAUER VERBRAUCHT", Color("f1d88d"))
     return damage
 
 func _bulba_endure_active(target: Dictionary) -> bool:
-    return int(target.get("action_serial", 0)) < int(target.get("db_endure_expires_after_action", 0))
+    return BulbaEndureRules.is_active(target)
 
 func _bulba_current_move_ignores_substitute() -> bool:
     var runtime_value: Variant = _database_active_move.get("runtime", {})

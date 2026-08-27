@@ -51,6 +51,8 @@ const TYPE_HELP_SHORT_NAMES: Dictionary = {
 var _type_help_button: Button
 var _type_help_overlay: Control
 var _type_help_previous_paused: bool = false
+var _type_help_previous_tree_paused: bool = false
+var _type_help_pause_active: bool = false
 
 
 func _build_battle(root: Control) -> void:
@@ -88,6 +90,9 @@ func _install_type_help() -> void:
     _type_help_overlay.name = "TypeHelpOverlay"
     _type_help_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _type_help_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    # The whole scene tree is paused while this modal window is open. Keeping
+    # the overlay on ALWAYS lets its close button remain responsive.
+    _type_help_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
     _type_help_overlay.z_index = 100
     _type_help_overlay.visible = false
     battle_panel.add_child(_type_help_overlay)
@@ -115,7 +120,7 @@ func _install_type_help() -> void:
     panel.add_child(content)
 
     var header := HBoxContainer.new()
-    header.custom_minimum_size.y = 25.0
+    header.custom_minimum_size.y = 28.0
     content.add_child(header)
 
     var title := Label.new()
@@ -127,9 +132,27 @@ func _install_type_help() -> void:
     header.add_child(title)
 
     var close_button := Button.new()
-    close_button.text = "×"
+    close_button.name = "CloseTypeHelpButton"
+    close_button.text = "✕  SCHLIESSEN"
     close_button.tooltip_text = "Typenhilfe schließen"
-    close_button.custom_minimum_size = Vector2(30.0, 24.0)
+    close_button.custom_minimum_size = Vector2(112.0, 27.0)
+    close_button.focus_mode = Control.FOCUS_NONE
+    close_button.add_theme_font_size_override("font_size", 10)
+    close_button.add_theme_color_override("font_color", Color("ffffff"))
+    close_button.add_theme_color_override("font_hover_color", Color("ffffff"))
+    close_button.add_theme_color_override("font_pressed_color", Color("fff1d6"))
+    close_button.add_theme_stylebox_override(
+        "normal",
+        _type_help_stylebox(Color("8f3535"), Color("f1b2a8"), 2, 6, 5.0)
+    )
+    close_button.add_theme_stylebox_override(
+        "hover",
+        _type_help_stylebox(Color("b3453f"), Color("ffffff"), 2, 6, 5.0)
+    )
+    close_button.add_theme_stylebox_override(
+        "pressed",
+        _type_help_stylebox(Color("6f2828"), Color("ffe46c"), 2, 6, 5.0)
+    )
     close_button.pressed.connect(_close_type_help)
     header.add_child(close_button)
 
@@ -394,11 +417,14 @@ func _toggle_type_help() -> void:
 
 
 func _open_type_help() -> void:
-    if _type_help_overlay == null:
+    if _type_help_overlay == null or _type_help_pause_active:
         return
     _type_help_previous_paused = paused
+    _type_help_previous_tree_paused = get_tree().paused
+    _type_help_pause_active = true
     paused = true
     _type_help_overlay.visible = true
+    get_tree().paused = true
     if _type_help_button != null:
         _type_help_button.release_focus()
 
@@ -407,7 +433,21 @@ func _close_type_help() -> void:
     if _type_help_overlay == null:
         return
     _type_help_overlay.visible = false
+    if not _type_help_pause_active:
+        return
+    _type_help_pause_active = false
     paused = _type_help_previous_paused
+    get_tree().paused = _type_help_previous_tree_paused
+
+
+func open_config() -> void:
+    _close_type_help()
+    super.open_config()
+
+
+func _start_battle() -> void:
+    _close_type_help()
+    super._start_battle()
 
 
 func _type_help_stylebox(

@@ -168,22 +168,43 @@ func _make_route_team_card(member: Dictionary, index: int) -> Control:
     _ensure_member_companion_duration(member)
     var card: Control = super._make_route_team_card(member, index)
     var remaining: int = _companion_remaining_stages(member)
-    _append_companion_duration_to_first_label(card, remaining)
+    card.custom_minimum_size.y = maxf(card.custom_minimum_size.y, 53.0)
+    _add_companion_duration_below_xp(card, remaining)
     _set_companion_duration_tooltip(card, remaining)
     return card
 
 
-func _append_companion_duration_to_first_label(node: Node, remaining: int) -> bool:
-    if node is Label:
-        var label: Label = node as Label
-        if not label.text.is_empty():
-            label.text += "  ·  🧭 %d Et." % remaining
+func _add_companion_duration_below_xp(node: Node, remaining: int) -> bool:
+    if node is VBoxContainer:
+        var content := node as VBoxContainer
+        var progress_bars: Array[ProgressBar] = []
+        for content_child: Node in content.get_children():
+            if content_child is ProgressBar:
+                progress_bars.append(content_child as ProgressBar)
+
+        if progress_bars.size() >= 2:
+            var duration_label := Label.new()
+            duration_label.name = "CompanionDurationLabel"
+            duration_label.text = _companion_duration_card_text(remaining)
+            duration_label.add_theme_font_size_override("font_size", 8)
+            duration_label.add_theme_color_override("font_color", Color("d8d2a0"))
+            duration_label.add_theme_constant_override("line_spacing", -5)
+            duration_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+            duration_label.tooltip_text = "Reisegefährte · noch %d gemeinsame Etappen" % remaining
+            content.add_child(duration_label)
+            content.move_child(duration_label, progress_bars[1].get_index() + 1)
             return true
 
     for child: Node in node.get_children():
-        if _append_companion_duration_to_first_label(child, remaining):
+        if _add_companion_duration_below_xp(child, remaining):
             return true
     return false
+
+
+func _companion_duration_card_text(remaining: int) -> String:
+    if remaining == 1:
+        return "🧭 Noch 1 gemeinsame\n      Etappe"
+    return "🧭 Noch %d gemeinsame\n      Etappen" % remaining
 
 
 func _set_companion_duration_tooltip(node: Node, remaining: int) -> bool:

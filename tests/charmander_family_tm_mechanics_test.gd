@@ -41,6 +41,7 @@ func _assert_gate1_ap_corrections(lab) -> void:
     assert(int(lab._move_data("focus_punch").get("ap", 0)) == 5, "Power-Punch muss RPG-AP 5 haben.")
     assert(int(lab._move_data("scorching_sands").get("ap", 0)) == 7, "Brandsand muss RPG-AP 7 haben.")
     assert(int(lab._move_data("acrobatics").get("ap", 0)) == 7, "Akrobatik nutzt bewusst RPG-AP 7.")
+    assert(int(lab._move_data("acrobatics").get("power", 0)) == 90, "Akrobatik muss als verlässliche itemfreie Attacke auf Stärke 90 begrenzt sein.")
     assert(int(lab._move_data("fling").get("power", 0)) == 70, "Schleuder muss feste Stärke 70 haben.")
 
 func _assert_charmander_tm031_compatibility(lab) -> void:

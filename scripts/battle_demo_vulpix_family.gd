@@ -12,6 +12,7 @@ extends "res://scripts/battle_demo_start_aggro_v1.gd"
 # - normal damage/type/STAB/crit/aggro handling
 
 const FlinchRules = preload("res://scripts/battle/flinch_rules.gd")
+const FamilyAggroRules = preload("res://scripts/battle/aggro_rules.gd")
 const VULPIX_SPECIES_PACK_PATH: String = "res://data/gen1_species_v3_vulpix_family_v1.json"
 const VULPIX_MOVE_PACK_PATH: String = "res://data/gen1_moves_runtime_v3_23_vulpix_family.json"
 const VULPIX_DISABLE_ACTIONS: int = 4
@@ -279,7 +280,10 @@ func _vulpix_apply_disable(actor: Dictionary, targets: Array) -> bool:
     target["vulpix_disable_until_action"] = (
         int(target.get("action_serial", 0)) + VULPIX_DISABLE_ACTIONS
     )
-    actor["aggro"] = float(actor.get("aggro", 0.0)) + 8.0
+    actor["aggro"] = (
+        float(actor.get("aggro", 0.0))
+        + FamilyAggroRules.partial_control(target, VULPIX_DISABLE_ACTIONS)
+    )
     _spawn_feedback_label(
         target,
         "🚫 " + str(_move_data(last_move_id).get("name", last_move_id)) + " · 4 AKTIONEN",
@@ -338,8 +342,13 @@ func _vulpix_apply_extrasensory_flinch(
         var target: Dictionary = target_value
         if not _vulpix_target_was_damaged(target, hp_before):
             continue
+        var atb_before: float = float(target.get("atb", 0.0))
         if FlinchRules.apply(target, chance):
-            actor["aggro"] = float(actor.get("aggro", 0.0)) + 3.0
+            var removed_atb: float = maxf(0.0, atb_before - float(target.get("atb", 0.0)))
+            actor["aggro"] = (
+                float(actor.get("aggro", 0.0))
+                + FamilyAggroRules.direct_atb_removal(target, removed_atb)
+            )
             _spawn_feedback_label(target, "💫 ZURÜCKGESCHRECKT", Color("d7c9ff"))
 
 

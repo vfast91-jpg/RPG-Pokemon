@@ -83,7 +83,7 @@ func _tf_queue_landscape_choice(message: String) -> void:
     _clear_container(path_box)
     _clear_container(capture_actions)
     _tf_prepare_route_choice_layout(true)
-    title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
+    title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
     event_label.text = message
 
     _tf_wait_for_progression_then_show_landscapes(sequence_id)
@@ -124,7 +124,7 @@ func _tf_show_landscape_choice_cards() -> void:
     _clear_container(capture_actions)
     _tf_prepare_route_choice_layout(true)
 
-    title_label.text = "LANDSCHAFT WÄHLEN · ETAPPE %d/%d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
+    title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
 
     var intro: String = "[b]Wohin führt dein Weg?[/b]\nWähle die Landschaft für Etappe %d." % stage
     if not _tf_landscape_pending_message.is_empty():

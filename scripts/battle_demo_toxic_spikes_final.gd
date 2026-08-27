@@ -1,5 +1,7 @@
 extends "res://scripts/battle_demo_periodic_wait_fix.gd"
 
+const ToxicSpikesAggroRules = preload("res://scripts/battle/aggro_rules.gd")
+
 # Final Giftspitzen runtime completion.
 #
 # The canonical attack database defines a two-layer hazard:
@@ -23,13 +25,13 @@ func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> flo
         set_meta(layers_key, layers)
         set_meta(source_key, str(actor.get("id", "")))
         _spawn_feedback_label(actor, "☣️ GIFTSPITZEN %d/%d" % [layers, max_layers], Color("c7a2dd"))
-        return 3.0
+        return 0.0
 
     if kind == "db_clear_allied_hazards":
         var own_side: String = str(actor.get("side", ""))
         set_meta("db_toxic_spikes_" + own_side, 0)
         set_meta("db_toxic_spikes_source_" + own_side, "")
-        return 1.0
+        return 0.0
 
     return super._effect(actor, target, mechanic)
 
@@ -77,12 +79,12 @@ func _database_trigger_toxic_spikes_if_defined(
         actor["tf_bad_poison_source_id"] = source_id
         _spawn_feedback_label(actor, "☣️ SCHWER VERGIFTET", Color("bd86cf"))
         if not source.is_empty():
-            source["aggro"] = float(source.get("aggro", 0.0)) + 20.0
+            source["aggro"] = float(source.get("aggro", 0.0)) + ToxicSpikesAggroRules.status_application(actor, "bad_poison")
     else:
         actor["major_status"] = "poison"
         actor["paralyzed"] = false
         _spawn_feedback_label(actor, "☣️ VERGIFTET", Color("c7a2dd"))
         if not source.is_empty():
-            source["aggro"] = float(source.get("aggro", 0.0)) + 3.0
+            source["aggro"] = float(source.get("aggro", 0.0)) + ToxicSpikesAggroRules.status_application(actor, "poison")
 
     _refresh_cards()

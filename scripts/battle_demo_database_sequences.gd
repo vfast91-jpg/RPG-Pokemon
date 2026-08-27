@@ -402,7 +402,9 @@ func _database_apply_multi_hit(state: Dictionary, hit_index: int) -> void:
                 target_effect += _effect(actor, target, mechanic)
 
         if target_damage > 0:
-            target["aggro"] = float(target.get("aggro", 0.0)) * 0.5
+            # A multi-hit move is one attack. The first hit was resolved by the
+            # normal single-target rule before this timed sequence started, so
+            # follow-up hits must not halve the target's Aggro again.
             _database_spawn_multi_hit_feedback(
                 target,
                 hit_index,

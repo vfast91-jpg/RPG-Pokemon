@@ -450,6 +450,9 @@ func _apply_connector_state(line: Line2D, alive: bool, active: bool, target_coun
         line.default_color = Color("cf3434")
         line.width = 3.0
     else:
+        # Neutral ownership must remain unmistakable even on the very bright
+        # meadow/city backgrounds. The former translucent cream line could
+        # visually disappear although the Line2D node still existed.
         line.default_color = Color("f6edc9b8")
         line.width = 2.0
 

@@ -9,6 +9,7 @@ extends "res://scripts/battle_demo_stockpile_infobox_v1.gd"
 const MILESTONE_BOSS_SPRITE_SCALE: float = 1.32
 const MILESTONE_BOSS_SPRITE_GAP: float = 6.0
 const MILESTONE_BOSS_SLOT_RATIOS: Array[float] = [0.24, 0.76]
+const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
 
 func _route_begin_wave() -> void:
@@ -78,13 +79,18 @@ func _apply_milestone_double_boss_layout() -> void:
 
         sprite.custom_minimum_size = boss_size
         sprite.size = boss_size
-        sprite.position = Vector2(
-            card.position.x + card.size.x + MILESTONE_BOSS_SPRITE_GAP,
-            clampf(
-                center_y - boss_size.y * 0.5,
-                0.0,
-                maxf(0.0, area.size.y - boss_size.y)
-            )
+
+        # Pokemon PNGs have very different transparent margins. Positioning the
+        # TextureRect itself therefore makes compact species such as Diglett sit
+        # far below their card even though the invisible 95x95 box is centered.
+        # Align the actually visible alpha bounds instead. The TextureRect may
+        # extend outside BattleArea; only transparent pixels are clipped there.
+        var visible_rect: Rect2 = VisibleTextureLayout.visible_rect(sprite)
+        sprite.position = VisibleTextureLayout.position_visible_right_of_card(
+            area.size,
+            Rect2(card.position, card.size),
+            visible_rect,
+            MILESTONE_BOSS_SPRITE_GAP
         )
 
         # Re-anchor shadow and connector after the final sprite geometry. The
@@ -92,8 +98,34 @@ func _apply_milestone_double_boss_layout() -> void:
         # have the same correctly sized ground contact at their actual feet.
         var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
         if shadow != null:
-            _position_route_boss_shadow(shadow, sprite)
+            _position_milestone_boss_shadow(shadow, sprite, visible_rect)
 
         var connector: Line2D = ui.get("connector") as Line2D
         if connector != null:
-            _update_roster_connector(connector, card, sprite, true)
+            _update_milestone_boss_connector(connector, card, sprite, visible_rect)
+
+
+func _milestone_boss_visible_rect(sprite: TextureRect) -> Rect2:
+    return VisibleTextureLayout.visible_rect(sprite)
+
+
+func _position_milestone_boss_shadow(
+    shadow: Polygon2D,
+    sprite: TextureRect,
+    visible_rect: Rect2
+) -> void:
+    shadow.position = VisibleTextureLayout.visible_foot(sprite.position, visible_rect)
+    shadow.scale = ROUTE_BOSS_SHADOW_SCALE
+
+
+func _update_milestone_boss_connector(
+    connector: Line2D,
+    card: Control,
+    sprite: TextureRect,
+    visible_rect: Rect2
+) -> void:
+    connector.points = VisibleTextureLayout.enemy_connector_points(
+        Rect2(card.position, card.size),
+        sprite.position,
+        visible_rect
+    )

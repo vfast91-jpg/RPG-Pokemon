@@ -110,6 +110,7 @@ func _initialize() -> void:
     _test_representative_boxes(battle, moves)
     _test_collapsible_layout_contract(battle)
     _test_compact_presentation_contract(battle)
+    _test_unified_combatant_detail(battle)
 
     battle.free()
     if failures == 0:
@@ -136,6 +137,62 @@ func _move_needs_effect_explanation(move: Dictionary) -> bool:
 
 
 func _test_representative_boxes(battle, moves: Dictionary) -> void:
+    var low_kick: Dictionary = _move(moves, "low_kick")
+    var low_kick_text: String = battle._standardized_move_info_text(low_kick)
+    _check(
+        low_kick_text.contains("Stärke: 20–120 (Gewicht) · Ziel: höchste Aggro"),
+        "Fußkick muss seine vollständige gewichtsabhängige Stärke in der kompakten Zeile zeigen."
+    )
+    _check(
+        not low_kick_text.contains("Stärke: 20 · Ziel:"),
+        "Fußkick darf nicht länger wie eine feste Stärke-20-Attacke erscheinen."
+    )
+    _check(
+        int(low_kick.get("power", -1)) == 20,
+        "Die Darstellungsänderung darf Fußkicks numerischen Runtime-Basiswert nicht verändern."
+    )
+
+    _check_equal(
+        battle._standard_power_text({"power": 50}),
+        "Stärke: 50",
+        "Eine normale Attacke muss ihre feste Stärke unverändert anzeigen."
+    )
+    _check_equal(
+        battle._standard_power_text({"category": "status", "power": null}),
+        "",
+        "Eine Statusattacke ohne Stärke darf keine erfundene Stärke erhalten."
+    )
+
+    battle.selected_actor = {
+        "special": 75.0,
+        "types": ["normal"],
+        "accuracy_mult": 1.0,
+        "timed_modifiers": [],
+        "side": "player"
+    }
+    var growl_text: String = battle._standardized_move_info_text(_move(moves, "growl"))
+    _check(
+        growl_text.split("\n")[1].contains(
+            "Effekt: " + battle._standard_status_percentage_text(_move(moves, "growl"))
+        ) and growl_text.split("\n")[1].contains("Angriff −")
+        and growl_text.split("\n")[1].contains(" %"),
+        "Heulers berechnete Statuswirkung muss in der stets sichtbaren zweiten Zeile stehen."
+    )
+    var charm_text: String = battle._standardized_move_info_text(_move(moves, "charm"))
+    _check(
+        charm_text.split("\n")[1].contains("Effekt: Angriff −")
+        and charm_text.split("\n")[1].contains(" %"),
+        "Auch Attacken mit bislang nur verbaler Kurzbeschreibung müssen den berechneten Prozentwert zeigen."
+    )
+    var dragon_dance_text: String = battle._standardized_move_info_text(_move(moves, "dragon_dance"))
+    _check(
+        dragon_dance_text.split("\n")[1].contains("Angriff +")
+        and dragon_dance_text.split("\n")[1].contains("Geschwindigkeit +")
+        and dragon_dance_text.split("\n")[1].count(" %") >= 2,
+        "Mehrteilige Statusattacken müssen alle berechenbaren Prozentwirkungen zeigen."
+    )
+    battle.selected_actor = {}
+
     var confuse_text: String = battle._standardized_move_info_text(_move(moves, "confuse_ray"))
     _check(
         confuse_text.contains("Wirkung: Verursacht garantiert Verwirrung"),
@@ -190,6 +247,62 @@ func _test_representative_boxes(battle, moves: Dictionary) -> void:
             pause_lower.contains("atb") and (pause_lower.contains("paus") or pause_lower.contains("stoppt")),
             move_id + ": besondere ATB-Pause wird nicht verständlich erklärt."
         )
+
+
+func _test_unified_combatant_detail(battle) -> void:
+    var combatant: Dictionary = {
+        "id": "detail_test",
+        "name": "Woingenau",
+        "alive": true,
+        "hp": 100,
+        "max_hp": 100,
+        "atb": 14.0,
+        "aggro": 21.7,
+        "types": ["psychic"],
+        "attack": 19,
+        "defense": 30,
+        "special": 15,
+        "speed": 19,
+        "moves": ["destiny_bond"],
+        "timed_modifiers": [],
+        "f30_destiny_bond_active": true
+    }
+    var inherited: String = (
+        "[b]KAMPFSTATUS[/b]\nKP: 100/100\n\n"
+        + "[b]AKTIVE EFFEKTE[/b]\n• Keine aktiven Veränderungen\n\n"
+        + "[b]VERFÜGBARE ATTACKEN[/b]\n• Abgangsbund\n\n"
+        + "[b]KONTROLLE[/b]\n• Beispielwirkung: noch 2 eigene Aktionen."
+    )
+    var detail: String = battle._standardized_combatant_detail(combatant, inherited)
+    var effects_position: int = detail.find("[b]AKTIVE EFFEKTE[/b]")
+    var destiny_position: int = detail.find("Abgangsbund: Wird dieses Pokémon")
+    var trailing_position: int = detail.find("Beispielwirkung: noch 2 eigene Aktionen.")
+    var attacks_position: int = detail.find("[b]VERFÜGBARE ATTACKEN[/b]")
+
+    _check(
+        effects_position >= 0
+        and destiny_position > effects_position
+        and trailing_position > effects_position
+        and attacks_position > destiny_position
+        and attacks_position > trailing_position,
+        "Alle laufenden Wirkungen müssen geschlossen unter AKTIVE EFFEKTE und vor der Attackenliste stehen."
+    )
+    _check(
+        not detail.contains("[b]KONTROLLE[/b]")
+        and not detail.contains("Keine aktiven Veränderungen"),
+        "Alte Effekt-Unterbereiche und der Leer-Platzhalter dürfen die einheitliche Ansicht nicht durchbrechen."
+    )
+    var attacks_text: String = detail.substr(attacks_position)
+    _check(
+        attacks_text.contains("Abgangsbund")
+        and attacks_text.contains("Ziel: Anwender")
+        and attacks_text.contains("Wirkung:"),
+        "Jede verfügbare Attacke muss in der Pokémon-Detailansicht ihre vollständige Standarderklärung erhalten."
+    )
+    _check(
+        not attacks_text.contains("Beispielwirkung"),
+        "Aktive Wirkungen dürfen nicht mehr unter den verfügbaren Attacken landen."
+    )
 
 
 func _test_collapsible_layout_contract(battle) -> void:

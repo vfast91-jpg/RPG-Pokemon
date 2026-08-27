@@ -227,45 +227,6 @@ func _database_launch_multi_hit(state: Dictionary) -> void:
     super._database_launch_multi_hit(state)
 
 
-func _database_apply_multi_hit(state: Dictionary, hit_index: int) -> void:
-    var move_id: String = str(state.get("move_id", ""))
-    if not V22_IMMEDIATE_MULTI_HIT_MOVE_IDS.has(move_id):
-        super._database_apply_multi_hit(state, hit_index)
-        return
-
-    # The normal first hit already applies the game's single-target Aggro
-    # reduction. Historical follow-up-hit code applied the same 50% reduction
-    # again on every extra hit. Snapshot the post-first-hit value and preserve it
-    # across follow-up hits so the whole move reduces target Aggro at most once.
-    var target_snapshots: Dictionary = {}
-    for target_value: Variant in state.get("targets", []):
-        if not (target_value is Dictionary):
-            continue
-        var target: Dictionary = target_value
-        target_snapshots[str(target.get("id", ""))] = {
-            "hp": int(target.get("hp", 0)),
-            "aggro": float(target.get("aggro", 0.0))
-        }
-
-    super._database_apply_multi_hit(state, hit_index)
-
-    for target_value: Variant in state.get("targets", []):
-        if not (target_value is Dictionary):
-            continue
-        var target: Dictionary = target_value
-        var target_id: String = str(target.get("id", ""))
-        var snapshot_value: Variant = target_snapshots.get(target_id, {})
-        if not (snapshot_value is Dictionary):
-            continue
-        var snapshot: Dictionary = snapshot_value
-        if int(target.get("hp", 0)) >= int(snapshot.get("hp", int(target.get("hp", 0)))):
-            continue
-        if bool(target.get("alive", false)):
-            target["aggro"] = float(snapshot.get("aggro", target.get("aggro", 0.0)))
-        else:
-            target["aggro"] = 0.0
-
-
 func _choose_move(move_id: String) -> void:
     if selected_actor.is_empty():
         return

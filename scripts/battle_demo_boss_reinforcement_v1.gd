@@ -8,20 +8,33 @@ extends "res://scripts/battle_demo_status_stage_scaling_v1.gd"
 # resolved through evolution rules; only their level is changed.
 
 const BOSS_REINFORCEMENT_MAX_ENEMY_COUNT: int = 4
-const BOSS_REINFORCEMENT_ADD_SPRITE_SCALE: float = 0.66
-const BOSS_REINFORCEMENT_CARD_EDGE_MARGIN: float = 4.0
-const BOSS_REINFORCEMENT_ANGER_SECONDS: float = 0.34
-const BOSS_REINFORCEMENT_FADE_SECONDS: float = 0.28
-const BOSS_REINFORCEMENT_HOLD_SECONDS: float = 0.22
+const BOSS_REINFORCEMENT_ADD_SPRITE_SCALE: float = 1.0
+const BOSS_REINFORCEMENT_CARD_GAP: float = 9.0
+const BOSS_REINFORCEMENT_FORWARD_OFFSET: float = 20.0
+const BOSS_REINFORCEMENT_INTRO_HOLD_SECONDS: float = 0.65
+const BOSS_REINFORCEMENT_CALL_HOLD_SECONDS: float = 0.55
+const BOSS_REINFORCEMENT_FADE_SECONDS: float = 0.45
+const BOSS_REINFORCEMENT_HOLD_SECONDS: float = 0.85
+const BOSS_REINFORCEMENT_TRANSITION_TIMEOUT_MSEC: int = 6000
+const BossReinforcementVisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
 var _boss_reinforcement_transition_running: bool = false
 var _boss_reinforcement_pause_before: bool = false
+var _boss_reinforcement_transition_started_msec: int = 0
+var _boss_reinforcement_effects: Array[Node] = []
 
 
 func _process(delta: float) -> void:
     # A dedicated lock is used in addition to `paused`, so no ATB can advance
     # between the HP-bar break and the deferred transition coroutine.
     if _boss_reinforcement_transition_running:
+        if (
+            _boss_reinforcement_transition_started_msec > 0
+            and Time.get_ticks_msec() - _boss_reinforcement_transition_started_msec
+                >= BOSS_REINFORCEMENT_TRANSITION_TIMEOUT_MSEC
+        ):
+            push_warning("Boss-Verstärkungsanimation wurde sicher entsperrt (Zeitlimit).")
+            _cancel_boss_reinforcement_transition()
         return
     super._process(delta)
 
@@ -51,6 +64,7 @@ func _refresh_cards() -> void:
     _boss_reinforcement_pause_before = paused
     paused = true
     _boss_reinforcement_transition_running = true
+    _boss_reinforcement_transition_started_msec = Time.get_ticks_msec()
     call_deferred("_run_boss_reinforcement_transition", str(boss.get("id", "")))
 
 
@@ -161,19 +175,24 @@ func _run_boss_reinforcement_transition(boss_id: String) -> void:
 
     var banner: PanelContainer = _create_boss_reinforcement_banner(area, message)
     var anger_icon: Label = _create_boss_anger_icon(area, sprite)
+    _boss_reinforcement_effects.assign([banner, anger_icon])
+    await get_tree().create_timer(BOSS_REINFORCEMENT_INTRO_HOLD_SECONDS).timeout
+    if not _boss_reinforcement_transition_is_valid(boss_id, sprite):
+        _cancel_boss_reinforcement_transition()
+        return
     await _animate_boss_anger(sprite)
+    if not _boss_reinforcement_transition_is_valid(boss_id, sprite):
+        _cancel_boss_reinforcement_transition()
+        return
+    await get_tree().create_timer(BOSS_REINFORCEMENT_CALL_HOLD_SECONDS).timeout
 
-    if not battle_active or not bool(boss.get("alive", false)):
-        _free_reinforcement_effect(banner)
-        _free_reinforcement_effect(anger_icon)
-        _finish_boss_reinforcement_transition()
+    if not _boss_reinforcement_transition_is_valid(boss_id, sprite):
+        _cancel_boss_reinforcement_transition()
         return
 
     var reinforcements: Array[Dictionary] = _spawn_boss_reinforcements(boss)
     if reinforcements.is_empty():
-        _free_reinforcement_effect(banner)
-        _free_reinforcement_effect(anger_icon)
-        _finish_boss_reinforcement_transition()
+        _cancel_boss_reinforcement_transition()
         return
 
     _layout_reinforcement_visuals(reinforcements)
@@ -181,12 +200,15 @@ func _run_boss_reinforcement_transition(boss_id: String) -> void:
     _apply_boss_reinforcement_formation(boss)
     _refresh_cards()
     await _fade_in_boss_reinforcements(reinforcements)
+    if not _boss_reinforcement_transition_is_valid(boss_id, sprite):
+        _cancel_boss_reinforcement_transition()
+        return
     await get_tree().create_timer(BOSS_REINFORCEMENT_HOLD_SECONDS).timeout
 
-    _free_reinforcement_effect(banner)
-    _free_reinforcement_effect(anger_icon)
+    _clear_boss_reinforcement_effects()
     _finish_boss_reinforcement_transition()
-    _refresh_cards()
+    if battle_active:
+        _refresh_cards()
 
 
 func _spawn_boss_reinforcements(boss: Dictionary) -> Array[Dictionary]:
@@ -239,6 +261,17 @@ func _spawn_boss_reinforcements(boss: Dictionary) -> Array[Dictionary]:
         enemy_setup.append(setup.duplicate(true))
         created.append(combatant)
 
+    # Keep phase 2 atomic. A partial formation would leave the battle in an
+    # unsupported boss+1 state and used to strand the pause lock permanently.
+    if created.size() != spawn_count:
+        for combatant: Dictionary in created:
+            enemy_team.erase(combatant)
+            combatants.erase(combatant)
+        for _rollback_index: int in range(created.size()):
+            if not enemy_setup.is_empty():
+                enemy_setup.pop_back()
+        return []
+
     return created
 
 
@@ -258,10 +291,10 @@ func _apply_boss_reinforcement_formation(boss: Dictionary) -> void:
     if adds.size() < 2:
         return
 
-    # The boss keeps the exact route-boss center geometry it already had in
-    # phase 1. The weaker helpers use smaller presentation-only sprites in the
-    # top/bottom slots, which prevents sprite, shadow and status-card collisions
-    # inside the fixed 640x216 battle area without changing their combat stats.
+    # The boss stays in the rear center. Its two normal-size helpers move into
+    # the upper/lower front positions, visibly protecting it. Cards are packed
+    # around the centered boss with a deliberate gap instead of being pinned to
+    # the extreme top and bottom edges.
     _position_reinforcement_slot(area, adds[0], "top", false)
     _position_reinforcement_slot(area, boss, "center", true)
     _position_reinforcement_slot(area, adds[1], "bottom", false)
@@ -298,14 +331,17 @@ func _position_reinforcement_slot(
         return
 
     card.position.x = ROSTER_EDGE_MARGIN
+    var boss_ui_value: Variant = cards.get(str(_boss_reinforcement_leader().get("id", "")), {})
+    var boss_card: Control = null
+    if boss_ui_value is Dictionary:
+        boss_card = (boss_ui_value as Dictionary).get("card") as Control
     match slot:
         "top":
-            card.position.y = BOSS_REINFORCEMENT_CARD_EDGE_MARGIN
+            if boss_card != null:
+                card.position.y = boss_card.position.y - BOSS_REINFORCEMENT_CARD_GAP - card.size.y
         "bottom":
-            card.position.y = maxf(
-                BOSS_REINFORCEMENT_CARD_EDGE_MARGIN,
-                area.size.y - BOSS_REINFORCEMENT_CARD_EDGE_MARGIN - card.size.y
-            )
+            if boss_card != null:
+                card.position.y = boss_card.position.y + boss_card.size.y + BOSS_REINFORCEMENT_CARD_GAP
         _:
             card.position.y = clampf(
                 (area.size.y - card.size.y) * 0.5,
@@ -320,37 +356,56 @@ func _position_reinforcement_slot(
     sprite.custom_minimum_size = sprite_size
     sprite.size = sprite_size
 
-    var sprite_x: float = card.position.x + ROSTER_CARD_WIDTH + ROSTER_CARD_SPRITE_GAP
-    if not boss_slot:
-        sprite_x += 44.0
-    var sprite_y: float = clampf(
-        card.position.y + (card.size.y - sprite.size.y) * 0.5,
-        0.0,
-        maxf(0.0, area.size.y - sprite.size.y)
+    var visible_rect: Rect2 = BossReinforcementVisibleTextureLayout.visible_rect(sprite)
+    var visible_gap: float = ROSTER_CARD_SPRITE_GAP + (
+        0.0 if boss_slot else BOSS_REINFORCEMENT_FORWARD_OFFSET
     )
-    sprite.position = Vector2(sprite_x, sprite_y)
+    sprite.position = BossReinforcementVisibleTextureLayout.position_visible_right_of_card(
+        area.size,
+        Rect2(card.position, card.size),
+        visible_rect,
+        visible_gap
+    )
 
     var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
     if shadow != null:
-        _position_boss_reinforcement_shadow(shadow, sprite, sprite_scale, boss_slot)
+        _position_boss_reinforcement_shadow(
+            shadow,
+            sprite,
+            visible_rect,
+            sprite_scale,
+            boss_slot
+        )
 
     var connector: Line2D = ui.get("connector") as Line2D
     if connector != null:
-        _update_roster_connector(connector, card, sprite, true)
+        connector.points = BossReinforcementVisibleTextureLayout.enemy_connector_points(
+            Rect2(card.position, card.size),
+            sprite.position,
+            visible_rect
+        )
+        connector.begin_cap_mode = Line2D.LINE_CAP_ROUND
+        connector.end_cap_mode = Line2D.LINE_CAP_ROUND
+        if not boss_slot:
+            # Reinforcement cards already carry the strong target border. Keep
+            # their shorter connector readable without two thick red bars
+            # dominating the entire battlefield.
+            connector.width = minf(connector.width, 2.0)
+            var connector_color: Color = connector.default_color
+            connector_color.a = minf(connector_color.a, 0.78)
+            connector.default_color = connector_color
 
 
 func _position_boss_reinforcement_shadow(
     shadow: Polygon2D,
     sprite: TextureRect,
+    visible_rect: Rect2,
     sprite_scale: float,
     boss_slot: bool
 ) -> void:
-    var foot_ratio: float = ROUTE_BOSS_SHADOW_FOOT_Y_RATIO if boss_slot else (
-        (ROSTER_SPRITE_SIDE - 5.0) / ROSTER_SPRITE_SIDE
-    )
-    shadow.position = sprite.position + Vector2(
-        sprite.size.x * 0.5,
-        sprite.size.y * foot_ratio
+    shadow.position = BossReinforcementVisibleTextureLayout.visible_foot(
+        sprite.position,
+        visible_rect
     )
 
     if not boss_slot:
@@ -402,7 +457,14 @@ func _create_boss_anger_icon(area: Control, sprite: TextureRect) -> Label:
     anger.name = "BossAngerIcon"
     anger.text = "💢"
     anger.size = Vector2(28.0, 28.0)
-    anger.position = sprite.position + Vector2(sprite.size.x * 0.5 - 14.0, -2.0)
+    var visible_rect: Rect2 = BossReinforcementVisibleTextureLayout.visible_rect(sprite)
+    var forehead_anchor: Vector2 = BossReinforcementVisibleTextureLayout.enemy_forehead_anchor(
+        sprite.position,
+        visible_rect
+    )
+    anger.position = forehead_anchor - anger.size * 0.5
+    anger.position.x = clampf(anger.position.x, 0.0, maxf(0.0, area.size.x - anger.size.x))
+    anger.position.y = clampf(anger.position.y, 0.0, maxf(0.0, area.size.y - anger.size.y))
     anger.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     anger.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     anger.add_theme_font_size_override("font_size", 20)
@@ -415,18 +477,23 @@ func _create_boss_anger_icon(area: Control, sprite: TextureRect) -> Label:
 
 
 func _animate_boss_anger(sprite: TextureRect) -> void:
+    if sprite == null or not is_instance_valid(sprite) or not sprite.is_inside_tree():
+        return
     var base_position: Vector2 = sprite.position
     var base_modulate: Color = sprite.modulate
     var angry_modulate := Color(1.0, 0.55, 0.55, base_modulate.a)
     var tween: Tween = create_tween()
-    tween.tween_property(sprite, "modulate", angry_modulate, 0.07)
-    tween.tween_property(sprite, "position", base_position + Vector2(-4.0, 0.0), 0.045)
-    tween.tween_property(sprite, "position", base_position + Vector2(4.0, 0.0), 0.055)
-    tween.tween_property(sprite, "position", base_position + Vector2(-3.0, 0.0), 0.05)
-    tween.tween_property(sprite, "position", base_position + Vector2(3.0, 0.0), 0.05)
-    tween.tween_property(sprite, "position", base_position, 0.045)
-    tween.tween_property(sprite, "modulate", base_modulate, 0.075)
+    tween.tween_property(sprite, "modulate", angry_modulate, 0.18)
+    tween.tween_property(sprite, "position", base_position + Vector2(-5.0, 0.0), 0.10)
+    tween.tween_property(sprite, "position", base_position + Vector2(5.0, 0.0), 0.12)
+    tween.tween_property(sprite, "position", base_position + Vector2(-4.0, 0.0), 0.11)
+    tween.tween_property(sprite, "position", base_position + Vector2(4.0, 0.0), 0.11)
+    tween.tween_property(sprite, "position", base_position + Vector2(-2.0, 0.0), 0.10)
+    tween.tween_property(sprite, "position", base_position, 0.10)
+    tween.tween_property(sprite, "modulate", base_modulate, 0.18)
     await tween.finished
+    if not is_instance_valid(sprite):
+        return
     sprite.position = base_position
     sprite.modulate = base_modulate
 
@@ -492,7 +559,31 @@ func _free_reinforcement_effect(node: Node) -> void:
         node.queue_free()
 
 
+func _boss_reinforcement_transition_is_valid(
+    boss_id: String,
+    sprite: TextureRect
+) -> bool:
+    if not _boss_reinforcement_transition_running or not battle_active:
+        return false
+    if sprite == null or not is_instance_valid(sprite) or not sprite.is_inside_tree():
+        return false
+    var boss: Dictionary = _reinforcement_combatant_by_id(boss_id)
+    return not boss.is_empty() and bool(boss.get("alive", false))
+
+
+func _clear_boss_reinforcement_effects() -> void:
+    for effect: Node in _boss_reinforcement_effects:
+        _free_reinforcement_effect(effect)
+    _boss_reinforcement_effects.clear()
+
+
+func _cancel_boss_reinforcement_transition() -> void:
+    _clear_boss_reinforcement_effects()
+    _finish_boss_reinforcement_transition()
+
+
 func _finish_boss_reinforcement_transition() -> void:
     _boss_reinforcement_transition_running = false
+    _boss_reinforcement_transition_started_msec = 0
     if battle_active:
         paused = _boss_reinforcement_pause_before

@@ -8,8 +8,9 @@ extends Node
 # shared, bounded tooltip surface:
 # - smart word wrapping is always enabled,
 # - width is capped to the visible viewport,
-# - very long text is capped vertically and becomes scrollable,
+# - very long text is capped vertically,
 # - the whole box is clamped to the viewport,
+# - the box follows the pointer and never intercepts clicks,
 # - controls created later are covered automatically because the currently
 #   hovered Control is inspected every frame instead of maintaining a fixed list.
 #
@@ -62,14 +63,18 @@ func _process(_delta: float) -> void:
 
     var hovered: Control = viewport.gui_get_hovered_control()
 
-    # Once the pointer moves into a long tooltip, keep it open so its own
-    # RichTextLabel can receive mouse-wheel scrolling. Internal tooltip controls
-    # are never considered a new tooltip source.
+    # Tooltip controls never become the hovered Control because their mouse
+    # filter is IGNORE. Keep this guard as a safety net for future child nodes.
     if _is_internal_tooltip_control(hovered):
         return
 
     var next_source: Control = _find_tooltip_source(hovered)
     if next_source == _source:
+        # Reposition every frame while visible. Besides feeling more natural,
+        # this keeps the box out of the pointer's path when the player moves
+        # from one nearby button to another.
+        if _panel != null and _panel.visible:
+            _position_tooltip(_viewport_size())
         return
 
     _switch_source(next_source)
@@ -84,7 +89,9 @@ func _build_tooltip_surface() -> void:
     _panel = PanelContainer.new()
     _panel.name = "SafeTooltipPanel"
     _panel.visible = false
-    _panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    # A tooltip is information, not an interactive surface. IGNORE lets hover,
+    # clicks and wheel events reach the game controls underneath it.
+    _panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _panel.set_meta(META_INTERNAL, true)
     _layer.add_child(_panel)
 
@@ -106,7 +113,7 @@ func _build_tooltip_surface() -> void:
     _text.scroll_active = false
     _text.scroll_following = false
     _text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _text.mouse_filter = Control.MOUSE_FILTER_STOP
+    _text.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _text.set_meta(META_INTERNAL, true)
     _text.add_theme_font_size_override("normal_font_size", TOOLTIP_FONT_SIZE)
     _text.add_theme_color_override("default_color", Color("f7f5ea"))

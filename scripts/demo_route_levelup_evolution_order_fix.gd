@@ -136,7 +136,7 @@ func _add_capture_preview_card() -> void:
     row.add_child(text_box)
 
     var caught_label := Label.new()
-    caught_label.text = "✓ GEFANGEN"
+    caught_label.text = "✓ BEGLEITET DICH JETZT"
     caught_label.add_theme_font_size_override("font_size", 9)
     caught_label.add_theme_color_override("font_color", Color("9fe7bd"))
     caught_label.mouse_filter = Control.MOUSE_FILTER_IGNORE

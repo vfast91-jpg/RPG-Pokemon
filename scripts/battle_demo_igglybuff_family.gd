@@ -234,7 +234,6 @@ func _iggly_apply_mimic(actor: Dictionary, targets: Array) -> void:
         _spawn_feedback_label(actor, "🎭 KEINE KOPIERBARE ATTACKE", Color("d9a5a5"))
         return
     actor["iggly_mimic_copy_id"] = copied_id
-    actor["aggro"] = float(actor.get("aggro", 0.0)) + 4.0
     _spawn_feedback_label(actor, "🎭 " + str(_move_data(copied_id).get("name", copied_id)), Color("d8c5ef"))
 
 
@@ -267,7 +266,10 @@ func _iggly_apply_psychic_noise(actor: Dictionary, targets: Array, hp_before: Di
         if _iggly_heal_block_active(target):
             continue
         target["iggly_heal_block_actions"] = duration
-        actor["aggro"] = float(actor.get("aggro", 0.0)) + 3.0
+        actor["aggro"] = (
+            float(actor.get("aggro", 0.0))
+            + FamilyAggroRules.partial_control(target, duration)
+        )
         _spawn_feedback_label(target, "🔊 HEILSPERRE · " + str(duration) + " AKTIONEN", Color("d9a5c4"))
 
 

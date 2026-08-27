@@ -228,6 +228,6 @@ func _replace_team_member(index: int) -> void:
     pending_capture = {}
 
     _clear_container(capture_actions)
-    event_label.text = "%s kommt ins Team. %s verlässt dein Team." % [new_name, old_name]
+    event_label.text = "%s schließt sich dir an. %s setzt seine eigene Reise fort." % [new_name, old_name]
     continue_button.visible = true
     _refresh_team_panel()

@@ -37,7 +37,7 @@ const CF_SUMMARIES: Dictionary = {
     "focus_punch": "1 voller Aktionszyklus Fokus · dann Stärke 150 · direkter gegnerischer KP-Schaden unterbricht",
     "temper_flare": "Stärke 150 nach miss / immune / failed der vorherigen eigenen Attacke",
     "breaking_swipe": "alle Gegner · Treffer: Angriff ↓ (Statuswert) · 3 Zielaktionen",
-    "acrobatics": "feste Stärke 110 · bewusste AP-7-Balance im itemfreien Timeflow",
+    "acrobatics": "feste Stärke 90 · verlässliche AP-7-Attacke im itemfreien Timeflow",
     "air_cutter": "alle Gegner · erhöhte Volltrefferchance",
     "sandstorm": "50 s Wetter · alle 10 s Sandsturm-Puls · Gestein/Boden/Stahl immun · Gestein Verteidigung +50 %",
     "fly": "1 Aktion hochfliegen · Bild verschwindet · nächste eigene Aktion Angriff · spezielle Luft-Gegenangriffe möglich",

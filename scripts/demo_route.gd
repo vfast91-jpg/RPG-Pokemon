@@ -89,7 +89,7 @@ func _build_ui() -> void:
     frame.add_child(outer)
 
     title_label = Label.new()
-    title_label.text = "DEMO-ROUTE"
+    title_label.text = "Etappe %d von %d" % [stage, STAGE_COUNT]
     title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title_label.add_theme_font_size_override("font_size", 20)
     title_label.add_theme_color_override("font_color", Color("ffe576"))
@@ -218,7 +218,7 @@ func _show_stage_choices(message: String = "") -> void:
     _clear_container(capture_actions)
     _clear_container(path_box)
 
-    title_label.text = "DEMO-ROUTE · ETAPPE %d/%d" % [stage, STAGE_COUNT]
+    title_label.text = "Etappe %d von %d" % [stage, STAGE_COUNT]
     progress_label.text = _progress_text()
     event_label.text = message if not message.is_empty() else "Wähle einen Weg. Danach wartet der Kampf dieser Etappe."
 

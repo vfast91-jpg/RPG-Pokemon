@@ -285,10 +285,6 @@ func _tf_tick_bad_poison(target: Dictionary) -> int:
     target["tf_bad_poison_stage"] = mini(TF_BAD_POISON_MAX_STAGE, stage + 1)
     _spawn_feedback_label(target, "☠️ SCHWERES GIFT −" + str(actual), Color("bd86cf"))
 
-    var source: Dictionary = _tf_find_combatant(str(target.get("tf_bad_poison_source_id", "")))
-    if not source.is_empty():
-        source["aggro"] = float(source.get("aggro", 0.0)) + float(actual)
-
     if int(target.get("hp", 0)) <= 0:
         target["alive"] = false
     return actual
