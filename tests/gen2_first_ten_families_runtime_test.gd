@@ -8,7 +8,7 @@ const DETAIL_PATH: String = "res://data/gen2_species_families_01_10_v1.json"
 
 const EXPECTED_SPECIES_COUNT: int = 266
 const EXPECTED_ROOT_COUNT: int = 118
-const EXPECTED_RUNTIME_SPECIES_COUNT: int = 281
+const EXPECTED_RUNTIME_SPECIES_COUNT: int = 282
 const EXPECTED_RUNTIME_ROOT_COUNT: int = 129
 const NEW_ROOTS: Array[String] = [
 	"chikorita", "cyndaquil", "totodile", "sentret", "hoothoot",
