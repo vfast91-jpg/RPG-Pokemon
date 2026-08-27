@@ -4,7 +4,7 @@ extends "res://scripts/battle_demo_attack_text_final.gd"
 # All mechanics are generic Timeflow mechanics; the species only reference them
 # through move data. This layer also enforces the global Runde-0 AP-8 rule.
 
-const PIKA_VOLT_SWITCH_AGGRO_MULTIPLIER: float = 0.55
+const PIKA_VOLT_SWITCH_AGGRO_MULTIPLIER: float = 0.0
 const PIKA_VOLT_SWITCH_NEXT_CYCLE_MULTIPLIER: float = 0.70
 const PIKA_TERRAIN_MAX_BONUS: float = 0.30
 const PIKA_REFLECT_MAX_REDUCTION: float = 0.50
