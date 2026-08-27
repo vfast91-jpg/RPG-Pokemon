@@ -82,3 +82,52 @@ func _load_canonical_database() -> void:
             push_error("Nidoran♂-Familie: Attacken-Anzahl stimmt nicht mit V4-Manifest überein.")
         if species_ids.size() != int(manifest.get("route_root_count", species_ids.size())):
             push_error("Nidoran♂-Familie: Basislinien-Anzahl stimmt nicht mit V4-Manifest überein.")
+
+
+# Encore/Zugabe uses the shared forced-move state, but unlike rampage-style
+# moves the repeated move itself does not carry a forced_sequence runtime tag.
+# Track only Encore-created locks so their configured action duration can expire.
+func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
+    var result: float = super._effect(actor, target, mechanic)
+    if str(mechanic.get("kind", "")) == "db_encore" and result > 0.0:
+        target["db_encore_forced_active"] = true
+    return result
+
+
+func _execute_move(actor: Dictionary, move_id: String) -> void:
+    var encore_forced_action: bool = (
+        bool(actor.get("db_encore_forced_active", false))
+        and str(actor.get("db_forced_move_id", "")) == move_id
+        and int(actor.get("db_forced_actions_left", 0)) > 0
+    )
+    var move: Dictionary = _move_data(move_id)
+    var runtime_value: Variant = move.get("runtime", {})
+    var runtime: Dictionary = runtime_value if runtime_value is Dictionary else {}
+    var parent_counts_forced_action: bool = runtime.has("forced_sequence")
+
+    super._execute_move(actor, move_id)
+
+    if not encore_forced_action:
+        return
+    if str(actor.get("db_forced_move_id", "")) != move_id:
+        actor["db_encore_forced_active"] = false
+        return
+    if parent_counts_forced_action:
+        if int(actor.get("db_forced_actions_left", 0)) <= 0:
+            actor["db_encore_forced_active"] = false
+        return
+    if not _database_move_was_attempted(move_id):
+        _database_interrupt_forced_sequence(actor)
+        return
+
+    actor["db_forced_actions_left"] = maxi(
+        0,
+        int(actor.get("db_forced_actions_left", 0)) - 1
+    )
+    if int(actor.get("db_forced_actions_left", 0)) <= 0:
+        _database_interrupt_forced_sequence(actor)
+
+
+func _database_interrupt_forced_sequence(actor: Dictionary) -> void:
+    super._database_interrupt_forced_sequence(actor)
+    actor["db_encore_forced_active"] = false
