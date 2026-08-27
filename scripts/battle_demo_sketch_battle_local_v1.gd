@@ -8,12 +8,18 @@ extends "res://scripts/battle_demo_aggro_rules_final_v2.gd"
 # this battle. Nachahmer itself is consumed immediately after the attempt and is
 # restored for the next battle.
 #
+# Important persistence rule: between battles a Smeargle is ALWAYS normalized
+# back to its real base move pool (Sketch only). We do not rely only on the old
+# temporary-copy marker, because route persistence can outlive/lose that marker
+# while still retaining copied ids inside the normal `moves` array.
+#
 # This leaf also cleans legacy V23 route state where individual Sketch copies
 # were persisted between encounters.
 
 const SKETCH_MOVE_ID: String = "sketch"
 const SKETCH_STATE_KEY: String = "v23_sketch_learned_moves"
 const SKETCH_USED_KEY: String = "sketch_battle_used"
+const SKETCH_SPECIES_ID: String = "smeargle"
 
 
 func _load_data() -> void:
@@ -27,21 +33,29 @@ func route_new_member(species_id: String, level: int) -> Dictionary:
     # Never seed a newly obtained Pokemon with battle-local/legacy Sketch state.
     member.erase(SKETCH_STATE_KEY)
     member.erase(SKETCH_USED_KEY)
+    if species_id == SKETCH_SPECIES_ID:
+        _sketch_reset_smeargle_between_battles(member)
     return member
 
 
 func _make_combatant(side: String, index: int, setup: Dictionary) -> Dictionary:
     # Old route saves can contain both the legacy copy list and those same move
     # ids in the normal move array. Let the inherited stack build normally, then
-    # strip that stale state and start a fresh once-per-battle Sketch charge.
+    # strip stale state and start a fresh once-per-battle Sketch charge.
     var legacy_copies: Array[String] = _v23_string_array(
         setup.get(SKETCH_STATE_KEY, [])
     )
     var legacy_used: bool = bool(setup.get(SKETCH_USED_KEY, false))
     var combatant: Dictionary = super._make_combatant(side, index, setup)
-    _sketch_clear_battle_state(combatant, legacy_copies, legacy_used)
-    combatant[SKETCH_STATE_KEY] = []
-    combatant[SKETCH_USED_KEY] = false
+
+    if str(combatant.get("species_id", setup.get("species_id", ""))) == SKETCH_SPECIES_ID:
+        # Strong boundary reset: even if the route state lost the temporary-copy
+        # marker but retained copied ids in `moves`, none may enter a new battle.
+        _sketch_reset_smeargle_between_battles(combatant)
+    else:
+        _sketch_clear_battle_state(combatant, legacy_copies, legacy_used)
+        combatant[SKETCH_STATE_KEY] = []
+        combatant[SKETCH_USED_KEY] = false
     return combatant
 
 
@@ -50,9 +64,9 @@ func _route_begin_wave() -> void:
     if not route_mode:
         return
 
-    # The V23 ancestor can reload the legacy copy list after combatant
-    # construction. Undo that reload immediately and restore Nachahmer so every
-    # encounter begins with exactly one available use.
+    # The V23 ancestor can reload legacy/persisted move state after combatant
+    # construction. Normalize Smeargle again after that reload so every new
+    # encounter begins with exactly one available Sketch and zero old copies.
     for local_index: int in range(player_team.size()):
         if local_index >= _route_active_indices.size():
             break
@@ -67,23 +81,37 @@ func _route_begin_wave() -> void:
 
         var state: Dictionary = state_value
         var combatant: Dictionary = combatant_value
-        var legacy_copies: Array[String] = _v23_string_array(
-            state.get(SKETCH_STATE_KEY, [])
+        var is_smeargle: bool = (
+            str(combatant.get("species_id", "")) == SKETCH_SPECIES_ID
+            or str(state.get("species_id", "")) == SKETCH_SPECIES_ID
         )
-        var legacy_used: bool = bool(state.get(SKETCH_USED_KEY, false))
-        _sketch_clear_battle_state(combatant, legacy_copies, legacy_used)
-        combatant[SKETCH_STATE_KEY] = []
-        combatant[SKETCH_USED_KEY] = false
-        state.erase(SKETCH_STATE_KEY)
-        state.erase(SKETCH_USED_KEY)
+
+        if is_smeargle:
+            _sketch_reset_smeargle_between_battles(combatant)
+            _sketch_reset_smeargle_between_battles(state)
+        else:
+            var legacy_copies: Array[String] = _v23_string_array(
+                state.get(SKETCH_STATE_KEY, [])
+            )
+            var legacy_used: bool = bool(state.get(SKETCH_USED_KEY, false))
+            _sketch_clear_battle_state(combatant, legacy_copies, legacy_used)
+            combatant[SKETCH_STATE_KEY] = []
+            combatant[SKETCH_USED_KEY] = false
+            state.erase(SKETCH_STATE_KEY)
+            state.erase(SKETCH_USED_KEY)
+
         _route_team_state[team_index] = state
 
 
 func _route_store_current_state() -> void:
-    # Snapshot transient copies and the once-per-battle flag before the V23
-    # ancestor writes the combatant's current move array into route state.
+    # Snapshot transient copies before the V23 ancestor writes combat state into
+    # route state. The post-super Smeargle normalization below is deliberately
+    # independent from this marker and is therefore safe even if the marker was
+    # already lost by another persistence layer.
     var copies_by_team_index: Dictionary = {}
     var used_by_team_index: Dictionary = {}
+    var smeargle_team_indices: Dictionary = {}
+
     for local_index: int in range(player_team.size()):
         if local_index >= _route_active_indices.size():
             break
@@ -98,6 +126,8 @@ func _route_store_current_state() -> void:
             combatant.get(SKETCH_STATE_KEY, [])
         )
         used_by_team_index[team_index] = bool(combatant.get(SKETCH_USED_KEY, false))
+        if str(combatant.get("species_id", "")) == SKETCH_SPECIES_ID:
+            smeargle_team_indices[team_index] = true
 
     super._route_store_current_state()
 
@@ -110,13 +140,24 @@ func _route_store_current_state() -> void:
             continue
 
         var state: Dictionary = state_value
-        var battle_copies: Array[String] = _v23_string_array(
-            copies_by_team_index.get(team_index, [])
+        var is_smeargle: bool = (
+            bool(smeargle_team_indices.get(team_index, false))
+            or str(state.get("species_id", "")) == SKETCH_SPECIES_ID
         )
-        var battle_used: bool = bool(used_by_team_index.get(team_index, false))
-        _sketch_clear_battle_state(state, battle_copies, battle_used)
-        state.erase(SKETCH_STATE_KEY)
-        state.erase(SKETCH_USED_KEY)
+
+        if is_smeargle:
+            # Authoritative battle boundary: route state must never persist any
+            # copied move, even when temporary bookkeeping keys are missing.
+            _sketch_reset_smeargle_between_battles(state)
+        else:
+            var battle_copies: Array[String] = _v23_string_array(
+                copies_by_team_index.get(team_index, [])
+            )
+            var battle_used: bool = bool(used_by_team_index.get(team_index, false))
+            _sketch_clear_battle_state(state, battle_copies, battle_used)
+            state.erase(SKETCH_STATE_KEY)
+            state.erase(SKETCH_USED_KEY)
+
         _route_team_state[team_index] = state
 
 
@@ -177,6 +218,15 @@ func _sketch_move_copyable_in_battle(move_id: String) -> bool:
     return true
 
 
+func _sketch_reset_smeargle_between_battles(holder: Dictionary) -> void:
+    # Smeargle currently has no legitimate permanent move pool other than
+    # Sketch. Therefore the safest battle boundary is an explicit canonical
+    # reset instead of trying to reconstruct which ids were temporary.
+    holder["moves"] = [SKETCH_MOVE_ID]
+    holder[SKETCH_STATE_KEY] = []
+    holder[SKETCH_USED_KEY] = false
+
+
 func _sketch_clear_battle_state(
     holder: Dictionary,
     copied_ids: Array[String],
@@ -192,7 +242,7 @@ func _sketch_clear_battle_state(
     var should_restore: bool = (
         was_used
         or not copied_ids.is_empty()
-        or str(holder.get("species_id", "")) == "smeargle"
+        or str(holder.get("species_id", "")) == SKETCH_SPECIES_ID
     )
     if should_restore and not moves.has(SKETCH_MOVE_ID):
         moves.insert(0, SKETCH_MOVE_ID)
