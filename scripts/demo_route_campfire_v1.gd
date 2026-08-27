@@ -10,12 +10,14 @@ const CAMPFIRE_EXTENSION_STAGES: int = 5
 
 var _campfire_unlock_announced: bool = false
 var _campfire_unlock_overlay: Control
+var _campfire_unlock_popup_pending: bool = false
 
 
 func start_route() -> void:
     # A new adventure must always receive the stage-25 introduction again.
     # Saved adventures restore this flag through RunSaveManager instead.
     _campfire_unlock_announced = false
+    _campfire_unlock_popup_pending = false
     super.start_route()
 
 
@@ -33,7 +35,8 @@ func _show_stage_choices(message: String = "") -> void:
     super._show_stage_choices(message)
 
     if should_announce and visible:
-        call_deferred("_show_campfire_unlock_popup")
+        _campfire_unlock_popup_pending = true
+        call_deferred("_try_show_campfire_unlock_popup")
 
 
 func _route_event_pool_for_stage(current_stage: int) -> Array[String]:
@@ -157,6 +160,24 @@ func _on_campfire_companion_selected(team_index: int) -> void:
     # this into the normal ready-for-battle checkpoint, so reloads cannot grant
     # the same +5 twice.
     _autosave_run("team_change")
+
+
+func _on_levelup_continue() -> void:
+    super._on_levelup_continue()
+    if _campfire_unlock_popup_pending:
+        call_deferred("_try_show_campfire_unlock_popup")
+
+
+func _try_show_campfire_unlock_popup() -> void:
+    if not _campfire_unlock_popup_pending:
+        return
+    if stage != CAMPFIRE_UNLOCK_STAGE or not visible:
+        return
+    if _levelup_presentation_pending():
+        return
+
+    _campfire_unlock_popup_pending = false
+    _show_campfire_unlock_popup()
 
 
 func _show_campfire_unlock_popup() -> void:
