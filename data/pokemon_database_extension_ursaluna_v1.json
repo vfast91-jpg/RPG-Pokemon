@@ -76,7 +76,7 @@
           "high_horsepower", "uproar", "focus_punch", "double_edge", "supercell_slam", "throat_chop", "curse", "hard_press"
         ]
       },
-      "tags": ["designed_2026-08-28", "gen2_family_096", "ursaluna_activated", "headlong_rush_deferred_by_user"],
+      "tags": ["designed_2026-08-28", "gen2_family_096", "ursaluna_activated", "signature_move_deferred_by_user"],
       "notes": "Pokémon Timeflow: reguläres Ursaluna vervollständigt Teddiursa → Ursaring → Ursaluna. Ursaring entwickelt sich verpflichtend auf Lv. 50. Schmetterramme/Headlong Rush wird in diesem Implementierungsschritt ausdrücklich nicht angelegt oder referenziert.",
       "other_learning_paths": "none"
     }
