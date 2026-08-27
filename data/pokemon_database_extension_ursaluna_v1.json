@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "source_date": "2026-08-28",
+  "scope": "Append-only Ursaluna activation for the existing Teddiursa family",
+  "expected_base_species_count": 281,
+  "expected_base_route_root_count": 129,
+  "runtime_species_count": 282,
+  "runtime_route_root_count": 129,
+  "family_root": "teddiursa",
+  "family_members": ["teddiursa", "ursaring", "ursaluna"],
+  "family_catch_rate": 66.66666666666667,
+  "ursaring_evolution": {
+    "evolves_into": "ursaluna",
+    "evolution_level": 50,
+    "mandatory": true,
+    "method": "level",
+    "requirement": null
+  },
+  "species_core": {
+    "ursaluna": {
+      "species_id": "ursaluna",
+      "pokedex_number": 901,
+      "display_name": "Ursaluna",
+      "asset_id": "ursaluna",
+      "types": {"primary": "ground", "secondary": "normal"},
+      "base_stats": {"hp": 130, "attack": 140, "defense": 105, "special": 33, "speed": 50}
+    }
+  },
+  "species_detail": {
+    "ursaluna": {
+      "schema_version": "2.1",
+      "species_id": "ursaluna",
+      "pokedex_number": 901,
+      "dex_number": 901,
+      "display_name": "Ursaluna",
+      "category": "PENDING",
+      "asset_id": "ursaluna",
+      "height_m": 2.4,
+      "weight_kg": 290.0,
+      "types": {"primary": "ground", "secondary": "normal"},
+      "base_stats": {"hp": 130, "attack": 140, "defense": 105, "special": 33, "speed": 50},
+      "rpg_basis_sum": 458,
+      "original_bst": 550,
+      "comparison_budget": 458.3333333333333,
+      "experience_curve": "medium_fast",
+      "base_experience": 275,
+      "stat_formula_id": "pokemon_like_no_iv_ev_nature_special_softcap_v2",
+      "catch_rate": 20,
+      "family_id": "teddiursa",
+      "family_catch_rate": 66.66666666666667,
+      "evolution": {"evolves_into": null, "evolution_level": null, "mandatory": false, "method": "none", "requirement": null},
+      "learnset": {
+        "level_up": {
+          "8": ["fury_swipes"],
+          "13": ["payback"],
+          "17": ["sweet_scent"],
+          "22": ["slash"],
+          "25": ["play_nice"],
+          "29": ["play_rough"],
+          "35": ["scary_face"],
+          "41": ["rest", "snore"],
+          "48": ["high_horsepower"],
+          "56": ["thrash"],
+          "64": ["hammer_arm"]
+        },
+        "evolution_moves": [],
+        "relearn_lv1": ["fake_tears", "covet", "scratch", "leer", "lick"],
+        "tm_hm": [
+          "take_down", "charm", "fake_tears", "scary_face", "protect", "low_kick", "thief", "trailblaze",
+          "facade", "aerial_ace", "bulldoze", "metal_claw", "swift", "rock_tomb", "fling", "avalanche",
+          "endure", "sunny_day", "rain_dance", "dig", "brick_break", "shadow_claw", "bulk_up", "body_slam",
+          "fire_punch", "thunder_punch", "ice_punch", "sleep_talk", "seed_bomb", "drain_punch", "metronome",
+          "stomping_tantrum", "rest", "rock_slide", "taunt", "swords_dance", "body_press", "gunk_shot",
+          "substitute", "crunch", "hyper_voice", "heavy_slam", "play_rough", "helping_hand", "earth_power",
+          "earthquake", "stone_edge", "giga_impact", "hyper_beam", "close_combat", "roar", "smack_down",
+          "high_horsepower", "uproar", "focus_punch", "double_edge", "supercell_slam", "throat_chop", "curse", "hard_press"
+        ]
+      },
+      "tags": ["designed_2026-08-28", "gen2_family_096", "ursaluna_activated", "headlong_rush_deferred_by_user"],
+      "notes": "Pokémon Timeflow: reguläres Ursaluna vervollständigt Teddiursa → Ursaring → Ursaluna. Ursaring entwickelt sich verpflichtend auf Lv. 50. Schmetterramme/Headlong Rush wird in diesem Implementierungsschritt ausdrücklich nicht angelegt oder referenziert.",
+      "other_learning_paths": "none"
+    }
+  }
+}
