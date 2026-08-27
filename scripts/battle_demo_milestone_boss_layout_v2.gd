@@ -9,7 +9,35 @@ extends "res://scripts/battle_demo_stockpile_infobox_v1.gd"
 const MILESTONE_BOSS_SPRITE_SCALE: float = 1.5
 const MILESTONE_BOSS_SPRITE_GAP: float = 14.0
 const MILESTONE_BOSS_SLOT_RATIOS: Array[float] = [0.24, 0.76]
+const MILESTONE_BOSS_ATB_RATE_MULTIPLIER: float = 1.5
 const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
+
+
+func _process(delta: float) -> void:
+    if battle_active and not paused and _is_milestone_double_boss_wave():
+        _apply_milestone_double_boss_atb_bonus(delta)
+    super._process(delta)
+
+
+func _apply_milestone_double_boss_atb_bonus(delta: float) -> void:
+    var bonus_factor: float = MILESTONE_BOSS_ATB_RATE_MULTIPLIER - 1.0
+    for combatant_value: Variant in enemy_team:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        if not bool(combatant.get("boss", false)) or not bool(combatant.get("alive", false)):
+            continue
+
+        var effective_speed: float = float(combatant.get("speed", 10))
+        if bool(combatant.get("paralyzed", false)):
+            effective_speed *= 0.5
+
+        var cycle: float = maxf(0.01, float(combatant.get("cycle", 1.0)))
+        var normal_gain: float = delta * (12.0 + effective_speed * 0.62) / cycle
+        combatant["atb"] = minf(
+            100.0,
+            float(combatant.get("atb", 0.0)) + normal_gain * bonus_factor
+        )
 
 
 func _route_begin_wave() -> void:
