@@ -13,11 +13,23 @@ const COMPANION_REMAINING_KEY: String = "travel_stages_remaining"
 # harmless: a stage can consume companion duration at most once.
 var _companion_duration_checkpoint_stage: int = 0
 
+# Departures are presented one at a time after the stage transition. Keeping the
+# visual queue separate from the duration logic means the established 30-stage
+# rule and team removal timing remain untouched.
+var _companion_departure_queue: Array[Dictionary] = []
+var _companion_departure_overlay: Control
+var _companion_departure_popup_pending: bool = false
+
 
 func start_route() -> void:
     # A genuinely new adventure starts a fresh duration clock. Saved adventures
     # restore this variable through RunSaveManager instead of calling start_route.
     _companion_duration_checkpoint_stage = 0
+    _companion_departure_queue.clear()
+    _companion_departure_popup_pending = false
+    if _companion_departure_overlay != null and is_instance_valid(_companion_departure_overlay):
+        _companion_departure_overlay.queue_free()
+    _companion_departure_overlay = null
     super.start_route()
 
 
@@ -32,6 +44,7 @@ func _show_stage_choices(message: String = "") -> void:
     # companion leaves on the same transition. End cleanly instead of allowing
     # a later battle button to soft-lock on an empty team.
     if not departed.is_empty() and team.is_empty():
+        _schedule_companion_departure_popup()
         var finish_message: String = combined_message
         if not finish_message.is_empty():
             finish_message += "\n\n"
@@ -40,6 +53,9 @@ func _show_stage_choices(message: String = "") -> void:
         return
 
     super._show_stage_choices(combined_message)
+
+    if not departed.is_empty():
+        _schedule_companion_departure_popup()
 
 
 func _advance_companion_durations_to_stage(target_stage: int) -> Array[String]:
@@ -68,7 +84,12 @@ func _advance_companion_durations_to_stage(target_stage: int) -> Array[String]:
         member[COMPANION_REMAINING_KEY] = remaining
 
         if remaining <= 0:
-            departed.push_front(str(member.get("name", "Pokémon")))
+            var companion_name: String = str(member.get("name", "Pokémon"))
+            departed.push_front(companion_name)
+            _companion_departure_queue.push_front({
+                "species_id": str(member.get("species_id", "")),
+                "name": companion_name
+            })
             team.remove_at(index)
         else:
             team[index] = member
@@ -154,6 +175,141 @@ func _message_with_companion_departures(message: String, departed: Array[String]
     if message.is_empty():
         return departure_text
     return message + "\n\n" + departure_text
+
+
+func _schedule_companion_departure_popup() -> void:
+    if _companion_departure_queue.is_empty():
+        return
+    _companion_departure_popup_pending = true
+    call_deferred("_try_show_companion_departure_popup")
+
+
+func _on_levelup_continue() -> void:
+    super._on_levelup_continue()
+    if _companion_departure_popup_pending:
+        call_deferred("_try_show_companion_departure_popup")
+
+
+func _try_show_companion_departure_popup() -> void:
+    if not _companion_departure_popup_pending:
+        return
+    if _companion_departure_queue.is_empty():
+        _companion_departure_popup_pending = false
+        return
+    if (
+        _companion_departure_overlay != null
+        and is_instance_valid(_companion_departure_overlay)
+    ):
+        return
+
+    # Reuse the established post-battle presentation gate. This is the same
+    # safety pattern used by the repaired campfire-unlock popup and prevents a
+    # departure window from racing an already queued/visible level-up popup.
+    if _levelup_presentation_pending():
+        return
+
+    _companion_departure_popup_pending = false
+    _show_next_companion_departure_popup()
+
+
+func _show_next_companion_departure_popup() -> void:
+    if _companion_departure_queue.is_empty():
+        return
+
+    var event: Dictionary = _companion_departure_queue.pop_front()
+    var overlay: Control = _build_companion_departure_overlay(event)
+    _companion_departure_overlay = overlay
+    overlay.visible = true
+
+
+func _build_companion_departure_overlay(event: Dictionary) -> Control:
+    var overlay := ColorRect.new()
+    overlay.name = "CompanionDepartureOverlay"
+    overlay.color = Color("07100de0")
+    overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    overlay.z_index = 120
+    add_child(overlay)
+    overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    var center := CenterContainer.new()
+    center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    overlay.add_child(center)
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    var card := PanelContainer.new()
+    card.custom_minimum_size = Vector2(410.0, 0.0)
+    card.add_theme_stylebox_override(
+        "panel",
+        _companion_departure_card_style()
+    )
+    center.add_child(card)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 8)
+    card.add_child(content)
+
+    var eyebrow := Label.new()
+    eyebrow.text = "🧭 GEMEINSAME REISE"
+    eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    eyebrow.add_theme_font_size_override("font_size", 10)
+    eyebrow.add_theme_color_override("font_color", Color("e0c968"))
+    content.add_child(eyebrow)
+
+    var sprite := TextureRect.new()
+    sprite.custom_minimum_size = Vector2(120.0, 105.0)
+    sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    if battle_demo != null and battle_demo.has_method("route_species_texture"):
+        var texture_value: Variant = battle_demo.route_species_texture(str(event.get("species_id", "")))
+        if texture_value is Texture2D:
+            sprite.texture = texture_value as Texture2D
+    content.add_child(sprite)
+
+    var companion_name: String = str(event.get("name", "Pokémon"))
+    var name_label := Label.new()
+    name_label.text = companion_name
+    name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    name_label.add_theme_font_size_override("font_size", 19)
+    name_label.add_theme_color_override("font_color", Color("fff0ad"))
+    content.add_child(name_label)
+
+    var departure_text := Label.new()
+    departure_text.text = "%s setzt seine eigene Reise fort und verlässt dein Team." % companion_name
+    departure_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    departure_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    departure_text.add_theme_font_size_override("font_size", 11)
+    departure_text.add_theme_color_override("font_color", Color("dce8e2"))
+    content.add_child(departure_text)
+
+    var continue_departure := Button.new()
+    continue_departure.text = "WEITER  →"
+    continue_departure.custom_minimum_size = Vector2(0.0, 34.0)
+    continue_departure.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    continue_departure.pressed.connect(_dismiss_companion_departure_popup)
+    _style_route_decision_button(continue_departure, true)
+    content.add_child(continue_departure)
+
+    continue_departure.call_deferred("grab_focus")
+    return overlay
+
+
+func _companion_departure_card_style() -> StyleBoxFlat:
+    var style: StyleBoxFlat = _panel(Color("12251f"), Color("e0c968"), 12, 14.0)
+    style.set_border_width_all(2)
+    style.shadow_color = Color("00000099")
+    style.shadow_size = 10
+    return style
+
+
+func _dismiss_companion_departure_popup() -> void:
+    if _companion_departure_overlay != null and is_instance_valid(_companion_departure_overlay):
+        _companion_departure_overlay.queue_free()
+    _companion_departure_overlay = null
+
+    if not _companion_departure_queue.is_empty():
+        _companion_departure_popup_pending = true
+        call_deferred("_try_show_companion_departure_popup")
 
 
 func _companion_remaining_stages(member: Dictionary) -> int:
