@@ -32,13 +32,13 @@ func _install_main_menu_title_logo() -> void:
         logo_layer,
         "PokemonLogo",
         MAIN_MENU_POKEMON_LOGO,
-        Rect2(-215.0, 4.0, 200.0, 74.0)
+        Rect2(-215.0, 24.0, 200.0, 74.0)
     )
     _add_title_logo_texture(
         logo_layer,
         "TimeflowLogo",
         MAIN_MENU_TIMEFLOW_LOGO,
-        Rect2(-40.0, 6.0, 255.0, 76.0)
+        Rect2(-40.0, 26.0, 255.0, 76.0)
     )
 
 
