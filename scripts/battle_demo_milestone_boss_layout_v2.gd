@@ -6,8 +6,8 @@ extends "res://scripts/battle_demo_stockpile_infobox_v1.gd"
 # the complete battle-area height and crowd the player's formation. Give only
 # these milestone waves their own stable two-slot formation.
 
-const MILESTONE_BOSS_SPRITE_SCALE: float = 1.32
-const MILESTONE_BOSS_SPRITE_GAP: float = 6.0
+const MILESTONE_BOSS_SPRITE_SCALE: float = 1.5
+const MILESTONE_BOSS_SPRITE_GAP: float = 14.0
 const MILESTONE_BOSS_SLOT_RATIOS: Array[float] = [0.24, 0.76]
 const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
@@ -41,9 +41,9 @@ func _apply_milestone_double_boss_layout() -> void:
     if area == null:
         return
 
-    # Double bosses stay visibly larger than ordinary Pokemon, but no longer use
-    # the 150% single-boss size. At 132% both sprites have real breathing room
-    # above/below each other and remain clearly separated from the player team.
+    # Milestone bosses use the same 150% sprite size as the bosses from special
+    # encounters. Their card-to-sprite gap also matches the canonical enemy
+    # roster gap so they no longer sit unnecessarily far back on their side.
     var boss_side: float = ROSTER_SPRITE_SIDE * MILESTONE_BOSS_SPRITE_SCALE
     var boss_size := Vector2(boss_side, boss_side)
 
@@ -82,7 +82,7 @@ func _apply_milestone_double_boss_layout() -> void:
 
         # Pokemon PNGs have very different transparent margins. Positioning the
         # TextureRect itself therefore makes compact species such as Diglett sit
-        # far below their card even though the invisible 95x95 box is centered.
+        # far below their card even though the invisible box is centered.
         # Align the actually visible alpha bounds instead. The TextureRect may
         # extend outside BattleArea; only transparent pixels are clipped there.
         var visible_rect: Rect2 = VisibleTextureLayout.visible_rect(sprite)
@@ -93,9 +93,9 @@ func _apply_milestone_double_boss_layout() -> void:
             MILESTONE_BOSS_SPRITE_GAP
         )
 
-        # Re-anchor shadow and connector after the final sprite geometry. The
-        # inherited boss shadow keeps its enlarged boss scale, so both bosses now
-        # have the same correctly sized ground contact at their actual feet.
+        # Re-anchor shadow and connector after the final sprite geometry. With
+        # the milestone sprite back at the canonical 150% boss size, the inherited
+        # boss shadow scale and the visible-foot anchor match the Pokemon again.
         var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
         if shadow != null:
             _position_milestone_boss_shadow(shadow, sprite, visible_rect)
