@@ -2,13 +2,14 @@ extends "res://scripts/battle_demo_stockpile_infobox_v1.gd"
 
 # Final presentation fix for the mandatory Doppelboss fights on stages
 # 20, 40, 60 and 80. The normal roster formation is deliberately compact and
-# works for ordinary 72px Pokemon, but two enlarged 108px boss sprites consume
-# the complete battle-area height and crowd the player's formation. Give only
-# these milestone waves their own stable two-slot formation.
+# works for ordinary 72px Pokemon, but two enlarged 108px boss sprites need a
+# dedicated two-slot layout that stays centred and visually follows the normal
+# enemy formation toward the middle of the battlefield.
 
 const MILESTONE_BOSS_SPRITE_SCALE: float = 1.5
 const MILESTONE_BOSS_SPRITE_GAP: float = 14.0
-const MILESTONE_BOSS_SLOT_RATIOS: Array[float] = [0.24, 0.76]
+const MILESTONE_BOSS_CARD_GAP: float = 14.0
+const MILESTONE_BOSS_FORWARD_OFFSET: float = 12.0
 const MILESTONE_BOSS_ATB_RATE_MULTIPLIER: float = 1.5
 const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
@@ -40,6 +41,15 @@ func _apply_milestone_double_boss_atb_bonus(delta: float) -> void:
         )
 
 
+func _refresh_cards() -> void:
+    super._refresh_cards()
+    # Generic card refreshes can touch roster geometry again after the wave was
+    # laid out. Re-apply only this milestone formation so cards, Pokemon,
+    # shadows and connector lines always finish the refresh on the same anchors.
+    if _is_milestone_double_boss_wave():
+        _apply_milestone_double_boss_layout()
+
+
 func _route_begin_wave() -> void:
     super._route_begin_wave()
     if not _is_milestone_double_boss_wave():
@@ -69,11 +79,9 @@ func _apply_milestone_double_boss_layout() -> void:
     if area == null:
         return
 
-    # Milestone bosses use the same 150% sprite size as the bosses from special
-    # encounters. Their card-to-sprite gap also matches the canonical enemy
-    # roster gap so they no longer sit unnecessarily far back on their side.
     var boss_side: float = ROSTER_SPRITE_SIDE * MILESTONE_BOSS_SPRITE_SCALE
     var boss_size := Vector2(boss_side, boss_side)
+    var boss_slots: Array[Dictionary] = []
 
     for index: int in range(2):
         var combatant_value: Variant = enemy_team[index]
@@ -93,37 +101,63 @@ func _apply_milestone_double_boss_layout() -> void:
         if card == null or sprite == null:
             continue
 
-        var center_y: float = area.size.y * MILESTONE_BOSS_SLOT_RATIOS[index]
+        boss_slots.append({
+            "combatant_id": combatant_id,
+            "ui": ui,
+            "card": card,
+            "sprite": sprite,
+        })
 
-        # Both boss cards use the same left edge and the same vertical center as
-        # their Pokemon. This removes the old diagonal/staggered formation that
-        # made card-to-Pokemon ownership visually ambiguous.
+    if boss_slots.size() != 2:
+        return
+
+    # Centre the complete pair as one formation instead of pinning one boss near
+    # the top and the other near the bottom. The gap is based on the real card
+    # heights, so the pair remains centred even if the boss-card height changes.
+    var total_card_height: float = MILESTONE_BOSS_CARD_GAP
+    for slot_value: Dictionary in boss_slots:
+        var slot_card: Control = slot_value.get("card") as Control
+        total_card_height += slot_card.size.y
+
+    var next_card_y: float = maxf(0.0, (area.size.y - total_card_height) * 0.5)
+
+    for slot_index: int in range(boss_slots.size()):
+        var slot: Dictionary = boss_slots[slot_index]
+        var combatant_id: String = str(slot.get("combatant_id", ""))
+        var ui: Dictionary = slot.get("ui", {}) as Dictionary
+        var card: Control = slot.get("card") as Control
+        var sprite: TextureRect = slot.get("sprite") as TextureRect
+
         card.position.x = ROSTER_EDGE_MARGIN
         card.position.y = clampf(
-            center_y - card.size.y * 0.5,
+            next_card_y,
             0.0,
             maxf(0.0, area.size.y - card.size.y)
         )
+        next_card_y += card.size.y + MILESTONE_BOSS_CARD_GAP
 
         sprite.custom_minimum_size = boss_size
         sprite.size = boss_size
 
-        # Pokemon PNGs have very different transparent margins. Positioning the
-        # TextureRect itself therefore makes compact species such as Diglett sit
-        # far below their card even though the invisible box is centered.
-        # Align the actually visible alpha bounds instead. The TextureRect may
-        # extend outside BattleArea; only transparent pixels are clipped there.
+        # Align by the actually visible pixels, not by transparent PNG margins.
+        # Both bosses move slightly toward the battlefield centre; the upper boss
+        # receives the normal enemy-formation step on top, recreating the same
+        # inward diagonal used by ordinary two-Pokemon enemy teams.
         var visible_rect: Rect2 = VisibleTextureLayout.visible_rect(sprite)
+        var inward_step: float = (
+            MILESTONE_BOSS_FORWARD_OFFSET
+            + float(boss_slots.size() - 1 - slot_index) * ROSTER_FORMATION_STEP
+        )
         sprite.position = VisibleTextureLayout.position_visible_right_of_card(
             area.size,
             Rect2(card.position, card.size),
             visible_rect,
-            MILESTONE_BOSS_SPRITE_GAP
+            MILESTONE_BOSS_SPRITE_GAP + inward_step
         )
 
-        # Re-anchor shadow and connector after the final sprite geometry. With
-        # the milestone sprite back at the canonical 150% boss size, the inherited
-        # boss shadow scale and the visible-foot anchor match the Pokemon again.
+        # Keep shadow and connector tied to the final visible sprite geometry.
+        # This is also re-applied after every card refresh, preventing a generic
+        # roster pass from leaving a stale shadow behind when the sprite moves.
         var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
         if shadow != null:
             _position_milestone_boss_shadow(shadow, sprite, visible_rect)
