@@ -32,4 +32,4 @@ jobs:
         run: ./godot --headless --path . --editor --quit
 
       - name: Stage 10 reinforcement stability regression
-        run: ./godot --headless --path . --script tests/stage10_boss_reinforcement_stability_v2_test.gd
+        run: ./godot --headless --path . tests/stage10_boss_reinforcement_stability_v2_test.tscn
