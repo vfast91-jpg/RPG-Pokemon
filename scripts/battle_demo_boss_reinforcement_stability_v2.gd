@@ -20,7 +20,10 @@ const STABLE_REINFORCEMENT_TOP_CENTER_RATIO: float = 0.25
 const STABLE_REINFORCEMENT_BOSS_CENTER_RATIO: float = 0.50
 const STABLE_REINFORCEMENT_BOTTOM_CENTER_RATIO: float = 0.75
 const STABLE_REINFORCEMENT_EDGE_PADDING: float = 8.0
-const STABLE_REINFORCEMENT_FORWARD_OFFSET: float = 6.0
+# Reinforcements are bodyguards: on the enemy side, a larger card-to-sprite gap
+# moves their visible Pokemon farther toward the player's team. Keep the boss on
+# the canonical stage-10 anchor and move only the two helpers forward.
+const STABLE_REINFORCEMENT_FORWARD_OFFSET: float = 18.0
 const STABLE_REINFORCEMENT_CONNECTOR_MAX_WIDTH: float = 2.0
 const STABLE_REINFORCEMENT_CONNECTOR_MAX_ALPHA: float = 0.78
 
@@ -28,8 +31,8 @@ const STABLE_REINFORCEMENT_CONNECTOR_MAX_ALPHA: float = 0.78
 func _route_begin_wave() -> void:
     super._route_begin_wave()
     # All inherited route/boss decorators have finished at this point. Re-apply
-    # the standard-boss geometry once from the active leaf so the initial
-    # one-boss phase already uses the same anchors as phase 2.
+    # the standard-boss geometry once from the active leaf so every ordinary
+    # special encounter uses the same boss anchor as the stage-10 encounter.
     _stabilize_standard_reinforcement_encounter()
 
 
@@ -135,11 +138,12 @@ func _position_stable_reinforcement_slot(
     sprite.custom_minimum_size = sprite_size
     sprite.size = sprite_size
 
+    # The visible alpha body is the anchor, not the TextureRect. That makes a
+    # Natu, Rabauz or any future special boss land on the same visual position
+    # even when their PNGs contain different transparent margins.
     var visible_rect: Rect2 = StableReinforcementVisibleLayout.visible_rect(sprite)
     var visible_gap: float = ROSTER_CARD_SPRITE_GAP
     if not boss_slot:
-        # The helpers remain slightly in front of the boss, but the old +20 px
-        # offset made their status connectors dominate the battlefield.
         visible_gap += STABLE_REINFORCEMENT_FORWARD_OFFSET
 
     sprite.position = StableReinforcementVisibleLayout.position_visible_right_of_card(
