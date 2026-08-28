@@ -384,6 +384,11 @@ func _position_reinforcement_slot(
             sprite.position,
             visible_rect
         )
+ if not boss_slot and connector_points.size() >= 2:
+        connector_points[1] = connector_points[1] - Vector2(12.0, 0.0)
+
+    connector.points = connector_points
+
         connector.begin_cap_mode = Line2D.LINE_CAP_ROUND
         connector.end_cap_mode = Line2D.LINE_CAP_ROUND
         if not boss_slot:
