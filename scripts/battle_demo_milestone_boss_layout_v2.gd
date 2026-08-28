@@ -159,8 +159,11 @@ func _apply_milestone_double_boss_layout() -> void:
         # This is also re-applied after every card refresh, preventing a generic
         # roster pass from leaving a stale shadow behind when the sprite moves.
         var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
-        if shadow != null:
-            _position_milestone_boss_shadow(shadow, sprite, visible_rect)
+if shadow != null:
+    _position_milestone_boss_shadow(shadow, sprite, visible_rect)
+
+    if slot_index == 0:
+        shadow.position.y -= 22.0
 
         var connector: Line2D = ui.get("connector") as Line2D
         if connector != null:
