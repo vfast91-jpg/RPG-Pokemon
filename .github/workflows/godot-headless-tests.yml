@@ -39,6 +39,8 @@ jobs:
         run: ./godot --headless --path . --script tests/area_damage_scaling_test.gd
       - name: Move contract and presentation audit
         run: ./godot --headless --path . --script tests/move_contract_test.gd
+      - name: Gen-3 first five moves test
+        run: ./godot --headless --path . --script tests/gen3_moves_runtime_test.gd
       - name: Evolution resolver test
         run: ./godot --headless --path . --script tests/evolution_resolver_test.gd
       - name: Combat lab config regression test
