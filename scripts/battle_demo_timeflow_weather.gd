@@ -1,5 +1,12 @@
 extends "res://scripts/battle_demo_lab_tm_toggle.gd"
 
+const CASTFORM_FORM_IDS: Array[String] = [
+    "castform",
+    "castform-sunny",
+    "castform-rainy",
+    "castform-snowy"
+]
+
 # Final Timeflow weather layer.
 #
 # Normal weather is a global battlefield state with one continuous timer. The
@@ -161,7 +168,100 @@ func _build_battle(root: Control) -> void:
 
     _update_weather_ui()
 
+func _castform_form_for_current_weather() -> Dictionary:
+    var weather_id: String = ""
 
+    if battle_weather.is_active():
+        weather_id = battle_weather.current_id()
+
+    match weather_id:
+        "sun":
+            return {
+                "species_id": "castform-sunny",
+                "name": "Formeo - Sonnenform",
+                "types": ["fire"]
+            }
+
+        "rain":
+            return {
+                "species_id": "castform-rainy",
+                "name": "Formeo - Regenform",
+                "types": ["water"]
+            }
+
+        "hail", "snow":
+            return {
+                "species_id": "castform-snowy",
+                "name": "Formeo - Schneeform",
+                "types": ["ice"]
+            }
+
+        _:
+            return {
+                "species_id": "castform",
+                "name": "Formeo",
+                "types": ["normal"]
+            }
+
+
+func _sync_castform_forms() -> void:
+    if combatants.is_empty():
+        return
+
+    var target: Dictionary = _castform_form_for_current_weather()
+    var target_species_id: String = str(target.get("species_id", "castform"))
+    var target_name: String = str(target.get("name", "Formeo"))
+
+    var target_types_value: Variant = target.get("types", ["normal"])
+    var target_types: Array = (
+        target_types_value.duplicate()
+        if target_types_value is Array
+        else ["normal"]
+    )
+
+    for combatant_value: Variant in combatants:
+        if not (combatant_value is Dictionary):
+            continue
+
+        var combatant: Dictionary = combatant_value
+        var current_species_id: String = str(
+            combatant.get("species_id", "")
+        )
+
+        if not CASTFORM_FORM_IDS.has(current_species_id):
+            continue
+
+        if current_species_id == target_species_id:
+            continue
+
+        combatant["species_id"] = target_species_id
+        combatant["name"] = target_name
+        combatant["types"] = target_types.duplicate()
+
+        var card_id: String = str(combatant.get("id", ""))
+        var card_value: Variant = cards.get(card_id, {})
+
+        if not (card_value is Dictionary):
+            continue
+
+        var card: Dictionary = card_value
+
+        var name_label: Label = card.get("name", null) as Label
+        if name_label != null:
+            name_label.text = (
+                target_name
+                + " Lv."
+                + str(combatant.get("level", 1))
+            )
+
+        var texture_box: TextureRect = card.get("texture", null) as TextureRect
+        if texture_box != null:
+            var new_texture: Texture2D = _species_texture(target_name)
+
+            if new_texture == null:
+                new_texture = _species_texture("Formeo")
+
+            texture_box.texture = new_texture
 func _process(delta: float) -> void:
     var weather_messages: Array[String] = []
 
@@ -182,7 +282,9 @@ func _process(delta: float) -> void:
                 weather_messages.append(end_message)
         _update_weather_ui()
 
+    _sync_castform_forms()
     super._process(delta)
+    _sync_castform_forms()
     _append_weather_log(weather_messages)
 
 
