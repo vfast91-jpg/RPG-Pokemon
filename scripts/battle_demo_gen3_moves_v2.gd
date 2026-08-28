@@ -82,6 +82,115 @@ func _choose_wait() -> void:
     actor["gen3_v2_mind_reader_armed"] = false
 
 
+# Zwango und Einfaltspinsel: Der zentrale Datenvertrag bleibt bei
+# enemy_highest_aggro. Spieler dürfen bei diesen beiden Attacken stattdessen
+# ausdrücklich einen lebenden Verbündeten wählen. KI / keine Auswahl =>
+# unverändert Gegner mit höchster Aggro.
+func _choose_move(move_id: String) -> void:
+    if selected_actor.is_empty():
+        return
+
+    var actor: Dictionary = selected_actor
+
+    # Never bypass the inherited legality gate (especially Aussetzer).
+    # If the move is blocked, the parent path owns the existing feedback/UI.
+    if not _tf_move_is_selectable(actor, move_id):
+        super._choose_move(move_id)
+        return
+
+    var resolved_move_id: String = _tf_resolved_move_id(actor, move_id)
+    if not ["entrainment", "simple_beam"].has(resolved_move_id):
+        super._choose_move(move_id)
+        return
+
+    _gen3_v2_prompt_manual_target(actor, move_id)
+
+
+func _gen3_v2_prompt_manual_target(actor: Dictionary, move_id: String) -> void:
+    paused = true
+    selected_actor = actor
+    _clear_actions()
+
+    var move: Dictionary = _move_data(_tf_resolved_move_id(actor, move_id))
+    _set_log(
+        "[b]" + str(move.get("name", move_id)) +
+        "[/b]: Wähle den Gegner mit höchster Aggro oder einen Verbündeten."
+    )
+
+    var enemy_targets: Array = super._targets(actor, "enemy_highest_aggro")
+    if not enemy_targets.is_empty() and enemy_targets[0] is Dictionary:
+        var enemy: Dictionary = enemy_targets[0] as Dictionary
+        var enemy_button := Button.new()
+        enemy_button.text = "🎯 Gegner: " + _actor_name(enemy) + " (höchste Aggro)"
+        enemy_button.pressed.connect(_gen3_v2_choose_manual_target.bind(move_id, ""))
+        action_grid.add_child(enemy_button)
+
+    var allies: Array = super._targets(actor, "all_allies")
+    for ally_value: Variant in allies:
+        if not (ally_value is Dictionary):
+            continue
+        var ally: Dictionary = ally_value as Dictionary
+        if ally == actor or not _is_alive(ally):
+            continue
+        var ally_id: String = str(ally.get("id", ""))
+        if ally_id.is_empty():
+            continue
+        var ally_button := Button.new()
+        ally_button.text = "🤝 Verbündeter: " + _actor_name(ally)
+        ally_button.pressed.connect(_gen3_v2_choose_manual_target.bind(move_id, ally_id))
+        action_grid.add_child(ally_button)
+
+    var cancel_button := Button.new()
+    cancel_button.text = "↩ Zurück"
+    cancel_button.pressed.connect(_gen3_v2_cancel_manual_target.bind(actor))
+    action_grid.add_child(cancel_button)
+
+
+func _gen3_v2_cancel_manual_target(actor: Dictionary) -> void:
+    actor.erase("gen3_v2_manual_target_id")
+    _prompt_player(actor)
+
+
+func _gen3_v2_choose_manual_target(move_id: String, ally_id: String) -> void:
+    if selected_actor.is_empty():
+        return
+
+    var actor: Dictionary = selected_actor
+    if ally_id.is_empty():
+        actor.erase("gen3_v2_manual_target_id")
+    else:
+        actor["gen3_v2_manual_target_id"] = ally_id
+
+    selected_actor = {}
+    paused = false
+    _clear_actions()
+    _execute_move(actor, move_id)
+    actor.erase("gen3_v2_manual_target_id")
+
+
+func _targets(actor: Dictionary, target_kind: String) -> Array:
+    # Nur während der Ausführung von Zwango/Einfaltspinsel kann ein explizit
+    # gewählter Verbündeter die normale enemy_highest_aggro-Zielauflösung
+    # überschreiben. Alle anderen Attacken bleiben vollständig unverändert.
+    if target_kind == "enemy_highest_aggro":
+        var manual_target_id: String = str(actor.get("gen3_v2_manual_target_id", ""))
+        if not manual_target_id.is_empty():
+            for combatant_value: Variant in combatants:
+                if not (combatant_value is Dictionary):
+                    continue
+                var candidate: Dictionary = combatant_value as Dictionary
+                if (
+                    str(candidate.get("id", "")) == manual_target_id
+                    and str(candidate.get("side", "")) == str(actor.get("side", ""))
+                    and candidate != actor
+                    and _is_alive(candidate)
+                ):
+                    return [candidate]
+            actor.erase("gen3_v2_manual_target_id")
+
+    return super._targets(actor, target_kind)
+
+
 func _execute_move(actor: Dictionary, move_id: String) -> void:
     var resolved_move_id: String = _tf_resolved_move_id(actor, move_id)
     var move: Dictionary = _move_data(resolved_move_id)
