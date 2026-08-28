@@ -229,3 +229,70 @@ func _tf_combatant_by_id(combatant_id: String) -> Dictionary:
         if str(combatant.get("id", "")) == combatant_id:
             return combatant
     return {}
+
+
+# Route bosses keep their enlarged HP pool for normal combat, but percentage
+# damage from poison and burn is normalized to the HP they had before the boss
+# multiplier. This prevents a 2x-HP boss from taking 2x absolute status ticks.
+const TF_BOSS_PERIODIC_STATUS_LABELS: Array[String] = [
+    "🔥 VERBRENNUNG",
+    "☠️ VERGIFTUNG",
+]
+
+
+func _tf_boss_status_reference_max_hp(combatant: Dictionary) -> int:
+    var current_max_hp: int = maxi(1, int(combatant.get("max_hp", 1)))
+    if not bool(combatant.get("boss", false)):
+        return current_max_hp
+    if not combatant.has("boss_base_max_hp"):
+        return current_max_hp
+
+    return clampi(
+        int(combatant.get("boss_base_max_hp", current_max_hp)),
+        1,
+        current_max_hp
+    )
+
+
+func _deal_periodic_damage(
+    combatant: Dictionary,
+    fraction: float,
+    label_text: String
+) -> int:
+    if not TF_BOSS_PERIODIC_STATUS_LABELS.has(label_text):
+        return super._deal_periodic_damage(combatant, fraction, label_text)
+
+    var current_max_hp: int = maxi(1, int(combatant.get("max_hp", 1)))
+    var reference_max_hp: int = _tf_boss_status_reference_max_hp(combatant)
+    if reference_max_hp >= current_max_hp:
+        return super._deal_periodic_damage(combatant, fraction, label_text)
+
+    var normalized_fraction: float = (
+        fraction * float(reference_max_hp) / float(current_max_hp)
+    )
+    return super._deal_periodic_damage(combatant, normalized_fraction, label_text)
+
+
+func _tf_tick_bad_poison(target: Dictionary) -> int:
+    var stage: int = clampi(
+        int(target.get("tf_bad_poison_stage", 1)),
+        1,
+        TF_BAD_POISON_MAX_STAGE
+    )
+    var reference_max_hp: int = _tf_boss_status_reference_max_hp(target)
+    var amount: int = maxi(
+        1,
+        int(floor(float(reference_max_hp) * float(stage) / 16.0))
+    )
+    var actual: int = mini(amount, int(target.get("hp", 0)))
+    if actual <= 0:
+        return 0
+
+    target["hp"] = maxi(0, int(target.get("hp", 0)) - actual)
+    target["damage_since_last_action"] = true
+    target["tf_bad_poison_stage"] = mini(TF_BAD_POISON_MAX_STAGE, stage + 1)
+    _spawn_feedback_label(target, "☠️ SCHWERES GIFT −" + str(actual), Color("bd86cf"))
+
+    if int(target.get("hp", 0)) <= 0:
+        target["alive"] = false
+    return actual
