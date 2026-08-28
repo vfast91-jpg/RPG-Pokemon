@@ -739,10 +739,10 @@ func _make_card(combatant: Dictionary, enemy: bool) -> Control:
     row.add_child(info_button)
 
     cards[str(combatant.get("id", ""))] = {
-        "card": card, "texture": texture_box, "hp": hp_bar, "atb": atb_bar,
-        "aggro": aggro_bar, "aggro_label": aggro_label, "status": status,
-        "info": info_button
-    }
+    "card": card, "texture": texture_box, "name": name_label, "hp": hp_bar, "atb": atb_bar,
+    "aggro": aggro_bar, "aggro_label": aggro_label, "status": status,
+    "info": info_button
+}
     return card
 
 
