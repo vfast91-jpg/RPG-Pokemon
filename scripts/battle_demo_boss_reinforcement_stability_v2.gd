@@ -157,35 +157,35 @@ func _position_stable_reinforcement_slot(
         visible_gap
     )
 
-   var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
-if shadow != null:
-    var visible_foot: Vector2 = StableReinforcementVisibleLayout.visible_foot(
-        sprite.position,
-        visible_rect
-    )
-
-    if boss_slot:
-        shadow.position = Vector2(
-            sprite.position.x + sprite.size.x * 0.5,
-            visible_foot.y
+    var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
+    if shadow != null:
+        var visible_foot: Vector2 = StableReinforcementVisibleLayout.visible_foot(
+            sprite.position,
+            visible_rect
         )
-        shadow.scale = ROUTE_BOSS_SHADOW_SCALE
-    else:
-        shadow.position = visible_foot
-        shadow.scale = Vector2.ONE * sprite_scale
+
+        if boss_slot:
+            shadow.position = Vector2(
+                sprite.position.x + sprite.size.x * 0.5,
+                visible_foot.y
+            )
+            shadow.scale = ROUTE_BOSS_SHADOW_SCALE
+        else:
+            shadow.position = visible_foot
+            shadow.scale = Vector2.ONE * sprite_scale
 
     var connector: Line2D = ui.get("connector") as Line2D
-if connector != null:
-    var connector_points: PackedVector2Array = StableReinforcementVisibleLayout.enemy_connector_points(
-        Rect2(card.position, card.size),
-        sprite.position,
-        visible_rect
-    )
+    if connector != null:
+        var connector_points: PackedVector2Array = StableReinforcementVisibleLayout.enemy_connector_points(
+            Rect2(card.position, card.size),
+            sprite.position,
+            visible_rect
+        )
 
-    if not boss_slot and connector_points.size() >= 2:
-        connector_points[1].x -= 16.0
+        if not boss_slot and connector_points.size() >= 2:
+            connector_points[1].x -= 16.0
 
-    connector.points = connector_points
+        connector.points = connector_points
         connector.begin_cap_mode = Line2D.LINE_CAP_ROUND
         connector.end_cap_mode = Line2D.LINE_CAP_ROUND
         if not boss_slot:
