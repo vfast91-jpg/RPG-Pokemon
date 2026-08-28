@@ -10,6 +10,7 @@ const MILESTONE_BOSS_SPRITE_SCALE: float = 1.5
 const MILESTONE_BOSS_SPRITE_GAP: float = 14.0
 const MILESTONE_BOSS_CARD_GAP: float = 14.0
 const MILESTONE_BOSS_FORWARD_OFFSET: float = 12.0
+const MILESTONE_BOSS_SHADOW_SCALE: Vector2 = Vector2(2.2, 1.6)
 const MILESTONE_BOSS_ATB_RATE_MULTIPLIER: float = 1.5
 const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
@@ -159,11 +160,8 @@ func _apply_milestone_double_boss_layout() -> void:
         # This is also re-applied after every card refresh, preventing a generic
         # roster pass from leaving a stale shadow behind when the sprite moves.
         var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
-        if shadow != null:
-            _position_milestone_boss_shadow(shadow, sprite, visible_rect)
-
-            if slot_index == 0:
-                shadow.position.y -= 22.0
+if shadow != null:
+    _position_milestone_boss_shadow(shadow, sprite, visible_rect)
 
         var connector: Line2D = ui.get("connector") as Line2D
         if connector != null:
@@ -180,7 +178,7 @@ func _position_milestone_boss_shadow(
     visible_rect: Rect2
 ) -> void:
     shadow.position = VisibleTextureLayout.visible_foot(sprite.position, visible_rect)
-    shadow.scale = ROUTE_BOSS_SHADOW_SCALE
+    shadow.scale = MILESTONE_BOSS_SHADOW_SCALE
 
 
 func _update_milestone_boss_connector(
