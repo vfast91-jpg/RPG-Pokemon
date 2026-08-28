@@ -186,3 +186,7 @@ func _gen3_aurora_reduction(target: Dictionary) -> float:
             return -1.0
         return clampf(reduction, 0.0, 0.95)
     return -1.0
+
+
+func _is_alive(combatant: Dictionary) -> bool:
+    return bool(combatant.get("alive", false))
