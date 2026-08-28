@@ -47,6 +47,8 @@ const EFFECTS: Dictionary = {
     "db_clear_all_temporary_modifiers": {"player_label":"Temporäre Attributänderungen entfernen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_break_protect": {"player_label":"Schutzschild durchbrechen","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":[]},
     "db_light_screen": {"player_label":"Lichtschild","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
+    "db_aurora_veil": {"player_label":"Auroraschleier","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
+    "db_target_modifier_bypass": {"player_label":"Temporäre Zielmodifikatoren ignorieren","runtime_state":IMPLEMENTED,"persistent":false,"tooltip":true,"detail":true,"status_card":false,"required_fields":["defense","evasion"]},
     "db_reflect": {"player_label":"Reflektor","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
     "db_encore": {"player_label":"Zugabe","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
     "db_electric_terrain": {"player_label":"Elektrofeld","runtime_state":IMPLEMENTED,"persistent":true,"tooltip":true,"detail":true,"status_card":true,"required_fields":["duration_actions"]},
