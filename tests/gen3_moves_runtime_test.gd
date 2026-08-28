@@ -2,7 +2,7 @@ extends SceneTree
 
 const MoveContract = preload("res://scripts/battle/move_contract.gd")
 const PACK_PATH: String = "res://data/gen3_moves_runtime_v1.json"
-const MANIFEST_PATH: String = "res://data/gen1_database_manifest_v3.json"
+const MANIFEST_PATH: String = "res://data/pokemon_database_manifest_v1.json"
 
 var failures: int = 0
 
@@ -24,7 +24,7 @@ func _initialize() -> void:
     var move_files_value: Variant = manifest.get("move_files", [])
     var move_files: Array = move_files_value if move_files_value is Array else []
     _check(move_files.has(PACK_PATH), "Gen-3-Paket fehlt im Laufzeitmanifest.")
-    _check(int(manifest.get("move_count", 0)) == 271, "Manifest move_count muss 271 sein.")
+    _check(int(manifest.get("move_count", 0)) == 319, "Manifest move_count muss 319 sein.")
 
     if failures == 0:
         print("Gen-3 first five moves test: PASS")
