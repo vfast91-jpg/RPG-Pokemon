@@ -417,7 +417,7 @@
       "power": null,
       "accuracy": null,
       "original_pp": 10,
-      "ap": 8,
+      "ap": 1,
       "target": "enemy_highest_aggro",
       "area": false,
       "contact": false,
