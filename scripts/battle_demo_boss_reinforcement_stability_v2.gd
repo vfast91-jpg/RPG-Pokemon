@@ -157,32 +157,22 @@ func _position_stable_reinforcement_slot(
         visible_gap
     )
 
-    var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
-    if shadow != null:
-        # Schatten an den tatsächlich sichtbaren unteren Rand des Pokémon setzen.
-        shadow.position = StableReinforcementVisibleLayout.visible_foot(
-            sprite.position,
-            visible_rect
-        )
+   var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
+if shadow != null:
+    var visible_foot: Vector2 = StableReinforcementVisibleLayout.visible_foot(
+        sprite.position,
+        visible_rect
+    )
 
-        if boss_slot:
-            # Boss-Schattenbreite automatisch an die tatsächlich sichtbare
-            # Breite des jeweiligen Pokémon anpassen.
-            var shadow_width_scale: float = clampf(
-                (
-                    visible_rect.size.x
-                    / STABLE_BOSS_SHADOW_REFERENCE_WIDTH
-                    * STABLE_BOSS_SHADOW_WIDTH_FACTOR
-                ),
-                1.0,
-                ROUTE_BOSS_SHADOW_SCALE.x
-            )
-            shadow.scale = Vector2(
-                shadow_width_scale,
-                ROUTE_BOSS_SHADOW_SCALE.y
-            )
-        else:
-            shadow.scale = Vector2.ONE * sprite_scale
+    if boss_slot:
+        shadow.position = Vector2(
+            sprite.position.x + sprite.size.x * 0.5,
+            visible_foot.y
+        )
+        shadow.scale = ROUTE_BOSS_SHADOW_SCALE
+    else:
+        shadow.position = visible_foot
+        shadow.scale = Vector2.ONE * sprite_scale
 
     var connector: Line2D = ui.get("connector") as Line2D
     if connector != null:
