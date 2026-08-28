@@ -262,7 +262,7 @@ func _sketch_patch_move_text(container: Dictionary) -> void:
     sketch["description"] = (
         "Kopiert einmal pro Kampf alle kopierbaren Attacken des gegnerischen Pokémon mit der höchsten Aggro bis zum Kampfende."
     )
-    sketch["ap"] = 7
+    sketch["ap"] = 1
     sketch["pp"] = 1
     sketch["target"] = "enemy_highest_aggro"
     sketch["special_rules"] = [
