@@ -175,12 +175,17 @@ if shadow != null:
         shadow.scale = Vector2.ONE * sprite_scale
 
     var connector: Line2D = ui.get("connector") as Line2D
-    if connector != null:
-        connector.points = StableReinforcementVisibleLayout.enemy_connector_points(
-            Rect2(card.position, card.size),
-            sprite.position,
-            visible_rect
-        )
+if connector != null:
+    var connector_points: PackedVector2Array = StableReinforcementVisibleLayout.enemy_connector_points(
+        Rect2(card.position, card.size),
+        sprite.position,
+        visible_rect
+    )
+
+    if not boss_slot and connector_points.size() >= 2:
+        connector_points[1].x -= 16.0
+
+    connector.points = connector_points
         connector.begin_cap_mode = Line2D.LINE_CAP_ROUND
         connector.end_cap_mode = Line2D.LINE_CAP_ROUND
         if not boss_slot:
