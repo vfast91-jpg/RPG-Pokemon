@@ -161,9 +161,22 @@ func _check_slot_geometry(
             "%s: Schatten muss exakt am sichtbaren Pokémonfuß sitzen." % label
         )
         if boss_slot:
+            var expected_shadow_width: float = clampf(
+                (
+                    visible_rect.size.x
+                    / battle.STABLE_BOSS_SHADOW_REFERENCE_WIDTH
+                    * battle.STABLE_BOSS_SHADOW_WIDTH_FACTOR
+                ),
+                1.0,
+                battle.ROUTE_BOSS_SHADOW_SCALE.x
+            )
+            var expected_shadow_scale := Vector2(
+                expected_shadow_width,
+                battle.ROUTE_BOSS_SHADOW_SCALE.y
+            )
             _check(
-                shadow.scale.distance_to(battle.ROUTE_BOSS_SHADOW_SCALE) <= 0.01,
-                "%s: Boss-Schatten muss die Boss-Skalierung behalten." % label
+                shadow.scale.distance_to(expected_shadow_scale) <= 0.01,
+                "%s: Boss-Schatten muss zur sichtbaren Bossbreite passen." % label
             )
 
 

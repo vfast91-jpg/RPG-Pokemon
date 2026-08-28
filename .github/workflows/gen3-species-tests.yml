@@ -1,0 +1,31 @@
+name: Gen3 Species Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/gen3_species_families_*.json'
+      - 'data/pokemon_species_master_extension_gen3_v1.json'
+      - 'data/pokemon_family_meta_extension_gen3_v1.json'
+      - 'data/pokemon_database_extension_gen3_v1.json'
+      - 'data/pokemon_database_manifest_v1.json'
+      - 'scripts/battle_demo_gen3_species_v1.gd'
+      - 'scripts/battle_demo_boss_aggro_lock_v1.gd'
+      - 'tests/gen3_species_runtime_test.gd'
+      - '.github/workflows/gen3-species-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  gen3-species-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot 4.7.2
+        run: |
+          wget -q https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q Godot_v4.7.2-stable_linux.x86_64.zip
+          sudo mv Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
+      - name: Import project
+        run: godot --headless --path . --editor --quit
+      - name: Run Generation 3 species integration test
+        run: godot --headless --path . --script res://tests/gen3_species_runtime_test.gd

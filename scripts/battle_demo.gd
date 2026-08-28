@@ -6,6 +6,10 @@ const LEVEL_MAX: int = 10
 const CARD_WIDTH: float = 186.0
 const CARD_HEIGHT: float = 42.0
 
+# Resolve the autoload through the scene tree so inherited battle scripts can
+# compile reliably when they are preloaded by headless tests and editor scans.
+@onready var TypeSystem: Node = get_node("/root/TypeSystem")
+
 var data: Dictionary = {}
 var species_ids: Array = []
 var player_setup: Array = []
