@@ -122,7 +122,7 @@ func _build_adventure_intro_overlay() -> void:
     ))
     cards.add_child(_make_adventure_intro_card(
         "⚖️  GEGNERLEVEL",
-        "Orientiert sich an dem Pokémon in deinem Team mit dem höchsten Level."
+        "Ab Etappe 10 orientiert sich das Gegnerlevel an dem Pokémon in deinem Team mit dem höchsten Level. Die ersten Etappen dienen als sanfter Einstieg."
     ))
 
     _adventure_intro_start_button = Button.new()
