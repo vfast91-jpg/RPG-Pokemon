@@ -9,6 +9,7 @@ extends "res://scripts/demo_route_gen3_legendary_endgame_v1.gd"
 # Both regular variables are persisted automatically by RunSaveManager.
 
 const REST_PACK_REWARD_STAGES: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
+const REST_PACK_TOOLTIP: String = "Heilt dein gesamtes Team vollständig und entfernt Statusprobleme. Verbraucht 1 Poké-Rastpaket."
 
 var rest_pack_count: int = 0
 var rest_pack_claimed_stages: Array = []
@@ -16,6 +17,7 @@ var rest_pack_claimed_stages: Array = []
 var _rest_pack_panel: PanelContainer
 var _rest_pack_count_label: Label
 var _rest_pack_use_button: Button
+var _rest_pack_footer_spacer: Control
 
 
 func _ready() -> void:
@@ -65,40 +67,77 @@ func _grant_rest_pack_for_completed_stage(completed_stage: int) -> bool:
 
 
 func _build_rest_pack_ui() -> void:
-    if storage_label == null or not is_instance_valid(storage_label):
+    if team_box == null or not is_instance_valid(team_box):
         return
     if _rest_pack_panel != null and is_instance_valid(_rest_pack_panel):
         return
 
-    var team_content: Node = storage_label.get_parent()
-    if team_content == null:
+    # Keep the complete TEAM panel exclusively for Pokemon cards. The route's
+    # footer already sits directly below both main columns, so its right edge is
+    # the natural home for a small team-wide consumable. HAUPTMENÜ stays in the
+    # same footer but moves to the left; the expanding spacer aligns the pack
+    # directly below the right TEAM column without stealing one pixel from it.
+    var team_scroll_node: Node = team_box.get_parent()
+    if team_scroll_node == null:
         return
+    var team_content_node: Node = team_scroll_node.get_parent()
+    if team_content_node == null:
+        return
+    var team_panel_node: Node = team_content_node.get_parent()
+    if team_panel_node == null:
+        return
+    var columns_node: Node = team_panel_node.get_parent()
+    if columns_node == null:
+        return
+    var outer_node: Node = columns_node.get_parent()
+    if outer_node == null:
+        return
+
+    var footer: HBoxContainer = null
+    for child: Node in outer_node.get_children():
+        if child is HBoxContainer and child != columns_node and child.get_index() > columns_node.get_index():
+            footer = child as HBoxContainer
+            break
+    if footer == null:
+        return
+
+    footer.alignment = BoxContainer.ALIGNMENT_BEGIN
+
+    _rest_pack_footer_spacer = Control.new()
+    _rest_pack_footer_spacer.name = "RestPackFooterSpacer"
+    _rest_pack_footer_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _rest_pack_footer_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    footer.add_child(_rest_pack_footer_spacer)
 
     _rest_pack_panel = PanelContainer.new()
     _rest_pack_panel.name = "RestPackPanel"
-    _rest_pack_panel.custom_minimum_size = Vector2(0.0, 48.0)
+    _rest_pack_panel.custom_minimum_size = Vector2(178.0, 26.0)
+    _rest_pack_panel.size_flags_horizontal = Control.SIZE_SHRINK_END
     _rest_pack_panel.add_theme_stylebox_override(
         "panel",
-        _panel(Color("14261f"), Color("9a8740"), 6, 4.0)
+        _panel(Color("13231e"), Color("64705b"), 6, 2.0)
     )
-    team_content.add_child(_rest_pack_panel)
-    team_content.move_child(_rest_pack_panel, storage_label.get_index())
+    footer.add_child(_rest_pack_panel)
 
-    var content := VBoxContainer.new()
-    content.add_theme_constant_override("separation", 2)
+    var content := HBoxContainer.new()
+    content.add_theme_constant_override("separation", 4)
     _rest_pack_panel.add_child(content)
 
     _rest_pack_count_label = Label.new()
     _rest_pack_count_label.name = "RestPackCountLabel"
-    _rest_pack_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _rest_pack_count_label.add_theme_font_size_override("font_size", 9)
-    _rest_pack_count_label.add_theme_color_override("font_color", Color("f3dda0"))
+    _rest_pack_count_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _rest_pack_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    _rest_pack_count_label.add_theme_font_size_override("font_size", 8)
+    _rest_pack_count_label.add_theme_color_override("font_color", Color("f1dda0"))
+    _rest_pack_count_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
     content.add_child(_rest_pack_count_label)
 
     _rest_pack_use_button = Button.new()
     _rest_pack_use_button.name = "RestPackUseButton"
-    _rest_pack_use_button.text = "BENUTZEN"
-    _rest_pack_use_button.custom_minimum_size = Vector2(0.0, 24.0)
+    _rest_pack_use_button.text = "HEILEN"
+    _rest_pack_use_button.custom_minimum_size = Vector2(52.0, 20.0)
+    _rest_pack_use_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    _rest_pack_use_button.add_theme_font_size_override("font_size", 8)
     _rest_pack_use_button.pressed.connect(_use_rest_pack)
     content.add_child(_rest_pack_use_button)
 
@@ -114,12 +153,16 @@ func _refresh_rest_pack_ui() -> void:
     var team_needs_healing: bool = _team_needs_rest_pack()
     _rest_pack_use_button.disabled = rest_pack_count <= 0 or not team_needs_healing
 
+    var tooltip: String = REST_PACK_TOOLTIP
     if rest_pack_count <= 0:
-        _rest_pack_use_button.tooltip_text = "Du besitzt aktuell kein Poké-Rastpaket."
+        tooltip += "\nAktuell ist kein Rastpaket verfügbar."
     elif not team_needs_healing:
-        _rest_pack_use_button.tooltip_text = "Dein Team ist bereits vollständig geheilt."
-    else:
-        _rest_pack_use_button.tooltip_text = "Verbraucht 1 Poké-Rastpaket und heilt das gesamte Team vollständig."
+        tooltip += "\nDein Team ist bereits vollständig geheilt."
+
+    _rest_pack_count_label.tooltip_text = tooltip
+    _rest_pack_use_button.tooltip_text = tooltip
+    if _rest_pack_panel != null and is_instance_valid(_rest_pack_panel):
+        _rest_pack_panel.tooltip_text = tooltip
 
 
 func _team_needs_rest_pack() -> bool:
@@ -145,6 +188,7 @@ func _use_rest_pack() -> void:
     # Reuse the route's one canonical full-heal implementation. This keeps the
     # pack in lockstep with Heilquelle and every future change to full healing.
     _heal_team()
+    AudioManager.play_heal_sfx()
     rest_pack_count = maxi(0, rest_pack_count - 1)
 
     var result_text: String = (
