@@ -155,16 +155,28 @@ func _position_stable_reinforcement_slot(
         visible_gap
     )
 
-    var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
-    if shadow != null:
-        # Anchor to the actually visible Pokemon instead of the TextureRect box.
-        # This is especially important for species with asymmetric transparent
-        # PNG margins such as the Rabauz used by the stage-10 encounter.
-        shadow.position = StableReinforcementVisibleLayout.visible_foot(
-            sprite.position,
-            visible_rect
+   var shadow: Polygon2D = area.get_node_or_null("SpriteShadow_" + combatant_id) as Polygon2D
+if shadow != null:
+    # Schatten an den tatsächlich sichtbaren unteren Rand des Pokémon setzen.
+    shadow.position = StableReinforcementVisibleLayout.visible_foot(
+        sprite.position,
+        visible_rect
+    )
+
+    if boss_slot:
+        # Boss-Schattenbreite automatisch an die tatsächlich sichtbare
+        # Breite des jeweiligen Pokémon anpassen.
+        var shadow_width_scale: float = clampf(
+            (visible_rect.size.x / 56.0) * 0.85,
+            1.0,
+            ROUTE_BOSS_SHADOW_SCALE.x
         )
-        shadow.scale = ROUTE_BOSS_SHADOW_SCALE if boss_slot else Vector2.ONE * sprite_scale
+        shadow.scale = Vector2(
+            shadow_width_scale,
+            ROUTE_BOSS_SHADOW_SCALE.y
+        )
+    else:
+        shadow.scale = Vector2.ONE * sprite_scale
 
     var connector: Line2D = ui.get("connector") as Line2D
     if connector != null:
