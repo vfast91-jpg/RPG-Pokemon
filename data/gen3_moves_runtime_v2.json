@@ -144,7 +144,7 @@
       "pp": 15,
       "ap": 6,
       "rpg_ap": 6,
-      "target": "enemy_highest_aggro_or_chosen_ally",
+      "target": "enemy_highest_aggro",
       "area": false,
       "contact": false,
       "priority": 0,
@@ -164,13 +164,15 @@
         "runtime_supported": true,
         "strict_contract": true,
         "timeflow_copy_timed_modifiers": true,
-        "manual_target_support": true
+        "manual_target_support": true,
+        "manual_target_mode": "enemy_highest_aggro_or_chosen_ally"
       },
       "source_contract": {
         "effects": "copy_timed_modifiers(source=self,target=selected_target,preserve_multiplier=true,preserve_remaining_duration=true)",
         "duration": "instant; copied modifiers keep remaining duration",
         "tags": "status; copy_modifiers; support; control; manual_target",
-        "notes": "Timeflow-Neuinterpretation der Originalidee: Das Ziel übernimmt einen Zustand des Anwenders. Keine Neuberechnung mit dem Statuswert von Zwango."
+        "notes": "Timeflow-Neuinterpretation der Originalidee: Das Ziel übernimmt einen Zustand des Anwenders. Keine Neuberechnung mit dem Statuswert von Zwango.",
+        "source_target_rule": "enemy_highest_aggro_or_chosen_ally"
       }
     },
     "feint_attack": {
@@ -253,7 +255,9 @@
       "special_rules": [
         "Die zentrale Volltrefferlogik verwenden. Keine zusätzliche Crit-Aggro; Mehrschaden erzeugt automatisch entsprechend mehr Schadens-Aggro."
       ],
-      "required_behavior_tests": [],
+      "required_behavior_tests": [
+        "successful_hit_is_guaranteed_critical"
+      ],
       "runtime": {
         "runtime_supported": true,
         "strict_contract": true,
@@ -715,7 +719,7 @@
       "pp": 15,
       "ap": 6,
       "rpg_ap": 6,
-      "target": "enemy_highest_aggro_or_chosen_ally",
+      "target": "enemy_highest_aggro",
       "area": false,
       "contact": false,
       "priority": 0,
@@ -735,13 +739,16 @@
         "runtime_supported": true,
         "strict_contract": true,
         "timeflow_simple_stage_amplification": true,
-        "duration_target_actions": 3
+        "duration_target_actions": 3,
+        "manual_target_support": true,
+        "manual_target_mode": "enemy_highest_aggro_or_chosen_ally"
       },
       "source_contract": {
         "effects": "temporary_effect(simple_stage_amplification=true,duration=3_target_own_actions)",
         "duration": "3 target own actions",
         "tags": "status; modifier_amplifier; control; support; manual_target",
-        "notes": "Timeflow-Neuinterpretation ohne Fähigkeitssystem. Keine ±3/±4-Sonderlogik durch Einfaltspinsel."
+        "notes": "Timeflow-Neuinterpretation ohne Fähigkeitssystem. Keine ±3/±4-Sonderlogik durch Einfaltspinsel.",
+        "source_target_rule": "enemy_highest_aggro_or_chosen_ally"
       }
     },
     "spiky_shield": {
@@ -776,7 +783,9 @@
       "special_rules": [
         "Erbt vollständig den zentralen Schutzschild-Vertrag einschließlich Wiederholungs-/Fehlschlagregel. Kontakt-Gegenschaden wird bei Mehrfachtrefferattacken höchstens einmal pro geblockter Attacke ausgelöst."
       ],
-      "required_behavior_tests": [],
+      "required_behavior_tests": [
+        "inherits_central_protect_contract_and_contact_attacker_loses_one_eighth_max_hp_once_per_blocked_move"
+      ],
       "runtime": {
         "runtime_supported": true,
         "strict_contract": true,
@@ -867,7 +876,9 @@
       "special_rules": [
         "Der Anwender selbst wird nicht getroffen. Verbündete werden ausdrücklich mit erfasst. Ausschließlich die zentrale Verwirrungsdefinition verwenden; keine eigene Taumeltanz-Variante."
       ],
-      "required_behavior_tests": [],
+      "required_behavior_tests": [
+        "confuses_all_other_active_pokemon_including_allies_but_not_user"
+      ],
       "runtime": {
         "runtime_supported": true,
         "strict_contract": true,
