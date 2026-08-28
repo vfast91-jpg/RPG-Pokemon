@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -15,7 +15,20 @@
       "suicune",
       "lugia",
       "ho-oh",
-      "celebi"
+      "celebi",
+      "regirock",
+      "regice",
+      "registeel",
+      "latias",
+      "latios",
+      "kyogre",
+      "groudon",
+      "rayquaza",
+      "jirachi",
+      "deoxys",
+      "deoxys-attack",
+      "deoxys-defense",
+      "deoxys-speed"
     ]
   },
   "standard_special_boss": {
@@ -49,12 +62,21 @@
         "moltres",
         "raikou",
         "entei",
-        "suicune"
+        "suicune",
+        "regirock",
+        "regice",
+        "registeel",
+        "latias",
+        "latios",
+        "deoxys"
       ],
       "bst_680": [
         "mewtwo",
         "lugia",
-        "ho-oh"
+        "ho-oh",
+        "kyogre",
+        "groudon",
+        "rayquaza"
       ]
     },
     "stages": [
