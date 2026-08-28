@@ -1,0 +1,930 @@
+{
+  "schema_version": 3,
+  "source": "Attacken-Datenbank NUR NEUE ATTACKEN GEN3 · 2026-08-28 · Einträge 06–26",
+  "moves": {
+    "autotomize": {
+      "id": "autotomize",
+      "name": "Autotomie",
+      "description": "Der Anwender wirft Teile seines Körpers ab. Dadurch wird er deutlich schneller und 100 kg leichter.",
+      "emoji": "⚙️",
+      "type": "steel",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 15,
+      "pp": 15,
+      "ap": 6,
+      "rpg_ap": 6,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "Zentrale +2-Stufen-Regel: 1,25R = R + 0,25R; R=Status/(75+Status). Gewichtsänderung fix.",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Der Geschwindigkeitsbuff nutzt die zentrale +2-Stufen-Regel (nicht 2R). Die Gewichtsreduktion kann bei erneutem Einsatz wiederholt werden, bis mindestens 0,1 kg erreicht sind."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_autotomize": true
+      },
+      "source_contract": {
+        "effects": "temporary_attribute_stage_change(speed,+2,central_stage_scaling,duration=3_self_own_actions); weight_change(-100kg,min=0.1kg)",
+        "duration": "3 self own actions (speed); battle-long (weight)",
+        "tags": "status; self_buff; speed; weight",
+        "notes": "Keine separate Autotomie-Speedformel; zentrale Stufenskalierung wiederverwenden."
+      }
+    },
+    "doom_desire": {
+      "id": "doom_desire",
+      "name": "Kismetwunsch",
+      "description": "Der Anwender beschwört einen mächtigen Angriff herauf, der erst später auf der gewählten gegnerischen Position einschlägt.",
+      "emoji": "☄️",
+      "type": "steel",
+      "category": "special",
+      "power": 140,
+      "accuracy": 100,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Verwendet exakt den zentralen Seher-/Delayed-Position-Target-Vertrag: beim Einsatz kein Schaden; Zielposition wird gespeichert; Offensive beim Einsatz snapshotten; Verteidigung/Typ/Schutz beim Einschlag prüfen."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_future_sight": true,
+        "timeflow_delayed_position_attack": true,
+        "delay_ap1_reference_cycles": 2
+      },
+      "source_contract": {
+        "effects": "[schedule_delayed_damage(target_slot=current_highest_aggro_slot,delay=2_AP1_reference_cycles,snapshot_offense=true)]",
+        "duration": "delay = 2 AP1 reference cycles at cast time",
+        "tags": "damage; delayed; position_target; steel",
+        "notes": "Aggro entsteht erst beim tatsächlichen Einschlag aus dem verursachten Schaden."
+      }
+    },
+    "dragon_ascent": {
+      "id": "dragon_ascent",
+      "name": "Zenitstürmer",
+      "description": "Der Anwender stürzt sich mit gewaltiger Geschwindigkeit auf das Ziel. Der mächtige Angriff senkt anschließend für drei eigene Aktionen seine Verteidigung stark.",
+      "emoji": "🐉",
+      "type": "flying",
+      "category": "physical",
+      "power": 120,
+      "accuracy": 100,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "Zentrale −2-Stufen-Regel: 1,25R = R + 0,25R; R=Status/(75+Status).",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Die originale Senkung von Verteidigung und Spezial-Verteidigung wird im zusammengeführten Timeflow-Verteidigungswert als starke 2-Stufen-Wirkung mit 1,25R abgebildet. Kein Selbstmalus bei Miss, Immunität oder vollständiger Verhinderung."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_connected_self_defense_debuff": 1.25
+      },
+      "source_contract": {
+        "effects": "[damage] + on_successful_hit(self defense_stage_change=-2_equivalent,stage_weight=1.25R,duration=3_self_own_actions,snapshot_on_hit)",
+        "duration": "3 self own actions after successful hit",
+        "tags": "damage; flying; contact; self_debuff; status_scaling",
+        "notes": "Nicht 2R verwenden; zentrale Stufengewichtung ist maßgeblich."
+      }
+    },
+    "entrainment": {
+      "id": "entrainment",
+      "name": "Zwango",
+      "description": "Der Anwender überträgt seine aktiven Attributsveränderungen auf das Ziel. Stärke und verbleibende Dauer der übertragenen Effekte bleiben erhalten.",
+      "emoji": "🤝",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 15,
+      "pp": 15,
+      "ap": 6,
+      "rpg_ap": 6,
+      "target": "enemy_highest_aggro_or_chosen_ally",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Pokémon Timeflow besitzt kein Fähigkeitssystem. Kopiert werden nur zentrale temporäre Attributsmodifikatoren. Nicht kopieren: KP, Hauptstatus, Verwirrung, Schutz, Wetter, Terrain, Aggro, Egelsamen, Bindung oder Move-Locks. Auf demselben Attribut wird der Zielzustand durch die Kopie ersetzt."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_copy_timed_modifiers": true,
+        "manual_target_support": true
+      },
+      "source_contract": {
+        "effects": "copy_timed_modifiers(source=self,target=selected_target,preserve_multiplier=true,preserve_remaining_duration=true)",
+        "duration": "instant; copied modifiers keep remaining duration",
+        "tags": "status; copy_modifiers; support; control; manual_target",
+        "notes": "Timeflow-Neuinterpretation der Originalidee: Das Ziel übernimmt einen Zustand des Anwenders. Keine Neuberechnung mit dem Statuswert von Zwango."
+      }
+    },
+    "feint_attack": {
+      "id": "feint_attack",
+      "name": "Finte",
+      "description": "Der Anwender täuscht das Ziel und schlägt sicher zu. Genauigkeits- und Ausweichveränderungen beeinflussen die Attacke nicht.",
+      "emoji": "🥷",
+      "type": "dark",
+      "category": "physical",
+      "power": 60,
+      "accuracy": null,
+      "original_pp": 20,
+      "pp": 20,
+      "ap": 5,
+      "rpg_ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Ignoriert Genauigkeits- und Ausweichmodifikatoren, aber nicht Schutzschild, Typimmunität oder echte Unverwundbarkeitsphasen."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_ignore_accuracy_evasion": true
+      },
+      "source_contract": {
+        "effects": "[damage, always_hit_ignore_accuracy_evasion]",
+        "duration": "none",
+        "tags": "damage; dark; contact; always_hit",
+        "notes": "Nicht mit Offenlegung (feint) verwechseln."
+      }
+    },
+    "frost_breath": {
+      "id": "frost_breath",
+      "name": "Eisesodem",
+      "description": "Der Anwender haucht einen eisigen Atem auf das Ziel. Ein erfolgreicher Treffer ist garantiert ein Volltreffer.",
+      "emoji": "❄️",
+      "type": "ice",
+      "category": "special",
+      "power": 60,
+      "accuracy": 90,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "db_guaranteed_crit"
+        },
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Die zentrale Volltrefferlogik verwenden. Keine zusätzliche Crit-Aggro; Mehrschaden erzeugt automatisch entsprechend mehr Schadens-Aggro."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_guaranteed_crit": true
+      },
+      "source_contract": {
+        "effects": "[damage, critical_chance_override(1.0)]",
+        "duration": "none",
+        "tags": "damage; ice; guaranteed_crit",
+        "notes": "Keine Status-Skalierung."
+      }
+    },
+    "grudge": {
+      "id": "grudge",
+      "name": "Nachspiel",
+      "description": "Der Anwender schwört Nachspiel bis zu seiner nächsten eigenen Aktion. Wird er vorher direkt von einer gegnerischen Attacke besiegt, wird genau diese Attacke beim Angreifer gesperrt.",
+      "emoji": "👻",
+      "type": "ghost",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": false,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Löst nicht durch indirekten Schaden, Selbst-K. o., Wetter, Gift/Verbrennung, Egelsamen oder verzögerte Treffer wie Seher/Kismetwunsch aus. Die Sperrdauer wird nicht lokal fest codiert, sondern vom zentralen Aussetzer-Vertrag übernommen."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_grudge": true,
+        "disable_uses_central_duration": true
+      },
+      "source_contract": {
+        "effects": "reactive_grudge(expire=next_self_action,on_direct_move_ko=disable_triggering_move_with_central_disable_duration)",
+        "duration": "until next self own action; triggered lock uses central Disable duration",
+        "tags": "status; reactive; move_lock; grudge",
+        "notes": "Keine Status-Skalierung und keine künstliche Aktivierungs-Aggro."
+      }
+    },
+    "luster_purge": {
+      "id": "luster_purge",
+      "name": "Scheinwerfer",
+      "description": "Der Anwender entfesselt einen grellen psychischen Lichtstoß. Der Treffer kann die Verteidigung des Ziels für drei eigene Aktionen senken.",
+      "emoji": "✨",
+      "type": "psychic",
+      "category": "special",
+      "power": 95,
+      "accuracy": 100,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "Soft-Cap 1×: R=Status/(75+Status)",
+      "aggro": {
+        "from_damage": true,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Der Debuff wird nur bei erfolgreichem 50-%-Proc angewandt und nutzt die zentrale Verteidigungsdebuff-Logik."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_connected_chance_defense_debuff": 0.5
+      },
+      "source_contract": {
+        "effects": "[damage, on_successful_hit(chance=0.50, temporary_effect(incoming_damage_multiplier=1+R(special),duration=3_target_own_actions))]",
+        "duration": "3 target own actions on proc",
+        "tags": "damage; psychic; defense_debuff; status_scaling",
+        "notes": "Schaden selbst skaliert nicht mit Status."
+      }
+    },
+    "metal_burst": {
+      "id": "metal_burst",
+      "name": "Metallstoß",
+      "description": "Der Anwender macht sich zum Gegenangriff bereit. Erleidet er vor seiner nächsten Aktion direkten Angriffsschaden, schlägt er mit 150 % des erlittenen Schadens zurück.",
+      "emoji": "🔩",
+      "type": "steel",
+      "category": "physical",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Funktioniert gegen physischen und speziellen direkten Attackenschaden. 0 KP-Schaden oder indirekter Schaden lösen nicht aus. Bei Mehrfachtrefferattacken wird der Gesamtschaden der vollständig ausgeführten Attacke verwendet. Gegenreaktionen dürfen keine Gegenreaktionsketten erzeugen."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_metal_burst": true,
+        "counter_multiplier": 1.5
+      },
+      "source_contract": {
+        "effects": "reactive_counter(multiplier=1.5,trigger=direct_hostile_move_damage,resolve_after_triggering_move,expire=next_self_action)",
+        "duration": "until next self own action or first valid trigger",
+        "tags": "damage; steel; reactive; counter",
+        "notes": "Fester 150-%-Rückschaden; keine Status-Skalierung."
+      }
+    },
+    "mind_reader": {
+      "id": "mind_reader",
+      "name": "Willensleser",
+      "description": "Der Anwender liest die Bewegungen des Gegners voraus. Seine nächste Schadensattacke kann nicht verfehlen.",
+      "emoji": "👁️",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Eine Statusattacke verbraucht den Effekt nicht, aber nach der nächsten eigenen Aktion verfällt er. Schutzschild, Typimmunität und sonstige grundsätzliche Unwirksamkeit werden nicht ignoriert."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_mind_reader": true
+      },
+      "source_contract": {
+        "effects": "self_next_damage_move(always_hit_ignore_accuracy_evasion=true,expire=next_self_action,consume_on_damage_move=true)",
+        "duration": "until next self own action; consumed by next damaging move",
+        "tags": "status; self_buff; accuracy; control",
+        "notes": "Timeflow-Anpassung: nicht an ein konkretes Ziel gebunden, weil Einzelziele über Aggro bestimmt werden."
+      }
+    },
+    "mist_ball": {
+      "id": "mist_ball",
+      "name": "Nebelball",
+      "description": "Der Anwender greift mit einer nebelartigen Energiekugel an. Der Treffer kann den Angriff des Ziels für drei eigene Aktionen senken.",
+      "emoji": "🌫️",
+      "type": "psychic",
+      "category": "special",
+      "power": 95,
+      "accuracy": 100,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "Soft-Cap 1×: R=Status/(75+Status)",
+      "aggro": {
+        "from_damage": true,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Der Debuff wird nur bei erfolgreichem 50-%-Proc angewandt und nutzt die zentrale Angriffsdebuff-Logik."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_connected_chance_attack_debuff": 0.5
+      },
+      "source_contract": {
+        "effects": "[damage, on_successful_hit(chance=0.50, temporary_effect(outgoing_damage_multiplier=1-R(special),duration=3_target_own_actions))]",
+        "duration": "3 target own actions on proc",
+        "tags": "damage; psychic; attack_debuff; status_scaling",
+        "notes": "Schaden selbst skaliert nicht mit Status."
+      }
+    },
+    "noble_roar": {
+      "id": "noble_roar",
+      "name": "Kampfgebrüll",
+      "description": "Der Anwender stößt ein einschüchterndes Gebrüll aus und senkt den Angriff des Ziels stark für drei eigene Aktionen.",
+      "emoji": "🦁",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 30,
+      "pp": 30,
+      "ap": 3,
+      "rpg_ap": 3,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "Zentrale −2-Stufen-Regel: 1,25R = R + 0,25R; R=Status/(75+Status).",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Original senkt Angriff und Spezial-Angriff jeweils um eine Stufe. Im zusammengeführten Timeflow-Angriff wird das als starke 2-Stufen-Wirkung mit 1,25R abgebildet, nicht als 2R."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_noble_roar": true
+      },
+      "source_contract": {
+        "effects": "temporary_attribute_stage_change(attack,-2_equivalent,central_stage_scaling,duration=3_target_own_actions)",
+        "duration": "3 target own actions",
+        "tags": "status; sound; debuff; attack; control",
+        "notes": "Verwendet den zentralen sound-Tag und die globale Status-Aggro."
+      }
+    },
+    "origin_pulse": {
+      "id": "origin_pulse",
+      "name": "Ursprungswoge",
+      "description": "Der Anwender trifft alle Gegner mit gewaltigen Wasserwogen.",
+      "emoji": "🌊",
+      "type": "water",
+      "category": "special",
+      "power": 110,
+      "accuracy": 85,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "all_enemies",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Verwendet die zentrale Flächenschadensregel ohne Ausnahme: 1 Ziel 100 %, 2 Ziele 75 %, 3 Ziele 60 %, 4+ Ziele 50 % pro Ziel."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "central_area_damage_scaling": true
+      },
+      "source_contract": {
+        "effects": "[per_target damage, area_damage_scaling]",
+        "duration": "none",
+        "tags": "damage; water; area",
+        "notes": "Keine Status-Skalierung; Aggro aus tatsächlich verursachtem Schaden je Ziel."
+      }
+    },
+    "power_trip": {
+      "id": "power_trip",
+      "name": "Überheblichkeit",
+      "description": "Je mehr positive Attributsveränderungen der Anwender besitzt, desto stärker wird diese Attacke.",
+      "emoji": "😏",
+      "type": "dark",
+      "category": "physical",
+      "power": 20,
+      "accuracy": 100,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Verwendet exakt dieselbe zentrale Buff-Auswertung wie Kraftvorrat: Angriff, Verteidigung, Statuswert, Geschwindigkeit und Genauigkeit; jedes Attribut zählt höchstens einmal, wenn seine effektive Gesamtveränderung positiv ist. Stärke 20/40/60/80/100/120."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_power_trip": true
+      },
+      "source_contract": {
+        "effects": "[damage, variable_power(base=20,+20_per_positive_attribute,max_attributes=5)]",
+        "duration": "none",
+        "tags": "damage; dark; contact; variable_power; buffs",
+        "notes": "Physisches Unlicht-Gegenstück zu Kraftvorrat; keine zusätzliche Status-Skalierung."
+      }
+    },
+    "precipice_blades": {
+      "id": "precipice_blades",
+      "name": "Abgrundsklinge",
+      "description": "Der Anwender lässt gewaltige Erdspalten unter allen Gegnern aufbrechen.",
+      "emoji": "🌋",
+      "type": "ground",
+      "category": "physical",
+      "power": 120,
+      "accuracy": 85,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "all_enemies",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Verwendet die zentrale Flächenschadensregel ohne Ausnahme: 1 Ziel 100 %, 2 Ziele 75 %, 3 Ziele 60 %, 4+ Ziele 50 % pro Ziel."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "central_area_damage_scaling": true
+      },
+      "source_contract": {
+        "effects": "[per_target damage, area_damage_scaling]",
+        "duration": "none",
+        "tags": "damage; ground; area",
+        "notes": "Kein Kontakt; keine Status-Skalierung."
+      }
+    },
+    "psycho_boost": {
+      "id": "psycho_boost",
+      "name": "Psyschub",
+      "description": "Der Anwender entfesselt seine gesamte Psycho-Kraft. Nach einem erfolgreichen Treffer sinkt sein Angriff stark für drei eigene Aktionen.",
+      "emoji": "🧠",
+      "type": "psychic",
+      "category": "special",
+      "power": 140,
+      "accuracy": 90,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "Zentrale −2-Stufen-Regel: 1,25R = R + 0,25R; R=Status/(75+Status).",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Selbstmalus nur nach erfolgreichem Treffer. Miss, Immunität oder vollständige Verhinderung erzeugen keinen Selbstdebuff. Verwendet dieselbe zentrale starke Selbstdebuff-Mechanik wie Blättersturm/Hitzekoller, aber mit der korrekten 1,25R-Stufengewichtung."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_connected_self_attack_debuff": 1.25
+      },
+      "source_contract": {
+        "effects": "[damage] + on_successful_hit(self attack_stage_change=-2,stage_weight=1.25R,duration=3_self_own_actions,snapshot_on_hit)",
+        "duration": "3 self own actions after successful hit",
+        "tags": "damage; psychic; self_debuff; status_scaling",
+        "notes": "Nicht 2R verwenden."
+      }
+    },
+    "simple_beam": {
+      "id": "simple_beam",
+      "name": "Einfaltspinsel",
+      "description": "Macht das Ziel für drei eigene Aktionen besonders empfänglich für Attributsveränderungen. Normale Steigerungen und Senkungen wirken dadurch stärker.",
+      "emoji": "🌀",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 15,
+      "pp": 15,
+      "ap": 6,
+      "rpg_ap": 6,
+      "target": "enemy_highest_aggro_or_chosen_ally",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "Keine eigene Skalierung; verstärkte ±1-Effekte verwenden 1,25R statt 1,00R. Bereits starke ±2-Effekte werden nicht weiter verstärkt.",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Bestehende Buffs/Debuffs werden nicht rückwirkend verändert. Nur neu eintreffende temporäre Attributsänderungen. Hauptstatus, Schutz, Wetter, Terrain, Aggro, Move-Locks und andere binäre Mechaniken bleiben unverändert."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_simple_stage_amplification": true,
+        "duration_target_actions": 3
+      },
+      "source_contract": {
+        "effects": "temporary_effect(simple_stage_amplification=true,duration=3_target_own_actions)",
+        "duration": "3 target own actions",
+        "tags": "status; modifier_amplifier; control; support; manual_target",
+        "notes": "Timeflow-Neuinterpretation ohne Fähigkeitssystem. Keine ±3/±4-Sonderlogik durch Einfaltspinsel."
+      }
+    },
+    "spiky_shield": {
+      "id": "spiky_shield",
+      "name": "Schutzstacheln",
+      "description": "Schützt den Anwender wie Schutzschild. Gegner, deren geblockte Attacke direkten Kontakt herstellt, verlieren 1/8 ihrer maximalen KP.",
+      "emoji": "🌵",
+      "type": "grass",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "db_protect"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Erbt vollständig den zentralen Schutzschild-Vertrag einschließlich Wiederholungs-/Fehlschlagregel. Kontakt-Gegenschaden wird bei Mehrfachtrefferattacken höchstens einmal pro geblockter Attacke ausgelöst."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_spiky_shield": true,
+        "contact_recoil_max_hp_fraction": 0.125
+      },
+      "source_contract": {
+        "effects": "guard(self,inherit_protect_contract=true,on_block_contact=damage_attacker(max_hp_fraction=0.125,once_per_move=true))",
+        "duration": "until next hostile move",
+        "tags": "guard; defense; grass; contact_retaliation",
+        "notes": "Keine Status-Skalierung. Prioritäts-/ATB-Behandlung nicht separat hardcoden, sondern Schutzschild-Vertrag übernehmen."
+      }
+    },
+    "tail_glow": {
+      "id": "tail_glow",
+      "name": "Schweifglanz",
+      "description": "Der Anwender konzentriert ein helles Leuchten und erhöht seinen Angriff für drei eigene Aktionen massiv.",
+      "emoji": "✨",
+      "type": "bug",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 20,
+      "pp": 20,
+      "ap": 5,
+      "rpg_ap": 5,
+      "target": "self",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [],
+      "status_scaling": "Zentrale +3-Stufen-Fortsetzung: 1,50R = R + 0,25R + 0,25R; R=Status/(75+Status).",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Erste Stufe zählt 1,00R; jede zusätzliche Originalstufe trägt nur 0,25R bei. Dadurch ergibt +3 insgesamt 1,50R."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_tail_glow": true,
+        "stage_weight": 1.5
+      },
+      "source_contract": {
+        "effects": "temporary_attribute_stage_change(attack,+3,stage_weight=1.50R,duration=3_self_own_actions)",
+        "duration": "3 self own actions",
+        "tags": "status; self_buff; attack; strong_buff",
+        "notes": "Diese +3-Regel wurde als globale Fortsetzung der bestehenden ±2-Stufen-Regel designt."
+      }
+    },
+    "teeter_dance": {
+      "id": "teeter_dance",
+      "name": "Taumeltanz",
+      "description": "Der Anwender führt einen taumelnden Tanz auf und verwirrt alle anderen Pokémon im Kampf – auch Verbündete.",
+      "emoji": "💃",
+      "type": "normal",
+      "category": "status",
+      "power": null,
+      "accuracy": 100,
+      "original_pp": 20,
+      "pp": 20,
+      "ap": 5,
+      "rpg_ap": 5,
+      "target": "all_other_active_pokemon",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "status",
+          "status": "confusion",
+          "chance": 1.0,
+          "trigger": "successful_hit"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Der Anwender selbst wird nicht getroffen. Verbündete werden ausdrücklich mit erfasst. Ausschließlich die zentrale Verwirrungsdefinition verwenden; keine eigene Taumeltanz-Variante."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_all_other_active_targets": true
+      },
+      "source_contract": {
+        "effects": "apply_status_to_all_others(confusion,chance=1.0,trigger=successful_hit_per_target)",
+        "duration": "central confusion duration",
+        "tags": "status; confusion; area; friendly_fire; dance",
+        "notes": "Keine Status-Skalierung."
+      }
+    },
+    "water_spout": {
+      "id": "water_spout",
+      "name": "Fontränen",
+      "description": "Der Anwender überschwemmt alle Gegner mit Wasser. Die Attacke ist umso stärker, je mehr KP der Anwender noch besitzt.",
+      "emoji": "🌊",
+      "type": "water",
+      "category": "special",
+      "power": 150,
+      "accuracy": 100,
+      "original_pp": 5,
+      "pp": 5,
+      "ap": 8,
+      "rpg_ap": 8,
+      "target": "all_enemies",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Stärke wird bei tatsächlicher Ausführung aus den aktuellen KP berechnet: max(1, floor(150 × aktuelle_KP / MaxKP)). Danach greift die zentrale Flächenschadensregel."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "timeflow_water_spout": true,
+        "central_area_damage_scaling": true
+      },
+      "source_contract": {
+        "effects": "[per_target damage, variable_power(max=150,formula=max(1,floor(150*current_hp/max_hp))), area_damage_scaling]",
+        "duration": "none",
+        "tags": "damage; water; area; variable_power; hp_scaling",
+        "notes": "Keine Status-Skalierung."
+      }
+    }
+  }
+}
