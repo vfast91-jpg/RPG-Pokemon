@@ -1,0 +1,226 @@
+{
+  "schema_version": 3,
+  "source": "Attacken-Datenbank NUR NEUE ATTACKEN GEN3 · 2026-08-28",
+  "moves": {
+    "leafage": {
+      "id": "leafage",
+      "name": "Blattwerk",
+      "description": "Der Anwender schleudert Blätter auf das Ziel und verursacht Schaden.",
+      "emoji": "🍃",
+      "type": "grass",
+      "category": "physical",
+      "power": 40,
+      "accuracy": 100,
+      "original_pp": 40,
+      "pp": 40,
+      "ap": 1,
+      "rpg_ap": 1,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Reiner Standard-Schaden; keine Zusatzwirkung."
+      ],
+      "required_behavior_tests": [],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true
+      }
+    },
+    "aqua_cutter": {
+      "id": "aqua_cutter",
+      "name": "Aquaschnitt",
+      "description": "Der Anwender schneidet das Ziel mit unter Druck gesetztem Wasser. Besitzt eine erhöhte Volltrefferchance.",
+      "emoji": "🌊",
+      "type": "water",
+      "category": "physical",
+      "power": 70,
+      "accuracy": 100,
+      "original_pp": 20,
+      "pp": 20,
+      "ap": 5,
+      "rpg_ap": 5,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Verwendet die zentrale High-Crit-Regel mit 12,5 % statt der regulären Volltrefferchance."
+      ],
+      "required_behavior_tests": [
+        "High-Crit-Chance 12,5 %",
+        "Schaden"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true,
+        "high_crit": true
+      }
+    },
+    "sacred_sword": {
+      "id": "sacred_sword",
+      "name": "Sanctoklinge",
+      "description": "Der Anwender schneidet mit einer heiligen Klinge zu. Temporäre Verteidigungs- und Ausweichveränderungen des Ziels beeinflussen diese Attacke nicht.",
+      "emoji": "⚔️",
+      "type": "fighting",
+      "category": "physical",
+      "power": 90,
+      "accuracy": 100,
+      "original_pp": 15,
+      "pp": 15,
+      "ap": 6,
+      "rpg_ap": 6,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "db_target_modifier_bypass",
+          "defense": true,
+          "evasion": true
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": false,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Ignoriert nur temporäre Verteidigungs- und Ausweichmodifikatoren des Ziels. Natürliche Verteidigung, Typenwirkung, Schutzschild und echte Unverwundbarkeit bleiben wirksam."
+      ],
+      "required_behavior_tests": [
+        "Temporäre Verteidigung ignorieren",
+        "Temporäre Ausweichveränderung ignorieren",
+        "Natürliche Verteidigung bleibt wirksam"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true
+      }
+    },
+    "force_palm": {
+      "id": "force_palm",
+      "name": "Kraftwelle",
+      "description": "Der Anwender trifft das Ziel mit einer Kraftwelle. Der Treffer kann das Ziel paralysieren.",
+      "emoji": "✋",
+      "type": "fighting",
+      "category": "physical",
+      "power": 60,
+      "accuracy": 100,
+      "original_pp": 10,
+      "pp": 10,
+      "ap": 7,
+      "rpg_ap": 7,
+      "target": "enemy_highest_aggro",
+      "area": false,
+      "contact": true,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "damage"
+        },
+        {
+          "kind": "status",
+          "status": "paralysis",
+          "chance": 0.3,
+          "trigger": "successful_hit"
+        }
+      ],
+      "status_scaling": "none",
+      "aggro": {
+        "from_damage": true,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Paralyse wird nur nach einem tatsächlich erfolgreichen Treffer geprüft; Miss, Immunität oder vollständiger Schutz lösen keinen Status aus."
+      ],
+      "required_behavior_tests": [
+        "30-%-Paralyse nach erfolgreichem Treffer",
+        "Miss löst keinen Status aus",
+        "Statusimmunität bleibt wirksam"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true
+      }
+    },
+    "aurora_veil": {
+      "id": "aurora_veil",
+      "name": "Auroraschleier",
+      "description": "Errichtet während Schnee einen schützenden Schleier für das gesamte Team. Seine Stärke hängt vom Statuswert des Anwenders ab und schützt vor physischem und speziellem Schaden.",
+      "emoji": "🌌",
+      "type": "ice",
+      "category": "status",
+      "power": null,
+      "accuracy": null,
+      "original_pp": 20,
+      "pp": 20,
+      "ap": 5,
+      "rpg_ap": 5,
+      "target": "all_allies",
+      "area": true,
+      "contact": false,
+      "priority": 0,
+      "opening": false,
+      "mechanics": [
+        {
+          "kind": "db_aurora_veil",
+          "duration_actions": 3
+        }
+      ],
+      "status_scaling": "Zentrale 1×-Schutzkurve: R=Status/(75+Status); Schadensmultiplikator = 1−R.",
+      "aggro": {
+        "from_damage": false,
+        "from_status": true,
+        "from_healing": false
+      },
+      "special_rules": [
+        "Kann nur bei aktivem Schnee eingesetzt werden. Endet der Schnee danach, bleibt der Schleier bis zum normalen Ablauf bestehen.",
+        "Reflektor/Lichtschild/Auroraschleier werden nicht miteinander multipliziert; je Schadenskategorie gilt nur der stärkste Schutz."
+      ],
+      "required_behavior_tests": [
+        "Schnee erforderlich",
+        "Status-Snapshot bei Aktivierung",
+        "3 eigene Aktionen Dauer",
+        "stärkster Schutz pro Schadenskategorie"
+      ],
+      "runtime": {
+        "runtime_supported": true,
+        "strict_contract": true
+      }
+    }
+  }
+}
