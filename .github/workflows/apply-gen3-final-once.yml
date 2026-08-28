@@ -21,7 +21,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Diagnose exact Generation 3 transfer chunks
+      - name: Inspect exact Generation 3 payload despite transfer trailer CRC
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -37,35 +37,49 @@ jobs:
               | jq -r '.content' | tr -d '\n' | base64 -d > "${out}"
             test "$(git hash-object "${out}")" = "${sha}"
           }
-          fetch_blob 72f8c05ed1d77ad4fff74450472468a745190832 /tmp/a
-          fetch_blob cf333a255189f105d5ad7522584b9934e9996ffe /tmp/b
-          fetch_blob f17155af7254ad10fb211373a30a576e7d633443 /tmp/c
-          fetch_blob f496182b19e6fb7e4cfb91d250fe24ab7c5607ca /tmp/d
-          for f in /tmp/a /tmp/b /tmp/c /tmp/d; do
-            echo "=== ${f} ==="
-            wc -c "${f}"
-            file "${f}"
-            xxd -l 32 "${f}"
-            tail -c 32 "${f}" | xxd
-          done
+          fetch_blob 72f8c05ed1d77ad4fff74450472468a745190832 /tmp/gen3.part1
+          fetch_blob cf333a255189f105d5ad7522584b9934e9996ffe /tmp/gen3.part2
+          fetch_blob f17155af7254ad10fb211373a30a576e7d633443 /tmp/gen3.part3
+          fetch_blob f496182b19e6fb7e4cfb91d250fe24ab7c5607ca /tmp/gen3.part4
+          sha256sum /tmp/gen3.part1 /tmp/gen3.part2 /tmp/gen3.part3 /tmp/gen3.part4
+          cat /tmp/gen3.part1 /tmp/gen3.part2 /tmp/gen3.part3 /tmp/gen3.part4 > /tmp/gen3_payload.tar.gz
           python - <<'PY'
-          import gzip, itertools, pathlib
-          parts={k:pathlib.Path('/tmp/'+k).read_bytes() for k in 'abcd'}
-          print('PERMUTATION CHECK')
-          valid=[]
-          for order in itertools.permutations('abcd'):
-              raw=b''.join(parts[x] for x in order)
-              try:
-                  data=gzip.decompress(raw)
-              except Exception as exc:
-                  print(''.join(order), 'FAIL', type(exc).__name__, str(exc)[:90])
-              else:
-                  print(''.join(order), 'OK', len(raw), '->', len(data), data[:16])
-                  valid.append((''.join(order), raw, data))
-          if not valid:
-              raise SystemExit('No concatenation permutation is a valid gzip stream')
-          order, raw, data=valid[0]
-          pathlib.Path('/tmp/gen3_payload.tar.gz').write_bytes(raw)
-          print('SELECTED_ORDER', order)
+          import pathlib, struct, zlib
+          p=pathlib.Path('/tmp/gen3_payload.tar.gz')
+          raw=p.read_bytes()
+          assert raw[:3] == b'\x1f\x8b\x08', raw[:8]
+          stored_crc, stored_size = struct.unpack('<II', raw[-8:])
+          d=zlib.decompressobj(-zlib.MAX_WBITS)
+          data=d.decompress(raw[10:-8]) + d.flush()
+          actual_crc=zlib.crc32(data) & 0xffffffff
+          actual_size=len(data) & 0xffffffff
+          print(f'STORED_TRAILER crc={stored_crc:08x} size={stored_size}')
+          print(f'ACTUAL_STREAM  crc={actual_crc:08x} size={actual_size}')
+          print('EOF', d.eof, 'UNUSED', len(d.unused_data), 'UNCONSUMED', len(d.unconsumed_tail))
+          if not d.eof:
+              raise SystemExit('Deflate stream itself is incomplete')
+          if stored_size != actual_size:
+              raise SystemExit('Transfer also has an ISIZE mismatch; refusing recovery')
+          pathlib.Path('/tmp/gen3_payload.tar').write_bytes(data)
           PY
-          tar -tzf /tmp/gen3_payload.tar.gz | head -200
+          tar -tf /tmp/gen3_payload.tar
+          tar -xf /tmp/gen3_payload.tar -C .
+          rm -f SHOULD_NOT_USE* INLINE_TEST_SHOULD_NOT_USE
+
+      - name: Inspect prepared importer validator and Gen3 wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tools/build_gen3_registry.py
+          echo '--- importer help ---'
+          python tools/build_gen3_registry.py --help
+          echo '--- importer source ---'
+          sed -n '1,360p' tools/build_gen3_registry.py
+          echo '--- Gen3 files ---'
+          find . -maxdepth 4 -type f \( -iname '*gen3*' -o -iname '*generation*3*' \) -print | sort
+          echo '--- main.tscn Gen3 references ---'
+          grep -nEi 'gen3|generation.?3' main.tscn || true
+          echo '--- runtime test ---'
+          sed -n '1,320p' tests/gen3_species_runtime_test.gd
+          echo '--- git status ---'
+          git status --short
