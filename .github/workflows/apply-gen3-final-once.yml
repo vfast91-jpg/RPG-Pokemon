@@ -21,7 +21,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Reconstruct validated Generation 3 payload
+      - name: Diagnose exact Generation 3 transfer chunks
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -37,23 +37,35 @@ jobs:
               | jq -r '.content' | tr -d '\n' | base64 -d > "${out}"
             test "$(git hash-object "${out}")" = "${sha}"
           }
-          fetch_blob 72f8c05ed1d77ad4fff74450472468a745190832 /tmp/gen3.part1
-          fetch_blob cf333a255189f105d5ad7522584b9934e9996ffe /tmp/gen3.part2
-          fetch_blob f17155af7254ad10fb211373a30a576e7d633443 /tmp/gen3.part3
-          fetch_blob f496182b19e6fb7e4cfb91d250fe24ab7c5607ca /tmp/gen3.part4
-          cat /tmp/gen3.part1 /tmp/gen3.part2 /tmp/gen3.part3 /tmp/gen3.part4 > /tmp/gen3_payload.tar.gz
-          gzip -t /tmp/gen3_payload.tar.gz
-          tar -tzf /tmp/gen3_payload.tar.gz
-          tar -xzf /tmp/gen3_payload.tar.gz -C .
-          rm -f SHOULD_NOT_USE SHOULD_NOT_USE_2 SHOULD_NOT_USE_3 INLINE_TEST_SHOULD_NOT_USE
-
-      - name: Inspect prepared validator CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f tools/build_gen3_registry.py
-          python tools/build_gen3_registry.py --help
-          echo '--- build_gen3_registry.py ---'
-          sed -n '1,280p' tools/build_gen3_registry.py
-          echo '--- prepared Gen3 files ---'
-          find data tests tools -maxdepth 3 -type f \( -iname '*gen3*' -o -iname '*generation*3*' \) -print | sort
+          fetch_blob 72f8c05ed1d77ad4fff74450472468a745190832 /tmp/a
+          fetch_blob cf333a255189f105d5ad7522584b9934e9996ffe /tmp/b
+          fetch_blob f17155af7254ad10fb211373a30a576e7d633443 /tmp/c
+          fetch_blob f496182b19e6fb7e4cfb91d250fe24ab7c5607ca /tmp/d
+          for f in /tmp/a /tmp/b /tmp/c /tmp/d; do
+            echo "=== ${f} ==="
+            wc -c "${f}"
+            file "${f}"
+            xxd -l 32 "${f}"
+            tail -c 32 "${f}" | xxd
+          done
+          python - <<'PY'
+          import gzip, itertools, pathlib
+          parts={k:pathlib.Path('/tmp/'+k).read_bytes() for k in 'abcd'}
+          print('PERMUTATION CHECK')
+          valid=[]
+          for order in itertools.permutations('abcd'):
+              raw=b''.join(parts[x] for x in order)
+              try:
+                  data=gzip.decompress(raw)
+              except Exception as exc:
+                  print(''.join(order), 'FAIL', type(exc).__name__, str(exc)[:90])
+              else:
+                  print(''.join(order), 'OK', len(raw), '->', len(data), data[:16])
+                  valid.append((''.join(order), raw, data))
+          if not valid:
+              raise SystemExit('No concatenation permutation is a valid gzip stream')
+          order, raw, data=valid[0]
+          pathlib.Path('/tmp/gen3_payload.tar.gz').write_bytes(raw)
+          print('SELECTED_ORDER', order)
+          PY
+          tar -tzf /tmp/gen3_payload.tar.gz | head -200
