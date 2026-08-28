@@ -2,11 +2,11 @@ extends "res://scripts/demo_route_gen3_legendary_endgame_v1.gd"
 
 # Poké-Rastpaket
 #
-# After every completed milestone stage ending in 5 (5..95), the active
-# adventure receives one stackable full-team rest pack. Rewards are committed
-# exactly on the transition into the next stage. The claimed-stage list makes
-# repeated redraws, save/load resumes and duplicate transition calls harmless.
-# Both regular variables are persisted automatically by RunSaveManager.
+# On entering every milestone stage ending in 5 (5..95), the active adventure
+# receives one stackable full-team rest pack before that stage's path choice and
+# battle. The claimed-stage list makes repeated redraws, save/load resumes and
+# duplicate stage-entry calls harmless. Both regular variables are persisted
+# automatically by RunSaveManager.
 
 const REST_PACK_REWARD_STAGES: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 const REST_PACK_TOOLTIP: String = "Heilt dein gesamtes Team vollständig und entfernt Statusprobleme. Verbraucht 1 Poké-Rastpaket."
@@ -35,14 +35,15 @@ func start_route() -> void:
 
 
 func _show_stage_choices(message: String = "") -> void:
-    # Stage N+1 can only be reached after stage N was successfully completed.
-    # Grant before super so the inherited stage-checkpoint autosave already
-    # contains the reward. A redraw of the same stage cannot grant it twice.
-    var completed_stage: int = stage - 1
-    if _grant_rest_pack_for_completed_stage(completed_stage):
+    # The pack belongs to the stage the player is about to face, not to the
+    # previous victory. Grant before super so it is already available on the
+    # route-choice screen and the inherited stage-checkpoint autosave contains
+    # it. Reopening the same stage cannot grant it twice.
+    if _grant_rest_pack_for_entered_stage(stage):
         var reward_text: String = (
             "[b]🎒 Poké-Rastpaket erhalten![/b]\n"
-            + "Du kannst dein Team damit jederzeit zwischen den Kämpfen vollständig heilen. "
+            + "Für deinen weiteren Weg hast du ein Poké-Rastpaket erhalten. "
+            + "Damit kann dein ganzes Team zwischen den Kämpfen wieder vollständig zu Kräften kommen. "
             + "Bestand: [b]%d[/b]" % rest_pack_count
         )
         message = reward_text if message.is_empty() else message + "\n\n" + reward_text
@@ -55,13 +56,13 @@ func _refresh_team_panel() -> void:
     _refresh_rest_pack_ui()
 
 
-func _grant_rest_pack_for_completed_stage(completed_stage: int) -> bool:
-    if not REST_PACK_REWARD_STAGES.has(completed_stage):
+func _grant_rest_pack_for_entered_stage(entered_stage: int) -> bool:
+    if not REST_PACK_REWARD_STAGES.has(entered_stage):
         return false
-    if rest_pack_claimed_stages.has(completed_stage):
+    if rest_pack_claimed_stages.has(entered_stage):
         return false
 
-    rest_pack_claimed_stages.append(completed_stage)
+    rest_pack_claimed_stages.append(entered_stage)
     rest_pack_count += 1
     return true
 
