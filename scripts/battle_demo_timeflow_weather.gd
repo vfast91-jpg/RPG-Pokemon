@@ -261,7 +261,10 @@ func _sync_castform_forms() -> void:
             if new_texture == null:
                 new_texture = _species_texture("Formeo")
 
-            texture_box.texture = new_texture
+            if new_texture != null:
+                texture_box.texture = new_texture
+
+
 func _process(delta: float) -> void:
     var weather_messages: Array[String] = []
 
