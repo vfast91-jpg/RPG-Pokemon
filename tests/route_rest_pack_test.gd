@@ -12,7 +12,7 @@ func _initialize() -> void:
     _test_exact_milestone_rewards_and_idempotence()
     _test_use_heals_team_and_cannot_be_wasted()
     _test_save_restore_keeps_count_and_claims()
-    _test_compact_team_panel_ui_state()
+    _test_compact_rest_pack_footer_ui_state()
     _remove_test_save()
 
     if failures.is_empty():
@@ -103,40 +103,68 @@ func _test_save_restore_keeps_count_and_claims() -> void:
     manager.free()
 
 
-func _test_compact_team_panel_ui_state() -> void:
+func _test_compact_rest_pack_footer_ui_state() -> void:
     var route = RouteScript.new()
     route._build_ui()
     route._build_rest_pack_ui()
     route._refresh_rest_pack_ui()
 
-    _expect(route._rest_pack_panel != null, "Rastpaket-Box muss im Team-Bereich aufgebaut werden.")
+    _expect(route._rest_pack_panel != null, "Rastpaket-Box muss aufgebaut werden.")
     _expect(route._rest_pack_count_label != null, "Rastpaket-Box braucht eine sichtbare Bestandsanzeige.")
-    _expect(route._rest_pack_use_button != null, "Rastpaket-Box braucht einen BENUTZEN-Button.")
+    _expect(route._rest_pack_use_button != null, "Rastpaket-Box braucht einen Heil-Button.")
+
     if route._rest_pack_count_label != null:
         _expect(route._rest_pack_count_label.text.contains("×0"), "Rastpaket-Anzeige muss auch bei Bestand 0 sichtbar bleiben.")
-    if route._rest_pack_use_button != null:
-        _expect(route._rest_pack_use_button.disabled, "BENUTZEN muss bei Bestand 0 deaktiviert sein.")
-
-    if route._rest_pack_panel != null and route.storage_label != null:
         _expect(
-            route._rest_pack_panel.get_parent() == route.storage_label.get_parent(),
-            "Rastpaket-Box muss im selben rechten Team-Container wie die Lageranzeige liegen."
+            route._rest_pack_count_label.tooltip_text.contains("gesamtes Team vollständig"),
+            "Der Tooltip muss den vollständigen Team-Heileffekt erklären statt nur den Bestand zu wiederholen."
         )
         _expect(
-            route._rest_pack_panel.get_index() < route.storage_label.get_index(),
-            "Rastpaket-Box muss direkt oberhalb der Lageranzeige und damit unter dem Team stehen."
+            route._rest_pack_count_label.tooltip_text.contains("Statusprobleme"),
+            "Der Tooltip muss auch die Entfernung von Statusproblemen erklären."
+        )
+
+    if route._rest_pack_use_button != null:
+        _expect(route._rest_pack_use_button.disabled, "HEILEN muss bei Bestand 0 deaktiviert sein.")
+        _expect(route._rest_pack_use_button.text == "HEILEN", "Der kompakte Rastpaket-Button soll klar als HEILEN beschriftet sein.")
+        _expect(route._rest_pack_use_button.custom_minimum_size.y <= 22.0, "Der Heil-Button darf nicht wieder zu einem großen Block anwachsen.")
+
+    if route._rest_pack_panel != null and route.team_box != null:
+        var team_scroll: Node = route.team_box.get_parent()
+        var team_content: Node = team_scroll.get_parent() if team_scroll != null else null
+        var team_panel: Node = team_content.get_parent() if team_content != null else null
+        var columns: Node = team_panel.get_parent() if team_panel != null else null
+        var outer: Node = columns.get_parent() if columns != null else null
+        var footer: Node = route._rest_pack_panel.get_parent()
+
+        _expect(
+            footer != team_content,
+            "Rastpaket darf nicht mehr im dynamischen TEAM-Inhalt zwischen den Pokémonkarten liegen."
+        )
+        _expect(
+            footer is HBoxContainer and footer.get_parent() == outer,
+            "Rastpaket muss in der separaten Fußzeile unterhalb der Hauptspalten liegen."
+        )
+        if footer != null and columns != null:
+            _expect(
+                footer.get_index() > columns.get_index(),
+                "Rastpaket-Fußzeile muss vertikal unter dem TEAM-Bereich liegen."
+            )
+        _expect(
+            route._rest_pack_panel.custom_minimum_size.y <= 28.0,
+            "Rastpaket-Anzeige muss kompakt bleiben und darf keine Teamkartenhöhe verbrauchen."
         )
 
     route.rest_pack_count = 1
     route.team = [{"name": "Schiggy", "hp": 4, "max_hp": 25, "major_status": ""}]
     route._refresh_rest_pack_ui()
     if route._rest_pack_use_button != null:
-        _expect(not route._rest_pack_use_button.disabled, "BENUTZEN muss mit Paket und verletztem Team aktiv sein.")
+        _expect(not route._rest_pack_use_button.disabled, "HEILEN muss mit Paket und verletztem Team aktiv sein.")
 
     route.team[0]["hp"] = 25
     route._refresh_rest_pack_ui()
     if route._rest_pack_use_button != null:
-        _expect(route._rest_pack_use_button.disabled, "BENUTZEN muss bei vollständig gesundem Team deaktiviert sein.")
+        _expect(route._rest_pack_use_button.disabled, "HEILEN muss bei vollständig gesundem Team deaktiviert sein.")
 
     route.free()
 
