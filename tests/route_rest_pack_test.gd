@@ -31,7 +31,7 @@ func _expect(condition: bool, message: String) -> void:
 
 
 func _test_exact_milestone_rewards_and_idempotence() -> void:
-    var route: Node = RouteScript.new()
+    var route = RouteScript.new()
     var expected_stages: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 
     for completed_stage: int in range(1, 101):
@@ -50,7 +50,7 @@ func _test_exact_milestone_rewards_and_idempotence() -> void:
 
 
 func _test_use_heals_team_and_cannot_be_wasted() -> void:
-    var route: Node = RouteScript.new()
+    var route = RouteScript.new()
     # Prevent the explicit production autosave in _use_rest_pack() from touching
     # the real run slot during this isolated regression test.
     route._run_save_finished = true
@@ -79,7 +79,7 @@ func _test_save_restore_keeps_count_and_claims() -> void:
     var manager = RunSaveManagerScript.new()
     manager.save_path = TEST_SAVE_PATH
 
-    var route: Node = RouteScript.new()
+    var route = RouteScript.new()
     route.stage = 16
     route.team = [{"name": "Evoli", "hp": 22, "max_hp": 30, "major_status": ""}]
     route.rest_pack_count = 2
@@ -87,7 +87,7 @@ func _test_save_restore_keeps_count_and_claims() -> void:
 
     _expect(manager.save_route(route, "stage_checkpoint"), "RunSaveManager muss den Rastpaket-Zustand speichern können.")
 
-    var restored: Node = RouteScript.new()
+    var restored = RouteScript.new()
     restored.stage = 1
     restored.team = [{"name": "Platzhalter", "hp": 1, "max_hp": 1}]
     restored.rest_pack_count = 0
@@ -104,7 +104,7 @@ func _test_save_restore_keeps_count_and_claims() -> void:
 
 
 func _test_compact_team_panel_ui_state() -> void:
-    var route: Node = RouteScript.new()
+    var route = RouteScript.new()
     route._build_ui()
     route._build_rest_pack_ui()
     route._refresh_rest_pack_ui()
