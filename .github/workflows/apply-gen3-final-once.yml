@@ -35,52 +35,25 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" \
               | jq -r '.content' | tr -d '\n' | base64 -d > "${out}"
+            test "$(git hash-object "${out}")" = "${sha}"
           }
           fetch_blob 72f8c05ed1d77ad4fff74450472468a745190832 /tmp/gen3.part1
           fetch_blob cf333a255189f105d5ad7522584b9934e9996ffe /tmp/gen3.part2
           fetch_blob f17155af7254ad10fb211373a30a576e7d633443 /tmp/gen3.part3
           fetch_blob f496182b19e6fb7e4cfb91d250fe24ab7c5607ca /tmp/gen3.part4
-          echo '90a506a127d40f0a9f32fc82a63e614cb3a12a35b172d345df123dc979155082  /tmp/gen3.part1' | sha256sum -c -
-          echo 'cb09275554d67094f87d9779ec8e544fff837a888a25a387c8d889c3a3e415b0  /tmp/gen3.part2' | sha256sum -c -
-          echo 'b80bb375bf26545e6976aa3fe4668a3f4de65f47233ab9eabbfe8b4712b0bef3  /tmp/gen3.part3' | sha256sum -c -
-          echo '7eed4279542a3dc643f8c8de9eeb5f888b97790891e79c49e5aa8ab38dffddb6  /tmp/gen3.part4' | sha256sum -c -
           cat /tmp/gen3.part1 /tmp/gen3.part2 /tmp/gen3.part3 /tmp/gen3.part4 > /tmp/gen3_payload.tar.gz
-          echo '0fcc73e3c41e0d9558fa0ad620bd2a6f776c0053dfab5f45edac4e1ad0950c68  /tmp/gen3_payload.tar.gz' | sha256sum -c -
+          gzip -t /tmp/gen3_payload.tar.gz
+          tar -tzf /tmp/gen3_payload.tar.gz
           tar -xzf /tmp/gen3_payload.tar.gz -C .
           rm -f SHOULD_NOT_USE SHOULD_NOT_USE_2 SHOULD_NOT_USE_3 INLINE_TEST_SHOULD_NOT_USE
-          rm -f .github/workflows/apply-gen3-final-once.yml
 
-      - name: Validate generated data
+      - name: Inspect prepared validator CLI
         shell: bash
         run: |
           set -euo pipefail
-          python tools/build_gen3_registry.py --validate-output .
-
-      - name: Install Godot 4.7.2
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 \
-            --output godot.zip \
-            https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          unzip -q godot.zip
-          mv Godot_v4.7.2-stable_linux.x86_64 godot
-          chmod +x godot
-
-      - name: Parse project and run Gen3 integration test
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./godot --headless --path . --editor --quit
-          ./godot --headless --path . --script tests/gen3_species_runtime_test.gd
-
-      - name: Commit complete Generation 3 integration
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git diff --cached --check
-          git commit -m 'Apply complete Generation 3 Pokemon integration'
-          git push origin HEAD:main
+          test -f tools/build_gen3_registry.py
+          python tools/build_gen3_registry.py --help
+          echo '--- build_gen3_registry.py ---'
+          sed -n '1,280p' tools/build_gen3_registry.py
+          echo '--- prepared Gen3 files ---'
+          find data tests tools -maxdepth 3 -type f \( -iname '*gen3*' -o -iname '*generation*3*' \) -print | sort
