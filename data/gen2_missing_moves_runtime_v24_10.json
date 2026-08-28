@@ -69,20 +69,20 @@
       "schema_version": 3,
       "id": "shadow_sneak",
       "name": "Schattenstoß",
-      "description": "Ein blitzschneller Angriff aus dem Schatten. Besitzt erhöhte Priorität und besonders kurze Erholung.",
+      "description": "Ein blitzschneller Angriff aus dem Schatten. Besitzt erhöhte Priorität und ist ausschließlich in Runde 0 einsetzbar.",
       "emoji": "👻",
       "type": "ghost",
       "category": "physical",
       "power": 40,
       "accuracy": 100,
       "pp": 30,
-      "ap": 1,
+      "ap": 8,
       "target": "enemy_highest_aggro",
       "area": false,
       "contact": true,
       "priority": 1,
       "opening": true,
-      "opening_only": false,
+      "opening_only": true,
       "mechanics": [
         {"kind": "damage"}
       ],
@@ -90,8 +90,8 @@
       "aggro": {"from_damage": true, "from_status": false, "from_healing": false},
       "special_rules": [
         "Priorität +1.",
-        "RPG-AP 1 als Timeflow-Sonderregel für die besonders kurze Erholung einer Prioritätsattacke.",
-        "In Runde 0 verwendbar; danach normale Schadensauflösung über das zentrale Kampfsystem."
+        "RPG-AP 8 gemäß der zentralen Balance-Regel für Eröffnungs-Prioritätsattacken.",
+        "Ausschließlich in Runde 0 verwendbar; danach im normalen ATB-Kampf nicht mehr auswählbar."
       ],
       "optional_tags": ["damage", "contact", "priority", "opening"],
       "runtime": {"runtime_supported": true}
