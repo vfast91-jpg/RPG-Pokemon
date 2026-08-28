@@ -34,18 +34,30 @@ func _test_exact_milestone_rewards_and_idempotence() -> void:
     var route = RouteScript.new()
     var expected_stages: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 
-    for completed_stage: int in range(1, 101):
-        var granted: bool = route._grant_rest_pack_for_completed_stage(completed_stage)
+    # The reward belongs to the stage being ENTERED. It must therefore already
+    # exist on stage 5 itself, before that stage's fight is completed.
+    _expect(not route._grant_rest_pack_for_entered_stage(4), "Etappe 4 darf noch kein Rastpaket vergeben.")
+    _expect(route._grant_rest_pack_for_entered_stage(5), "Beim Betreten von Etappe 5 muss das erste Rastpaket sofort verfügbar sein.")
+    _expect(route.rest_pack_count == 1, "Zu Beginn von Etappe 5 muss der Bestand bereits ×1 sein.")
+    _expect(not route._grant_rest_pack_for_entered_stage(5), "Etappe 5 darf beim erneuten Anzeigen niemals doppelt auszahlen.")
+
+    # Continue with a fresh route so all ten milestone entries can be checked in
+    # one simple sweep without the explicit stage-5 assertion above affecting it.
+    route.free()
+    route = RouteScript.new()
+
+    for entered_stage: int in range(1, 101):
+        var granted: bool = route._grant_rest_pack_for_entered_stage(entered_stage)
         _expect(
-            granted == expected_stages.has(completed_stage),
-            "Nur Etappen 5/15/.../95 dürfen ein Rastpaket vergeben (Etappe %d)." % completed_stage
+            granted == expected_stages.has(entered_stage),
+            "Nur beim Betreten von Etappe 5/15/.../95 darf ein Rastpaket vergeben werden (Etappe %d)." % entered_stage
         )
 
     _expect(route.rest_pack_count == 10, "Bis Etappe 100 müssen exakt zehn Rastpakete vergeben worden sein.")
     _expect(route.rest_pack_claimed_stages.size() == 10, "Jede der zehn Meilenstein-Etappen darf nur einmal markiert sein.")
-    _expect(not route._grant_rest_pack_for_completed_stage(5), "Etappe 5 darf beim erneuten Anzeigen niemals doppelt auszahlen.")
-    _expect(route.rest_pack_count == 10, "Doppelte Meilenstein-Aufrufe dürfen den Bestand nicht erhöhen.")
-    _expect(not route._grant_rest_pack_for_completed_stage(100), "Etappe 100 darf ausdrücklich kein Rastpaket vergeben.")
+    _expect(not route._grant_rest_pack_for_entered_stage(5), "Etappe 5 darf beim erneuten Anzeigen niemals doppelt auszahlen.")
+    _expect(route.rest_pack_count == 10, "Doppelte Etappen-Aufrufe dürfen den Bestand nicht erhöhen.")
+    _expect(not route._grant_rest_pack_for_entered_stage(100), "Etappe 100 darf ausdrücklich kein Rastpaket vergeben.")
     route.free()
 
 
