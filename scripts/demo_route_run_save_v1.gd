@@ -1,21 +1,38 @@
 extends "res://scripts/demo_route_boss_reward_two_pick_v1.gd"
 
 # Single-slot adventure persistence layer.
-# Saves the route state only; MetaProgression and the leaderboard stay separate.
-# Battles are resumed from the safe checkpoint immediately before battle start.
+#
+# New-format runs have exactly ONE regular checkpoint per stage: the fully
+# prepared start of that stage. There are deliberately no timer, team-change,
+# menu-close, application-close or pre-battle saves. Quitting partway through a
+# stage therefore returns to that stage's saved start.
+#
+# Version-1 saves remain readable through their historical resume screens. Once
+# such a run reaches the next canonical stage start it is overwritten as V2 and
+# thereafter follows the new rule.
 
-const AUTOSAVE_SECONDS: float = 4.0
+const CANONICAL_STAGE_CHECKPOINT: String = "stage_start"
+const CANONICAL_NORMAL_ROUTE_LAST_STAGE: int = 90
+const RUN_SAVE_FEEDBACK_SECONDS: float = 1.7
 
-# These three values are intentionally regular script variables so the save
-# manager can persist an already rolled special encounter without serializing
-# the live battle itself.
+# Legacy-only state. Old V1 saves may still contain an already rolled special
+# battle and need these members for their one-time compatibility restore.
 var saved_special_battle_kind: String = ""
 var saved_special_enemy_party: Array = []
 var saved_special_battle_heading: String = ""
 
+# Normal route offers are part of the canonical stage start. Keeping the rolled
+# dictionaries makes repeated loads of a V2 checkpoint rebuild the same three
+# route choices instead of rerolling the stage menu. Companion-search results are
+# intentionally NOT frozen here; that separate concern was explicitly left alone.
+var canonical_stage_choice_stage: int = 0
+var canonical_stage_choices: Array = []
+
 var _run_save_restoring: bool = false
 var _run_save_finished: bool = false
-var _autosave_timer: Timer
+var _run_save_feedback_label: Label
+var _run_save_feedback_sequence_id: int = 0
+var _run_save_failure_blocked: bool = false
 var _run_exit_dialog: Control
 var _run_exit_resume_button: Button
 
@@ -23,18 +40,22 @@ var _run_exit_resume_button: Button
 func _ready() -> void:
     super._ready()
     _build_run_exit_dialog()
-    _install_autosave_timer()
 
 
 func start_route() -> void:
     # Starting a new adventure deliberately replaces the one existing run slot.
     RunSaveManager.clear_run_save()
     _clear_saved_special_battle()
+    canonical_stage_choice_stage = 0
+    canonical_stage_choices.clear()
     _run_save_finished = false
     _run_save_restoring = true
     super.start_route()
     _run_save_restoring = false
-    _autosave_run("new_adventure")
+
+    # Etappe 1 has the fixed meadow landscape, so its canonical checkpoint is
+    # created automatically after the complete initial route surface exists.
+    _commit_canonical_stage_start(true)
 
 
 func continue_saved_route() -> void:
@@ -42,6 +63,7 @@ func continue_saved_route() -> void:
         start_route()
         return
 
+    var save_version: int = RunSaveManager.saved_version()
     var checkpoint: String = RunSaveManager.saved_checkpoint()
     _run_save_finished = false
     _run_save_restoring = true
@@ -54,6 +76,27 @@ func continue_saved_route() -> void:
         return
 
     visible = true
+    if save_version >= 2 and checkpoint == CANONICAL_STAGE_CHECKPOINT:
+        _show_canonical_stage_start_resume()
+    else:
+        _restore_legacy_checkpoint(checkpoint)
+
+    # Never write merely because a save was loaded. A V1 run converts only when
+    # it naturally reaches the next canonical stage boundary.
+    _run_save_restoring = false
+
+
+func _show_canonical_stage_start_resume() -> void:
+    _clear_run_save_feedback()
+    if path_box != null:
+        path_box.visible = true
+    _show_stage_choices(
+        "[b]Spielstand geladen.[/b]\n"
+        + "Du setzt dein Abenteuer am gespeicherten Start von Etappe %d fort." % stage
+    )
+
+
+func _restore_legacy_checkpoint(checkpoint: String) -> void:
     match checkpoint:
         "pending_capture":
             _show_pending_capture_resume()
@@ -62,7 +105,7 @@ func continue_saved_route() -> void:
         "before_special_battle":
             if saved_special_enemy_party.is_empty():
                 _show_stage_choices(
-                    "[b]Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
+                    "[b]Alter Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
                 )
             else:
                 _show_special_battle_resume()
@@ -74,51 +117,72 @@ func continue_saved_route() -> void:
             _show_boss_reward_complete_resume()
         _:
             _show_stage_choices(
-                "[b]Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
+                "[b]Alter Spielstand geladen.[/b]\nDu setzt dein Abenteuer bei Etappe %d fort." % stage
             )
-
-    _run_save_restoring = false
-    _autosave_run(checkpoint if not checkpoint.is_empty() else "continued")
 
 
 func _show_stage_choices(message: String = "") -> void:
     if not _run_save_restoring:
         _clear_saved_special_battle()
+    if path_box != null:
+        # Legacy resume surfaces used to hide this container and were the source
+        # of the original invisible-next-stage softlock. Every genuine stage
+        # build starts from an explicitly visible route surface.
+        path_box.visible = true
+
     super._show_stage_choices(message)
-    _autosave_run("stage_checkpoint")
+
+    # Stages 2-95 commit from the landscape click itself. Stages 96-100 have no
+    # random landscape screen, so the finished stage surface is their boundary.
+    if not _run_save_restoring and stage > RANDOM_LANDSCAPE_LAST_STAGE:
+        _commit_canonical_stage_start(true)
 
 
-func _refresh_team_panel() -> void:
-    super._refresh_team_panel()
-    if not _run_save_restoring and not _run_save_finished and is_inside_tree():
-        call_deferred("_autosave_run", "team_change")
+func _choices_for_stage(current_stage: int) -> Array[Dictionary]:
+    # Stages 91-100 are mandatory superboss stages and do not use the normal
+    # three-choice route menu. Their actual boss target is persisted separately.
+    if current_stage > CANONICAL_NORMAL_ROUTE_LAST_STAGE:
+        return super._choices_for_stage(current_stage)
+
+    if current_stage == canonical_stage_choice_stage:
+        var restored_choices: Array[Dictionary] = []
+        for value: Variant in canonical_stage_choices:
+            if value is Dictionary:
+                restored_choices.append((value as Dictionary).duplicate(true))
+        return restored_choices
+
+    var choices: Array[Dictionary] = super._choices_for_stage(current_stage)
+    if current_stage == stage:
+        canonical_stage_choice_stage = current_stage
+        canonical_stage_choices = choices.duplicate(true)
+    return choices
 
 
 func _start_stage_battle() -> void:
-    # If the game closes during the fight, this is the state that will resume.
-    _autosave_run("before_battle")
+    # The save confirmation belongs only to the route screen and must never leak
+    # into combat. This override performs no save at all.
+    _clear_run_save_feedback()
     super._start_stage_battle()
 
 
 func _start_special_battle(kind: String, enemy_party: Array, heading: String) -> void:
-    # Dangerous paths, rare encounters and superbosses keep their already rolled
-    # opponent party so reloading cannot reroll the encounter.
-    saved_special_battle_kind = kind
-    saved_special_enemy_party = enemy_party.duplicate(true)
-    saved_special_battle_heading = heading
-    _autosave_run("before_special_battle")
+    # Same rule for special/boss fights: route feedback is removed before the
+    # battle layer becomes visible. No pre-battle checkpoint is written.
+    _clear_run_save_feedback()
     super._start_special_battle(kind, enemy_party, heading)
 
 
 func _finish_run(victory: bool, message: String) -> void:
+    _clear_run_save_feedback()
     super._finish_run(victory, message)
     _run_save_finished = true
+    # A finished or failed run must never remain available as "Fortführen".
     RunSaveManager.clear_run_save()
 
 
 func _go_main_menu() -> void:
-    # Leaving for the menu is not the same as abandoning the run.
-    _autosave_run("main_menu")
+    # Opening or leaving through this dialog deliberately does NOT create a new
+    # checkpoint. The text explains that only the last stage start is retained.
     if _run_exit_dialog != null:
         _run_exit_dialog.visible = true
         _run_exit_dialog.move_to_front()
@@ -128,59 +192,119 @@ func _go_main_menu() -> void:
     _leave_run_to_main_menu()
 
 
-func _notification(what: int) -> void:
-    if what == NOTIFICATION_WM_CLOSE_REQUEST:
-        # During battle the route is hidden; the pre-battle checkpoint already
-        # exists and must not be replaced by a half-finished combat state.
-        if visible:
-            _autosave_run("application_close")
+func _autosave_run(_checkpoint: String = "autosave") -> void:
+    # Compatibility shim for older feature layers that may still call the former
+    # helper. Keeping the method prevents inheritance breakage while guaranteeing
+    # that no hidden mid-stage checkpoint can be emitted anymore.
+    pass
 
 
-func _install_autosave_timer() -> void:
-    _autosave_timer = Timer.new()
-    _autosave_timer.name = "RunAutosaveTimer"
-    _autosave_timer.wait_time = AUTOSAVE_SECONDS
-    _autosave_timer.one_shot = false
-    _autosave_timer.autostart = true
-    _autosave_timer.timeout.connect(_on_autosave_timer_timeout)
-    add_child(_autosave_timer)
-
-
-func _on_autosave_timer_timeout() -> void:
-    if visible:
-        _autosave_run("autosave")
-
-
-func _autosave_run(checkpoint: String = "autosave") -> void:
+func _commit_canonical_stage_start(show_feedback: bool = true) -> bool:
     if _run_save_restoring or _run_save_finished:
-        return
+        return false
     if team.is_empty() or stage <= 0:
+        return false
+
+    # The active Gen-3 endgame layer resolves stages 91-100 here. For stages
+    # outside that range the method simply returns true. This fixes legendary
+    # pool/Deoxys results before the checkpoint is written without freezing
+    # normal battle RNG or companion-search rolls.
+    if has_method("_prepare_canonical_endgame_target"):
+        if not bool(call("_prepare_canonical_endgame_target")):
+            _show_run_save_failure()
+            return false
+
+    var saved: bool = RunSaveManager.save_route(self, CANONICAL_STAGE_CHECKPOINT)
+    if not saved:
+        _show_run_save_failure()
+        return false
+
+    _clear_run_save_failure_surface()
+    if show_feedback:
+        _show_run_save_feedback()
+    return true
+
+
+func _show_run_save_feedback() -> void:
+    _clear_run_save_feedback()
+    if not visible or capture_actions == null:
         return
 
-    var effective_checkpoint: String = checkpoint
-    if _boss_fundstelle_pending:
-        if _boss_fundstelle_choices_remaining > 0:
-            effective_checkpoint = "boss_fundstelle"
-        elif not _boss_fundstelle_final_reward_text.is_empty():
-            effective_checkpoint = "boss_reward_complete"
-        else:
-            # Boss victory is already committed, but the post-victory progression
-            # presentation may still be running and the Fundstelle may not have
-            # rolled its offers yet. Never mistake this window for a completed reward.
-            effective_checkpoint = "boss_reward_pending"
-    elif not pending_capture.is_empty():
-        effective_checkpoint = "pending_capture"
-    elif (
-        visible
-        and continue_button != null
-        and continue_button.visible
-        and checkpoint in ["autosave", "team_change", "main_menu", "application_close", "continued"]
-    ):
-        # The path reward/capture/heal is already committed. Resume directly at
-        # the battle button instead of allowing the same route reward twice.
-        effective_checkpoint = "ready_for_battle"
+    _run_save_feedback_sequence_id += 1
+    var sequence_id: int = _run_save_feedback_sequence_id
 
-    RunSaveManager.save_route(self, effective_checkpoint)
+    var label := Label.new()
+    label.name = "RunSaveFeedback"
+    label.text = "💾 Spielstand gespeichert"
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.add_theme_font_size_override("font_size", 10)
+    label.add_theme_color_override("font_color", Color("9fe7bd"))
+    capture_actions.add_child(label)
+    _run_save_feedback_label = label
+
+    _hide_run_save_feedback_later(sequence_id, label)
+
+
+func _hide_run_save_feedback_later(sequence_id: int, label: Label) -> void:
+    await get_tree().create_timer(RUN_SAVE_FEEDBACK_SECONDS).timeout
+    if sequence_id != _run_save_feedback_sequence_id:
+        return
+    if label != null and is_instance_valid(label):
+        label.queue_free()
+    if _run_save_feedback_label == label:
+        _run_save_feedback_label = null
+
+
+func _clear_run_save_feedback() -> void:
+    _run_save_feedback_sequence_id += 1
+    if _run_save_feedback_label != null and is_instance_valid(_run_save_feedback_label):
+        _run_save_feedback_label.queue_free()
+    _run_save_feedback_label = null
+
+
+func _show_run_save_failure() -> void:
+    _clear_run_save_feedback()
+    _run_save_failure_blocked = true
+    if path_box != null:
+        path_box.visible = true
+    _set_path_buttons_disabled(true)
+    if continue_button != null:
+        continue_button.visible = false
+
+    if capture_actions == null:
+        return
+    _clear_container(capture_actions)
+
+    var warning := Label.new()
+    warning.name = "RunSaveFailureWarning"
+    warning.text = "⚠ Spielstand konnte nicht gespeichert werden. Bitte erneut versuchen."
+    warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    warning.add_theme_font_size_override("font_size", 10)
+    warning.add_theme_color_override("font_color", Color("f0c08a"))
+    capture_actions.add_child(warning)
+
+    var retry := Button.new()
+    retry.name = "RetryCanonicalStageSave"
+    retry.text = "💾 SPEICHERN ERNEUT VERSUCHEN"
+    retry.custom_minimum_size = Vector2(0.0, 32.0)
+    retry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    retry.pressed.connect(_retry_canonical_stage_start)
+    _style_route_decision_button(retry, true)
+    capture_actions.add_child(retry)
+
+
+func _retry_canonical_stage_start() -> void:
+    _commit_canonical_stage_start(true)
+
+
+func _clear_run_save_failure_surface() -> void:
+    if not _run_save_failure_blocked:
+        return
+    _run_save_failure_blocked = false
+    _set_path_buttons_disabled(false)
+    if capture_actions != null:
+        _clear_container(capture_actions)
 
 
 func _show_ready_battle_resume() -> void:
@@ -188,9 +312,10 @@ func _show_ready_battle_resume() -> void:
     path_box.visible = false
     continue_button.visible = true
     event_label.text = (
-        "[b]Spielstand geladen.[/b]\n"
-        + "Deine Wegentscheidung und alle bisherigen Änderungen dieser Etappe wurden übernommen.\n\n"
-        + "Du kannst den Etappenkampf jetzt fortsetzen."
+        "[b]Alter Spielstand geladen.[/b]\n"
+        + "Deine damalige Wegentscheidung wurde übernommen.\n\n"
+        + "Du kannst den Etappenkampf jetzt fortsetzen. Sobald diese Etappe beendet ist, "
+        + "wechselt der Lauf automatisch auf das neue Etappenstart-Speichersystem."
     )
     _refresh_team_panel()
 
@@ -199,17 +324,13 @@ func _show_pending_capture_resume() -> void:
     _prepare_resume_surface()
     path_box.visible = false
     continue_button.visible = false
-    event_label.text = "[b]Spielstand geladen.[/b]\nDer gefangene Kandidat wartet weiter auf deine Entscheidung."
+    event_label.text = "[b]Alter Spielstand geladen.[/b]\nDer gefangene Kandidat wartet weiter auf deine Entscheidung."
     _begin_capture_event_again()
     _refresh_team_panel()
 
 
 func _show_special_battle_resume() -> void:
     _prepare_resume_surface()
-    # This state rebuilds the special encounter directly instead of passing
-    # through _show_stage_choices(). Apply the same compact, viewport-safe route
-    # layout explicitly so the redundant progress row cannot push the footer
-    # below the visible game window.
     _tf_prepare_route_choice_layout(false)
     continue_button.visible = false
 
@@ -224,7 +345,7 @@ func _show_special_battle_resume() -> void:
         enemy_lines.append("%s Lv.%d" % [species_name, int(enemy.get("level", 1))])
 
     event_label.text = (
-        "[b]Spielstand geladen.[/b]\n"
+        "[b]Alter Spielstand geladen.[/b]\n"
         + "%s wartet weiter auf dich.\nGegner: %s"
     ) % [saved_special_battle_heading, ", ".join(enemy_lines)]
 
@@ -246,12 +367,10 @@ func _show_boss_reward_pending_resume() -> void:
 
     if not _boss_fundstelle_pending:
         _show_stage_choices(
-            "[b]Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
+            "[b]Alter Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
         )
         return
 
-    # The boss victory and its team/progression changes are already in the save.
-    # Only the not-yet-rolled reward screen still has to begin.
     _begin_fundstelle()
     _refresh_team_panel()
 
@@ -263,7 +382,7 @@ func _show_boss_fundstelle_resume() -> void:
 
     if not _boss_fundstelle_pending:
         _show_stage_choices(
-            "[b]Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
+            "[b]Alter Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
         )
         return
 
@@ -283,7 +402,7 @@ func _show_boss_reward_complete_resume() -> void:
 
     if not _boss_fundstelle_pending:
         _show_stage_choices(
-            "[b]Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
+            "[b]Alter Spielstand geladen.[/b]\nDie Bossbelohnung war bereits abgeschlossen."
         )
         return
 
@@ -295,7 +414,7 @@ func _show_boss_reward_complete_resume() -> void:
 
 func _resume_saved_special_battle() -> void:
     if saved_special_enemy_party.is_empty():
-        _show_stage_choices("Der gespeicherte Spezialkampf konnte nicht wiederhergestellt werden.")
+        _show_stage_choices("Der alte Spezialkampf konnte nicht wiederhergestellt werden.")
         return
     _start_special_battle(
         saved_special_battle_kind,
@@ -349,7 +468,7 @@ func _build_run_exit_dialog() -> void:
     card.add_child(content)
 
     var eyebrow := Label.new()
-    eyebrow.text = "DEIN SPIELSTAND IST SICHER"
+    eyebrow.text = "LETZTER ETAPPENSTART GESPEICHERT"
     eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     eyebrow.add_theme_font_size_override("font_size", 10)
     eyebrow.add_theme_color_override("font_color", Color("9fe7bd"))
@@ -387,13 +506,16 @@ func _build_run_exit_dialog() -> void:
     note_row.add_child(note_copy)
 
     var save_title := Label.new()
-    save_title.text = "Automatisch gespeichert"
+    save_title.text = "Gespeicherter Etappenstart"
     save_title.add_theme_font_size_override("font_size", 13)
     save_title.add_theme_color_override("font_color", Color("f4f7f5"))
     note_copy.add_child(save_title)
 
     var save_text := Label.new()
-    save_text.text = "Über „Abenteuer fortführen“ kannst du später genau hier weitermachen."
+    save_text.text = (
+        "Beim Fortführen beginnst du am letzten gespeicherten Etappenstart. "
+        + "Fortschritt innerhalb der laufenden Etappe wird nicht zusätzlich gespeichert."
+    )
     save_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     save_text.add_theme_font_size_override("font_size", 10)
     save_text.add_theme_color_override("font_color", Color("b8cbc2"))
@@ -480,7 +602,7 @@ func _on_run_exit_overlay_input(event: InputEvent) -> void:
 
 func _leave_run_to_main_menu() -> void:
     _dismiss_run_exit_dialog()
-    _autosave_run("main_menu")
+    _clear_run_save_feedback()
     visible = false
     request_main_menu.emit()
 
