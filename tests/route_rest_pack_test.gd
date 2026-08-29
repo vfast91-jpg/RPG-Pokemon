@@ -10,6 +10,7 @@ var failures: Array[String] = []
 func _initialize() -> void:
     _remove_test_save()
     _test_exact_milestone_rewards_and_idempotence()
+    _test_reward_popup_is_queued_for_every_grant()
     _test_use_heals_team_and_cannot_be_wasted()
     _test_save_restore_keeps_count_and_claims()
     _test_compact_rest_pack_footer_ui_state()
@@ -34,30 +35,60 @@ func _test_exact_milestone_rewards_and_idempotence() -> void:
     var route = RouteScript.new()
     var expected_stages: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 
-    # The reward belongs to the stage being ENTERED. It must therefore already
-    # exist on stage 5 itself, before that stage's fight is completed.
-    _expect(not route._grant_rest_pack_for_entered_stage(4), "Etappe 4 darf noch kein Rastpaket vergeben.")
-    _expect(route._grant_rest_pack_for_entered_stage(5), "Beim Betreten von Etappe 5 muss das erste Rastpaket sofort verfügbar sein.")
-    _expect(route.rest_pack_count == 1, "Zu Beginn von Etappe 5 muss der Bestand bereits ×1 sein.")
-    _expect(not route._grant_rest_pack_for_entered_stage(5), "Etappe 5 darf beim erneuten Anzeigen niemals doppelt auszahlen.")
+    # The reward belongs to the milestone that was actually COMPLETED. It is not
+    # granted merely because the player opened that milestone's route screen.
+    _expect(not route._grant_rest_pack_for_completed_stage(4), "Vor Abschluss von Etappe 5 darf noch kein Rastpaket vergeben werden.")
+    _expect(route._grant_rest_pack_for_completed_stage(5), "Nach erfolgreichem Abschluss von Etappe 5 muss das erste Rastpaket vergeben werden.")
+    _expect(route.rest_pack_count == 1, "Nach Abschluss von Etappe 5 muss der Bestand ×1 sein.")
+    _expect(not route._grant_rest_pack_for_completed_stage(5), "Etappe 5 darf beim erneuten Anzeigen niemals doppelt auszahlen.")
 
-    # Continue with a fresh route so all ten milestone entries can be checked in
-    # one simple sweep without the explicit stage-5 assertion above affecting it.
     route.free()
     route = RouteScript.new()
 
-    for entered_stage: int in range(1, 101):
-        var granted: bool = route._grant_rest_pack_for_entered_stage(entered_stage)
+    for completed_stage: int in range(1, 101):
+        var granted: bool = route._grant_rest_pack_for_completed_stage(completed_stage)
         _expect(
-            granted == expected_stages.has(entered_stage),
-            "Nur beim Betreten von Etappe 5/15/.../95 darf ein Rastpaket vergeben werden (Etappe %d)." % entered_stage
+            granted == expected_stages.has(completed_stage),
+            "Nur abgeschlossene Etappen 5/15/.../95 dürfen ein Rastpaket vergeben (Etappe %d)." % completed_stage
         )
 
-    _expect(route.rest_pack_count == 10, "Bis Etappe 100 müssen exakt zehn Rastpakete vergeben worden sein.")
+    _expect(route.rest_pack_count == 10, "Bis nach Etappe 95 müssen exakt zehn Rastpakete vergeben worden sein.")
     _expect(route.rest_pack_claimed_stages.size() == 10, "Jede der zehn Meilenstein-Etappen darf nur einmal markiert sein.")
-    _expect(not route._grant_rest_pack_for_entered_stage(5), "Etappe 5 darf beim erneuten Anzeigen niemals doppelt auszahlen.")
-    _expect(route.rest_pack_count == 10, "Doppelte Etappen-Aufrufe dürfen den Bestand nicht erhöhen.")
-    _expect(not route._grant_rest_pack_for_entered_stage(100), "Etappe 100 darf ausdrücklich kein Rastpaket vergeben.")
+    _expect(not route._grant_rest_pack_for_completed_stage(5), "Etappe 5 darf auch später niemals ein zweites Mal auszahlen.")
+    _expect(route.rest_pack_count == 10, "Doppelte Meilenstein-Aufrufe dürfen den Bestand nicht erhöhen.")
+    _expect(not route._grant_rest_pack_for_completed_stage(100), "Etappe 100 darf ausdrücklich kein Rastpaket vergeben.")
+    route.free()
+
+
+func _test_reward_popup_is_queued_for_every_grant() -> void:
+    var route = RouteScript.new()
+    var expected_stages: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
+
+    for completed_stage: int in expected_stages:
+        _expect(
+            route._award_rest_pack_for_completed_stage(completed_stage),
+            "Jede echte Rastpaket-Vergabe muss auch das Vergabe-Fenster einplanen (Etappe %d)." % completed_stage
+        )
+
+    _expect(route.rest_pack_count == 10, "Die Popup-Prüfung muss zehn echte Vergaben erzeugen.")
+    _expect(
+        route._run_save_rest_pack_reward_popup_queue == expected_stages,
+        "Für 5/15/.../95 muss jeweils genau ein eigenes Vergabe-Fenster in der Warteschlange stehen."
+    )
+    _expect(
+        route._run_save_rest_pack_reward_popup_pending,
+        "Nach einer echten Vergabe muss das Rastpaket-Fenster zur Anzeige vorgemerkt sein."
+    )
+
+    var queued_before_duplicate: int = route._run_save_rest_pack_reward_popup_queue.size()
+    _expect(
+        not route._award_rest_pack_for_completed_stage(25),
+        "Eine bereits vergütete Etappe darf weder Paket noch zweites Fenster erzeugen."
+    )
+    _expect(
+        route._run_save_rest_pack_reward_popup_queue.size() == queued_before_duplicate,
+        "Ein doppelter Meilenstein-Aufruf darf kein zweites Vergabe-Fenster einreihen."
+    )
     route.free()
 
 
@@ -108,6 +139,10 @@ func _test_save_restore_keeps_count_and_claims() -> void:
     _expect(manager.restore_route(restored), "Rastpaket-Spielstand muss wiederhergestellt werden können.")
     _expect(restored.rest_pack_count == 2, "Gestapelter Rastpaket-Bestand muss Save/Load überleben.")
     _expect(restored.rest_pack_claimed_stages == [5, 15], "Bereits ausgezahlte Meilensteine müssen Save/Load überleben.")
+    _expect(
+        restored._run_save_rest_pack_reward_popup_queue.is_empty(),
+        "Transiente Vergabe-Fenster dürfen nicht im Spielstand gespeichert werden."
+    )
 
     manager.clear_run_save()
     route.free()

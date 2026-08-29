@@ -2,11 +2,11 @@ extends "res://scripts/demo_route_gen3_legendary_endgame_v1.gd"
 
 # Poké-Rastpaket
 #
-# On entering every milestone stage ending in 5 (5..95), the active adventure
-# receives one stackable full-team rest pack before that stage's path choice and
-# battle. The claimed-stage list makes repeated redraws, save/load resumes and
-# duplicate stage-entry calls harmless. Both regular variables are persisted
-# automatically by RunSaveManager.
+# After every successfully completed milestone stage ending in 5 (5..95), the
+# active adventure receives one stackable full-team rest pack. The claimed-stage
+# list makes repeated redraws, save/load resumes and duplicate transition calls
+# harmless. The reward is committed before the inherited stage checkpoint is
+# saved. Its visual popup is transient and deliberately excluded from run saves.
 
 const REST_PACK_REWARD_STAGES: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 const REST_PACK_TOOLTIP: String = "Heilt dein gesamtes Team vollständig und entfernt Statusprobleme. Verbraucht 1 Poké-Rastpaket."
@@ -19,6 +19,13 @@ var _rest_pack_count_label: Label
 var _rest_pack_use_button: Button
 var _rest_pack_footer_spacer: Control
 
+# RunSaveManager intentionally ignores members beginning with _run_save_. These
+# values describe only the currently visible notification and must never make a
+# dismissed reward window reappear after loading a checkpoint.
+var _run_save_rest_pack_reward_popup_queue: Array[int] = []
+var _run_save_rest_pack_reward_overlay: Control
+var _run_save_rest_pack_reward_popup_pending: bool = false
+
 
 func _ready() -> void:
     super._ready()
@@ -28,26 +35,32 @@ func _ready() -> void:
 
 func start_route() -> void:
     # A genuinely new adventure always starts without carried-over packs.
-    # Saved adventures restore these values through RunSaveManager instead.
+    # Saved adventures restore the persistent values through RunSaveManager
+    # instead of calling start_route().
     rest_pack_count = 0
     rest_pack_claimed_stages.clear()
+    _reset_rest_pack_reward_popup_state()
     super.start_route()
 
 
 func _show_stage_choices(message: String = "") -> void:
-    # The pack belongs to the stage the player is about to face, not to the
-    # previous victory. Grant before super so it is already available on the
-    # route-choice screen and the inherited stage-checkpoint autosave contains
-    # it. Reopening the same stage cannot grant it twice.
-    if _grant_rest_pack_for_entered_stage(stage):
+    # Stage N+1 can only be reached after stage N was actually completed. This
+    # keeps the reward tied to the successful milestone instead of merely opening
+    # the milestone's route screen.
+    var completed_stage: int = stage - 1
+    var reward_granted: bool = _award_rest_pack_for_completed_stage(completed_stage)
+    if reward_granted:
         var reward_text: String = (
             "[b]🎒 Poké-Rastpaket erhalten![/b]\n"
-            + "Für deinen weiteren Weg hast du ein Poké-Rastpaket erhalten. "
+            + "Belohnung für den Abschluss von Etappe [b]%d[/b]. " % completed_stage
             + "Damit kann dein ganzes Team zwischen den Kämpfen wieder vollständig zu Kräften kommen. "
             + "Bestand: [b]%d[/b]" % rest_pack_count
         )
         message = reward_text if message.is_empty() else message + "\n\n" + reward_text
 
+    # The reward and claimed-stage marker already exist when the inherited route
+    # layer writes its stage checkpoint. The popup itself is deferred so it can
+    # never race the level-up/departure/campfire presentation layers.
     super._show_stage_choices(message)
 
 
@@ -56,15 +69,220 @@ func _refresh_team_panel() -> void:
     _refresh_rest_pack_ui()
 
 
-func _grant_rest_pack_for_entered_stage(entered_stage: int) -> bool:
-    if not REST_PACK_REWARD_STAGES.has(entered_stage):
-        return false
-    if rest_pack_claimed_stages.has(entered_stage):
+func _award_rest_pack_for_completed_stage(completed_stage: int) -> bool:
+    if not _grant_rest_pack_for_completed_stage(completed_stage):
         return false
 
-    rest_pack_claimed_stages.append(entered_stage)
+    _schedule_rest_pack_reward_popup(completed_stage)
+    return true
+
+
+func _grant_rest_pack_for_completed_stage(completed_stage: int) -> bool:
+    if not REST_PACK_REWARD_STAGES.has(completed_stage):
+        return false
+    if rest_pack_claimed_stages.has(completed_stage):
+        return false
+
+    rest_pack_claimed_stages.append(completed_stage)
     rest_pack_count += 1
     return true
+
+
+func _schedule_rest_pack_reward_popup(completed_stage: int) -> void:
+    _run_save_rest_pack_reward_popup_queue.append(completed_stage)
+    _run_save_rest_pack_reward_popup_pending = true
+    call_deferred("_try_show_rest_pack_reward_popup")
+
+
+func _on_levelup_continue() -> void:
+    super._on_levelup_continue()
+    if _run_save_rest_pack_reward_popup_pending:
+        call_deferred("_try_show_rest_pack_reward_popup")
+
+
+func _dismiss_campfire_unlock_popup() -> void:
+    super._dismiss_campfire_unlock_popup()
+    if _run_save_rest_pack_reward_popup_pending:
+        call_deferred("_try_show_rest_pack_reward_popup")
+
+
+func _dismiss_companion_departure_popup() -> void:
+    super._dismiss_companion_departure_popup()
+    if _run_save_rest_pack_reward_popup_pending:
+        call_deferred("_try_show_rest_pack_reward_popup")
+
+
+func _try_show_rest_pack_reward_popup() -> void:
+    if not _run_save_rest_pack_reward_popup_pending:
+        return
+    if _run_save_rest_pack_reward_popup_queue.is_empty():
+        _run_save_rest_pack_reward_popup_pending = false
+        return
+    if not visible:
+        return
+    if (
+        _run_save_rest_pack_reward_overlay != null
+        and is_instance_valid(_run_save_rest_pack_reward_overlay)
+    ):
+        return
+
+    # Existing post-battle presentations always get precedence. The rest-pack
+    # popup retries when those windows are dismissed instead of overlapping them.
+    if _levelup_presentation_pending():
+        return
+    if _campfire_unlock_popup_pending:
+        return
+    if _campfire_unlock_overlay != null and is_instance_valid(_campfire_unlock_overlay):
+        return
+    if _companion_departure_popup_pending:
+        return
+    if _companion_departure_overlay != null and is_instance_valid(_companion_departure_overlay):
+        return
+
+    _run_save_rest_pack_reward_popup_pending = false
+    var completed_stage: int = _run_save_rest_pack_reward_popup_queue.pop_front()
+    _show_rest_pack_reward_popup(completed_stage)
+
+
+func _show_rest_pack_reward_popup(completed_stage: int) -> void:
+    var overlay: Control = _build_rest_pack_reward_overlay(completed_stage)
+    _run_save_rest_pack_reward_overlay = overlay
+    overlay.visible = true
+
+
+func _build_rest_pack_reward_overlay(completed_stage: int) -> Control:
+    var overlay := ColorRect.new()
+    overlay.name = "RestPackRewardOverlay"
+    overlay.color = Color("07100de0")
+    overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    overlay.z_index = 130
+    add_child(overlay)
+    overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    var center := CenterContainer.new()
+    center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    overlay.add_child(center)
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    var card := PanelContainer.new()
+    card.custom_minimum_size = Vector2(470.0, 0.0)
+    card.add_theme_stylebox_override("panel", _rest_pack_reward_card_style())
+    center.add_child(card)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 8)
+    card.add_child(content)
+
+    var eyebrow := Label.new()
+    eyebrow.text = "ETAPPE %d GESCHAFFT · BELOHNUNG" % completed_stage
+    eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    eyebrow.add_theme_font_size_override("font_size", 10)
+    eyebrow.add_theme_color_override("font_color", Color("e0c968"))
+    content.add_child(eyebrow)
+
+    var title := Label.new()
+    title.text = "🎒  Poké-Rastpaket erhalten!"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 19)
+    title.add_theme_color_override("font_color", Color("fff0ad"))
+    content.add_child(title)
+
+    var intro := Label.new()
+    intro.text = "Für deinen weiteren Weg erhältst du 1 Poké-Rastpaket."
+    intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    intro.add_theme_font_size_override("font_size", 11)
+    intro.add_theme_color_override("font_color", Color("dce8e2"))
+    content.add_child(intro)
+
+    var feature := PanelContainer.new()
+    feature.add_theme_stylebox_override(
+        "panel",
+        _panel(Color("182822"), Color("55796a"), 8, 9.0)
+    )
+    content.add_child(feature)
+
+    var feature_row := HBoxContainer.new()
+    feature_row.add_theme_constant_override("separation", 10)
+    feature.add_child(feature_row)
+
+    var icon := Label.new()
+    icon.text = "💚"
+    icon.custom_minimum_size = Vector2(34.0, 34.0)
+    icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    icon.add_theme_font_size_override("font_size", 22)
+    feature_row.add_child(icon)
+
+    var feature_copy := VBoxContainer.new()
+    feature_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    feature_copy.add_theme_constant_override("separation", 2)
+    feature_row.add_child(feature_copy)
+
+    var feature_title := Label.new()
+    feature_title.text = "Vollständige Teamheilung"
+    feature_title.add_theme_font_size_override("font_size", 13)
+    feature_title.add_theme_color_override("font_color", Color("9fe7bd"))
+    feature_copy.add_child(feature_title)
+
+    var feature_text := Label.new()
+    feature_text.text = (
+        "Heilt dein gesamtes Team vollständig und entfernt Statusprobleme. "
+        + "Nicht benutzte Rastpakete bleiben erhalten und stapeln sich."
+    )
+    feature_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    feature_text.add_theme_font_size_override("font_size", 10)
+    feature_text.add_theme_color_override("font_color", Color("dce8e2"))
+    feature_copy.add_child(feature_text)
+
+    var stock := Label.new()
+    stock.text = "Aktueller Bestand:  ×%d" % rest_pack_count
+    stock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    stock.add_theme_font_size_override("font_size", 11)
+    stock.add_theme_color_override("font_color", Color("f1dda0"))
+    content.add_child(stock)
+
+    var continue_reward := Button.new()
+    continue_reward.text = "WEITER  →"
+    continue_reward.custom_minimum_size = Vector2(0.0, 36.0)
+    continue_reward.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    continue_reward.pressed.connect(_dismiss_rest_pack_reward_popup)
+    _style_route_decision_button(continue_reward, true)
+    content.add_child(continue_reward)
+    continue_reward.call_deferred("grab_focus")
+
+    return overlay
+
+
+func _rest_pack_reward_card_style() -> StyleBoxFlat:
+    var style: StyleBoxFlat = _panel(Color("12251f"), Color("e0c968"), 12, 16.0)
+    style.set_border_width_all(2)
+    style.shadow_color = Color("00000099")
+    style.shadow_size = 10
+    return style
+
+
+func _dismiss_rest_pack_reward_popup() -> void:
+    if (
+        _run_save_rest_pack_reward_overlay != null
+        and is_instance_valid(_run_save_rest_pack_reward_overlay)
+    ):
+        _run_save_rest_pack_reward_overlay.queue_free()
+    _run_save_rest_pack_reward_overlay = null
+
+    if not _run_save_rest_pack_reward_popup_queue.is_empty():
+        _run_save_rest_pack_reward_popup_pending = true
+        call_deferred("_try_show_rest_pack_reward_popup")
+
+
+func _reset_rest_pack_reward_popup_state() -> void:
+    _run_save_rest_pack_reward_popup_queue.clear()
+    _run_save_rest_pack_reward_popup_pending = false
+    if (
+        _run_save_rest_pack_reward_overlay != null
+        and is_instance_valid(_run_save_rest_pack_reward_overlay)
+    ):
+        _run_save_rest_pack_reward_overlay.queue_free()
+    _run_save_rest_pack_reward_overlay = null
 
 
 func _build_rest_pack_ui() -> void:
