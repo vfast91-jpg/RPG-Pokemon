@@ -12,7 +12,7 @@ const RANDOM_LANDSCAPE_LAST_STAGE: int = 95
 const LANDSCAPE_CHOICE_COUNT: int = 2
 const LANDSCAPE_CARD_IMAGE_SIZE: Vector2 = Vector2(168.0, 126.0)
 const ROUTE_EVENT_LABEL_MIN_HEIGHT: float = 58.0
-const LANDSCAPE_EVENT_LABEL_MIN_HEIGHT: float = 72.0
+const LANDSCAPE_EVENT_LABEL_MIN_HEIGHT: float = 86.0
 
 var _tf_landscape_prepared_stage: int = 1
 var _tf_landscape_choice_active: bool = false
@@ -126,7 +126,11 @@ func _tf_show_landscape_choice_cards() -> void:
 
     title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
 
-    var intro: String = "[b]Wohin führt dein Weg?[/b]\nWähle die Landschaft für Etappe %d." % stage
+    var intro: String = (
+        "[b]Wohin führt dein Weg?[/b]\n"
+        + "Wähle die Landschaft für Etappe %d.\n"
+        + "[color=#b8d8c8]💾 Nach deiner Landschaftswahl wird dein Spielstand gespeichert.[/color]"
+    ) % stage
     if not _tf_landscape_pending_message.is_empty():
         event_label.text = _tf_landscape_pending_message + "\n\n" + intro
     else:
@@ -212,8 +216,13 @@ func _tf_select_landscape(landscape_id: String) -> void:
     next_message += "[b]🗺 Neue Landschaft: %s[/b]" % chosen_name
     _tf_landscape_pending_message = ""
 
+    # Build the complete new-stage surface first. The save layer then snapshots
+    # exactly this stage start: chosen landscape, team, run state and any already
+    # prepared endgame target. No battle or path decision has happened yet.
     super._show_stage_choices(next_message)
     _tf_prepare_route_choice_layout(false)
+    if has_method("_commit_canonical_stage_start"):
+        call("_commit_canonical_stage_start", true)
 
 
 func _tf_random_landscape_choice_ids() -> Array[String]:
