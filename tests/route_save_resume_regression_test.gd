@@ -23,8 +23,8 @@ func _initialize() -> void:
         "path_box muss sichtbar sein, bevor die geerbte Routenauswahl neu aufgebaut wird."
     )
     assert(
-        route_source.contains("_tf_refresh_local_scroll_state()"),
-        "Nach dem Neuaufbau muss der Route-Viewport aktualisiert werden."
+        route_source.contains("call(\"_tf_refresh_local_scroll_state\")"),
+        "Nach dem Neuaufbau muss der Route-Viewport dynamisch aktualisiert werden."
     )
     assert(
         route_source.contains("_run_save_last_write_ok = RunSaveManager.save_route(self, effective_checkpoint)"),
