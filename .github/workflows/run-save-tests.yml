@@ -7,9 +7,14 @@ on:
     paths:
       - "scripts/run_save_manager.gd"
       - "scripts/demo_route_run_save_v1.gd"
+      - "scripts/demo_route_landscape_choice_v1.gd"
+      - "scripts/demo_route_gen3_legendary_endgame_v1.gd"
+      - "scripts/demo_route_campfire_v1.gd"
       - "scripts/demo_route_boss_reward_two_pick_v1.gd"
       - "scripts/main_menu_run_save_v1.gd"
+      - "scripts/battle_demo_boss_residual_hp_fix_v1.gd"
       - "tests/run_save_manager_test.gd"
+      - "tests/route_canonical_save_test.gd"
       - "tests/boss_fundstelle_two_pick_test.gd"
       - ".github/workflows/run-save-tests.yml"
   workflow_dispatch:
@@ -42,6 +47,9 @@ jobs:
 
       - name: Run single-slot save regression
         run: ./godot --headless --path . --script tests/run_save_manager_test.gd
+
+      - name: Run canonical route save regression
+        run: ./godot --headless --path . --script tests/route_canonical_save_test.gd
 
       - name: Run boss Fundstelle two-pick regression
         run: ./godot --headless --path . --script tests/boss_fundstelle_two_pick_test.gd
