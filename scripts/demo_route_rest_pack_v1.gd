@@ -2,11 +2,11 @@ extends "res://scripts/demo_route_gen3_legendary_endgame_v1.gd"
 
 # Poké-Rastpaket
 #
-# After every successfully completed milestone stage ending in 5 (5..95), the
-# active adventure receives one stackable full-team rest pack. The claimed-stage
-# list makes repeated redraws, save/load resumes and duplicate transition calls
-# harmless. The reward is committed before the inherited stage checkpoint is
-# saved. Its visual popup is transient and deliberately excluded from run saves.
+# When the player commits to a path into a milestone stage ending in 5 (5..95),
+# the active adventure receives one stackable full-team rest pack. Merely opening
+# the milestone's route-choice screen is not enough. The claimed-stage list makes
+# repeated clicks, save/load resumes and duplicate transition calls harmless. The
+# visual popup is transient and deliberately excluded from run saves.
 
 const REST_PACK_REWARD_STAGES: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 const REST_PACK_TOOLTIP: String = "Heilt dein gesamtes Team vollständig und entfernt Statusprobleme. Verbraucht 1 Poké-Rastpaket."
@@ -43,25 +43,12 @@ func start_route() -> void:
     super.start_route()
 
 
-func _show_stage_choices(message: String = "") -> void:
-    # Stage N+1 can only be reached after stage N was actually completed. This
-    # keeps the reward tied to the successful milestone instead of merely opening
-    # the milestone's route screen.
-    var completed_stage: int = stage - 1
-    var reward_granted: bool = _award_rest_pack_for_completed_stage(completed_stage)
-    if reward_granted:
-        var reward_text: String = (
-            "[b]🎒 Poké-Rastpaket erhalten![/b]\n"
-            + "Belohnung für den Abschluss von Etappe [b]%d[/b]. " % completed_stage
-            + "Damit kann dein ganzes Team zwischen den Kämpfen wieder vollständig zu Kräften kommen. "
-            + "Bestand: [b]%d[/b]" % rest_pack_count
-        )
-        message = reward_text if message.is_empty() else message + "\n\n" + reward_text
-
-    # The reward and claimed-stage marker already exist when the inherited route
-    # layer writes its stage checkpoint. The popup itself is deferred so it can
-    # never race the level-up/departure/campfire presentation layers.
-    super._show_stage_choices(message)
+func _choose_path(choice: Dictionary) -> void:
+    # The currently displayed stage begins only when the player actually commits
+    # to one of its route choices. This keeps milestone rewards out of the choice
+    # screen itself while still committing them before any inherited path autosave.
+    _award_rest_pack_for_completed_stage(stage)
+    super._choose_path(choice)
 
 
 func _refresh_team_panel() -> void:
@@ -174,7 +161,7 @@ func _build_rest_pack_reward_overlay(completed_stage: int) -> Control:
     card.add_child(content)
 
     var eyebrow := Label.new()
-    eyebrow.text = "ETAPPE %d GESCHAFFT · BELOHNUNG" % completed_stage
+    eyebrow.text = "ETAPPE %d ERREICHT · BELOHNUNG" % completed_stage
     eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     eyebrow.add_theme_font_size_override("font_size", 10)
     eyebrow.add_theme_color_override("font_color", Color("e0c968"))
