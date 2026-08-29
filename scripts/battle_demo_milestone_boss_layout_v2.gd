@@ -11,7 +11,7 @@ const MILESTONE_BOSS_SPRITE_GAP: float = 14.0
 const MILESTONE_BOSS_CARD_GAP: float = 14.0
 const MILESTONE_BOSS_FORWARD_OFFSET: float = 12.0
 const MILESTONE_BOSS_SHADOW_SCALE: Vector2 = Vector2(2.2, 1.6)
-const MILESTONE_BOSS_ATB_RATE_MULTIPLIER: float = 1.5
+const MILESTONE_BOSS_ATB_RATE_MULTIPLIER: float = 1.0
 const VisibleTextureLayout = preload("res://scripts/ui/visible_texture_layout.gd")
 
 
