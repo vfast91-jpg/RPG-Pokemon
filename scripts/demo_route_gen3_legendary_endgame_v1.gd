@@ -6,6 +6,9 @@ extends "res://scripts/demo_route_capture_button_fix_v1.gd"
 # their uniqueness rules. Deoxys deliberately occupies exactly ONE slot in the
 # configured pool. Only after that slot wins the primary draw do we roll again
 # between its four independently implemented forms.
+#
+# The selected endgame target is prepared at the canonical stage-start save.
+# Reloading that checkpoint therefore never rerolls the superboss.
 
 const Gen3EndgameBossRules = preload("res://scripts/route_boss_rules.gd")
 const DEOXYS_POOL_ENTRY: String = "deoxys"
@@ -15,6 +18,59 @@ const DEOXYS_FORMS: Array[String] = [
     "deoxys-defense",
     "deoxys-speed"
 ]
+
+var canonical_endgame_target_stage: int = 0
+var canonical_endgame_target_species_id: String = ""
+var canonical_endgame_target_level: int = 0
+
+
+func start_route() -> void:
+    canonical_endgame_target_stage = 0
+    canonical_endgame_target_species_id = ""
+    canonical_endgame_target_level = 0
+    super.start_route()
+
+
+func _prepare_canonical_endgame_target() -> bool:
+    if stage < ENDGAME_STAGE_START or stage > ENDGAME_STAGE_END:
+        return true
+    if (
+        canonical_endgame_target_stage == stage
+        and not canonical_endgame_target_species_id.is_empty()
+        and canonical_endgame_target_level > 0
+    ):
+        return true
+    if battle_demo == null:
+        return false
+
+    var profile: Dictionary = Gen3EndgameBossRules.boss_profile_for_stage(stage)
+    if profile.is_empty():
+        return false
+
+    var boss_level: int = maxi(
+        1,
+        _highest_team_level() + int(profile.get("level_offset", 5))
+    )
+    # Resolve through the inherited endgame policy exactly once. This includes
+    # pool uniqueness and the second Deoxys-form roll when that pool slot wins.
+    var species_id: String = super._endgame_species_for_profile(profile, boss_level)
+    if species_id.is_empty():
+        return false
+
+    canonical_endgame_target_stage = stage
+    canonical_endgame_target_species_id = species_id
+    canonical_endgame_target_level = boss_level
+    return true
+
+
+func _endgame_species_for_profile(profile: Dictionary, boss_level: int) -> String:
+    if (
+        canonical_endgame_target_stage == stage
+        and canonical_endgame_target_level == boss_level
+        and not canonical_endgame_target_species_id.is_empty()
+    ):
+        return canonical_endgame_target_species_id
+    return super._endgame_species_for_profile(profile, boss_level)
 
 
 func _pick_available_legendary_pool_species(pool_id: String, unique_within_pool: bool) -> String:
