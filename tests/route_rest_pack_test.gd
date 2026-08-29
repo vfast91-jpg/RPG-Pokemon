@@ -9,7 +9,7 @@ var failures: Array[String] = []
 
 func _initialize() -> void:
     _remove_test_save()
-    _test_reward_waits_for_path_choice()
+    _test_reward_triggers_after_landscape_before_route_event()
     _test_exact_milestone_rewards_and_idempotence()
     _test_reward_popup_is_queued_for_every_grant()
     _test_use_heals_team_and_cannot_be_wasted()
@@ -32,37 +32,47 @@ func _expect(condition: bool, message: String) -> void:
         failures.append(message)
 
 
-func _test_reward_waits_for_path_choice() -> void:
+func _test_reward_triggers_after_landscape_before_route_event() -> void:
     var route = RouteScript.new()
-    # Suppress production autosaves while exercising the real route-choice hook.
+    # Suppress production autosaves while exercising the real landscape hook.
     route._run_save_finished = true
     route._build_ui()
     route.stage = 5
+    route._tf_landscape_prepared_stage = 4
+    route._tf_landscape_choice_active = true
+    route._tf_landscape_choice_waiting = false
 
-    route._show_stage_choices("Etappe 5 wartet auf deine Wegwahl.")
     _expect(
         route.rest_pack_count == 0,
-        "Das bloße Öffnen der Wegauswahl für Etappe 5 darf noch kein Rastpaket vergeben."
+        "Vor der Landschaftswahl für Etappe 5 darf noch kein Rastpaket vergeben werden."
     )
     _expect(
         route.rest_pack_claimed_stages.is_empty(),
-        "Vor der tatsächlichen Wegwahl darf Etappe 5 noch nicht als Rastpaket-Meilenstein markiert sein."
+        "Vor der Landschaftswahl darf Etappe 5 noch nicht als Rastpaket-Meilenstein markiert sein."
     )
 
-    route._choose_path({"kind": "battle"})
+    route._tf_select_landscape("meadow")
     _expect(
         route.rest_pack_count == 1,
-        "Erst die tatsächliche Wegwahl zum Beginn von Etappe 5 muss das erste Rastpaket vergeben."
+        "Direkt nach der Landschaftswahl für Etappe 5 muss das erste Rastpaket vergeben werden."
     )
     _expect(
         route.rest_pack_claimed_stages == [5],
-        "Nach der Wegwahl muss Etappe 5 genau einmal als Rastpaket-Meilenstein markiert sein."
+        "Nach der Landschaftswahl muss Etappe 5 genau einmal als Rastpaket-Meilenstein markiert sein."
+    )
+    _expect(
+        route._run_save_rest_pack_reward_popup_queue == [5],
+        "Nach der Landschaftswahl muss das Rastpaket-Fenster bereits eingeplant sein."
+    )
+    _expect(
+        route._run_save_rest_pack_reward_popup_pending,
+        "Das Rastpaket-Fenster muss vor der normalen Wegevent-Auswahl zur Anzeige vorgemerkt sein."
     )
 
     route._choose_path({"kind": "battle"})
     _expect(
         route.rest_pack_count == 1,
-        "Ein wiederholter Aufruf derselben Wegwahl darf Etappe 5 niemals doppelt auszahlen."
+        "Die anschließende Wahl von Fundstelle/Training/Heilquelle darf keine verspätete zweite Vergabe auslösen."
     )
     route.free()
 
@@ -72,7 +82,7 @@ func _test_exact_milestone_rewards_and_idempotence() -> void:
     var expected_stages: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 
     # The grant helper still owns the exact milestone set and duplicate guard;
-    # the production hook now calls it only after a path into that stage is chosen.
+    # the production hook now calls it when the landscape for that stage is chosen.
     _expect(not route._grant_rest_pack_for_completed_stage(4), "Vor Beginn von Etappe 5 darf noch kein Rastpaket vergeben werden.")
     _expect(route._grant_rest_pack_for_completed_stage(5), "Beim Beginn von Etappe 5 muss das erste Rastpaket vergeben werden.")
     _expect(route.rest_pack_count == 1, "Nach Beginn von Etappe 5 muss der Bestand ×1 sein.")
