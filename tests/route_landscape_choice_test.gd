@@ -1,10 +1,26 @@
 extends SceneTree
 
 const RouteScript = preload("res://scripts/demo_route_landscape_choice_v1.gd")
+const ROUTE_SOURCE_PATH: String = "res://scripts/demo_route_landscape_choice_v1.gd"
 const EXPECTED_LANDSCAPE_COUNT: int = 18
 
 
 func _initialize() -> void:
+    var route_source: String = FileAccess.get_file_as_string(ROUTE_SOURCE_PATH)
+    assert(not route_source.is_empty(), "Landschaftsauswahl-Script muss lesbar sein.")
+    assert(
+        route_source.contains("ResourceLoader.exists(background_path, \"Texture2D\")"),
+        "Importierte Landschaftsbilder müssen export-sicher über ResourceLoader geprüft werden."
+    )
+    assert(
+        not route_source.contains("FileAccess.file_exists(background_path)"),
+        "Importierte Landschaftsbilder dürfen im Export nicht über FileAccess.file_exists geprüft werden."
+    )
+    assert(
+        route_source.contains("Der Lauf wird hier gestoppt, damit weder Landschaft noch Spielstand übersprungen werden."),
+        "Fehlende Export-Ressourcen dürfen die Landschaftswahl und den Save-Punkt nicht still überspringen."
+    )
+
     var route = RouteScript.new()
     route._tf_load_landscape_registry()
 
