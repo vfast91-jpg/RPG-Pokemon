@@ -6,8 +6,6 @@ extends "res://scripts/demo_route_endgame_v1.gd"
 #   mandatory stage fight already provides the boss encounter.
 # - Milestone bosses reuse the existing standard boss profile and the normal
 #   route victory / XP / stage progression flow.
-# - Winning a milestone boss battle fully heals the team after XP is awarded,
-#   so Pokemon that fainted during the fight do not incorrectly receive XP.
 # - Species selection deliberately stays routed through
 #   _weighted_encounter_species(). Higher route layers can therefore combine
 #   the existing rarity curve with the currently selected landscape without
@@ -33,19 +31,6 @@ func _enemy_party_for_stage(current_stage: int) -> Array:
     if not _is_milestone_double_boss_stage(current_stage):
         return super._enemy_party_for_stage(current_stage)
     return _milestone_double_boss_party(current_stage)
-
-
-func _award_experience(amount: int) -> Array[String]:
-    var messages: Array[String] = super._award_experience(amount)
-    if not _is_milestone_double_boss_stage(stage):
-        return messages
-
-    _heal_team()
-    _refresh_team_panel()
-    messages.append(
-        "[b]🏆 Boss-Belohnung:[/b] Dein gesamtes Team wurde vollständig geheilt."
-    )
-    return messages
 
 
 func _milestone_double_boss_party(current_stage: int) -> Array:
