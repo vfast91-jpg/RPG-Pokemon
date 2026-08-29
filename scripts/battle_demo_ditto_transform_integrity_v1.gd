@@ -4,6 +4,11 @@ extends "res://scripts/battle_demo_v22_semi_invulnerable_integrity_v1.gd"
 # Keeps the true combatant identity (id/species_id, HP, level, aggro, ATB and
 # status state) intact while copying the target's battle form and making that
 # copied form immediately visible on the battlefield.
+#
+# Transform's copied move pool is strictly battle-local. Route persistence must
+# always retain the move pool Ditto had before transforming.
+
+const DITTO_TRANSFORM_ORIGINAL_MOVES_KEY: String = "f64_transform_original_moves"
 
 
 func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
@@ -29,6 +34,18 @@ func _ditto_apply_transform(actor: Dictionary, target: Dictionary) -> float:
     if bool(target.get("bulba_substitute_active", false)):
         _spawn_feedback_label(target, "🪆 DELEGATOR BLOCKIERT", Color("d9c9a5"))
         return 0.0
+
+    # Snapshot Ditto's real move pool exactly once, before Wandler replaces it.
+    # The snapshot stays on the battle-local combatant and is used by the route
+    # persistence guard below; repeated save points can therefore never turn the
+    # copied target moves into Ditto's permanent move pool.
+    if not actor.has(DITTO_TRANSFORM_ORIGINAL_MOVES_KEY):
+        var original_moves_value: Variant = actor.get("moves", [])
+        actor[DITTO_TRANSFORM_ORIGINAL_MOVES_KEY] = (
+            (original_moves_value as Array).duplicate(true)
+            if original_moves_value is Array
+            else []
+        )
 
     # Keep the battle-form name free of UI decoration. _actor_name() already
     # appends the level and therefore must not be stored back into actor["name"].
@@ -60,6 +77,62 @@ func _ditto_apply_transform(actor: Dictionary, target: Dictionary) -> float:
     _ditto_refresh_transform_visuals(actor)
     _spawn_feedback_label(actor, "🧬 WANDLER → " + target_name, Color("d3c7ef"))
     return 0.0
+
+
+func _route_store_current_state() -> void:
+    # Wandler changes combatant["moves"] for battle use. The inherited route
+    # serializer writes the active combatant back into _route_team_state, so keep
+    # Ditto's pre-transform move pool aside and restore it immediately afterwards.
+    # This mirrors the established battle-local persistence boundary used by
+    # Farbeagle/Nachahmer and works for every route save point, not only battle end.
+    var original_moves_by_team_index: Dictionary = {}
+
+    for local_index: int in range(player_team.size()):
+        if local_index >= _route_active_indices.size():
+            break
+        var team_index: int = _route_active_indices[local_index]
+        if team_index < 0 or team_index >= _route_team_state.size():
+            continue
+
+        var combatant_value: Variant = player_team[local_index]
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value
+        if not bool(combatant.get("f64_transformed", false)):
+            continue
+
+        var original_moves_value: Variant = combatant.get(
+            DITTO_TRANSFORM_ORIGINAL_MOVES_KEY,
+            []
+        )
+        if original_moves_value is Array:
+            original_moves_by_team_index[team_index] = (
+                original_moves_value as Array
+            ).duplicate(true)
+
+    super._route_store_current_state()
+
+    for team_index_value: Variant in original_moves_by_team_index.keys():
+        var team_index: int = int(team_index_value)
+        if team_index < 0 or team_index >= _route_team_state.size():
+            continue
+
+        var state_value: Variant = _route_team_state[team_index]
+        if not (state_value is Dictionary):
+            continue
+
+        var state: Dictionary = state_value
+        var original_moves_value: Variant = original_moves_by_team_index.get(
+            team_index,
+            []
+        )
+        state["moves"] = (
+            (original_moves_value as Array).duplicate(true)
+            if original_moves_value is Array
+            else []
+        )
+        state.erase(DITTO_TRANSFORM_ORIGINAL_MOVES_KEY)
+        _route_team_state[team_index] = state
 
 
 func _ditto_refresh_transform_visuals(actor: Dictionary) -> void:
