@@ -2,11 +2,13 @@ extends "res://scripts/demo_route_gen3_legendary_endgame_v1.gd"
 
 # Poké-Rastpaket
 #
-# When the player commits to a path into a milestone stage ending in 5 (5..95),
-# the active adventure receives one stackable full-team rest pack. Merely opening
-# the milestone's route-choice screen is not enough. The claimed-stage list makes
-# repeated clicks, save/load resumes and duplicate transition calls harmless. The
-# visual popup is transient and deliberately excluded from run saves.
+# When the player confirms the landscape for a milestone stage ending in 5
+# (5..95), the active adventure receives one stackable full-team rest pack.
+# Merely opening the landscape selection is not enough, and the reward is already
+# available before the player can choose that stage's normal route event. The
+# claimed-stage list makes repeated clicks, save/load resumes and duplicate
+# transition calls harmless. The visual popup is transient and deliberately
+# excluded from run saves.
 
 const REST_PACK_REWARD_STAGES: Array[int] = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
 const REST_PACK_TOOLTIP: String = "Heilt dein gesamtes Team vollständig und entfernt Statusprobleme. Verbraucht 1 Poké-Rastpaket."
@@ -43,12 +45,18 @@ func start_route() -> void:
     super.start_route()
 
 
-func _choose_path(choice: Dictionary) -> void:
-    # The currently displayed stage begins only when the player actually commits
-    # to one of its route choices. This keeps milestone rewards out of the choice
-    # screen itself while still committing them before any inherited path autosave.
-    _award_rest_pack_for_completed_stage(stage)
-    super._choose_path(choice)
+func _tf_select_landscape(landscape_id: String) -> void:
+    # A milestone stage truly begins when its new landscape is confirmed. Grant
+    # the pack before the inherited transition builds the normal route choices,
+    # so the deferred reward popup blocks those choices until it is dismissed.
+    var valid_landscape_choice: bool = (
+        _tf_landscape_choice_active
+        and not route_landscape(landscape_id).is_empty()
+    )
+    if valid_landscape_choice:
+        _award_rest_pack_for_completed_stage(stage)
+
+    super._tf_select_landscape(landscape_id)
 
 
 func _refresh_team_panel() -> void:
