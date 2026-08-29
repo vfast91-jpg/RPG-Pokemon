@@ -110,10 +110,25 @@ func _tf_wait_for_progression_then_show_landscapes(sequence_id: int) -> void:
 func _tf_show_landscape_choice_cards() -> void:
     var choices: Array[String] = _tf_random_landscape_choice_ids()
     if choices.size() != LANDSCAPE_CHOICE_COUNT:
+        # Exportierte Builds dürfen eine fehlende Landschaftsressource niemals
+        # stillschweigend überspringen. Genau das würde den kanonischen Save-Punkt
+        # nach der Landschaftswahl ebenfalls umgehen und den Lauf auf einem alten
+        # Etappenstart festhalten.
         push_error("Landschaftsauswahl benötigt genau zwei gültige Landschaften.")
-        _tf_landscape_prepared_stage = stage
-        super._show_stage_choices(_tf_landscape_pending_message)
-        _tf_prepare_route_choice_layout(false)
+        _tf_landscape_choice_active = false
+        _tf_landscape_choice_waiting = false
+        visible = true
+        restart_button.visible = false
+        continue_button.visible = false
+        _clear_container(path_box)
+        _clear_container(capture_actions)
+        _tf_prepare_route_choice_layout(true)
+        title_label.text = "Etappe %d von %d" % [stage, ENDGAME_ROUTE_STAGE_COUNT]
+        event_label.text = (
+            "[b]⚠ Landschaften konnten nicht geladen werden.[/b]\n"
+            + "Der Lauf wird hier gestoppt, damit weder Landschaft noch Spielstand übersprungen werden."
+        )
+        _refresh_team_panel()
         return
 
     _tf_landscape_choice_active = true
@@ -166,7 +181,7 @@ func _tf_make_landscape_choice_card(landscape_id: String, landscape: Dictionary)
     card.add_child(content)
 
     var background_path: String = str(landscape.get("background", "")).strip_edges()
-    var texture_value: Resource = load(background_path)
+    var texture_value: Resource = ResourceLoader.load(background_path, "Texture2D")
 
     var image_button := TextureButton.new()
     image_button.name = "LandscapeImage_" + landscape_id
@@ -248,7 +263,11 @@ func _tf_available_landscape_ids() -> Array[String]:
             continue
         var landscape: Dictionary = landscape_value as Dictionary
         var background_path: String = str(landscape.get("background", "")).strip_edges()
-        if background_path.is_empty() or not FileAccess.file_exists(background_path):
+        # JPG/PNG-Dateien werden von Godot importiert und im Export remapped.
+        # FileAccess.file_exists() prüft dort häufig den nicht mehr vorhandenen
+        # Quellpfad. ResourceLoader.exists() versteht diese Remaps und funktioniert
+        # deshalb auf Android/Web genauso wie im Editor und Windows-Export.
+        if background_path.is_empty() or not ResourceLoader.exists(background_path, "Texture2D"):
             continue
         result.append(landscape_id)
 
