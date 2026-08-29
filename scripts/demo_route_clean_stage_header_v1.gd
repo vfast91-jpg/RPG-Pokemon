@@ -24,9 +24,10 @@ func _show_stage_choices(message: String = "") -> void:
 
     # The viewport guard only exposes the route-choice viewport when path_box is
     # visible. Refresh it after the buttons have been rebuilt so a resumed battle
-    # can never leave the next stage present-but-invisible.
+    # can never leave the next stage present-but-invisible. The guard lives in a
+    # later leaf in parts of the active stack, so keep this call dynamic.
     if has_method("_tf_refresh_local_scroll_state"):
-        _tf_refresh_local_scroll_state()
+        call("_tf_refresh_local_scroll_state")
 
 
 func _prepare_resume_surface() -> void:
