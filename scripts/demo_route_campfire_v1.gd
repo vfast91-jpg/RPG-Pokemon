@@ -27,8 +27,8 @@ func _show_stage_choices(message: String = "") -> void:
         and not _campfire_unlock_announced
     )
 
-    # Set this before the inherited stage checkpoint is saved so reloading stage
-    # 25 can never repeat the tutorial popup.
+    # Set this before the canonical stage-start checkpoint is written so
+    # reloading stage 25 can never repeat the tutorial popup.
     if should_announce:
         _campfire_unlock_announced = true
 
@@ -156,10 +156,9 @@ func _on_campfire_companion_selected(team_index: int) -> void:
     continue_button.visible = true
     _refresh_team_panel()
 
-    # The extension is committed immediately. The inherited save layer turns
-    # this into the normal ready-for-battle checkpoint, so reloads cannot grant
-    # the same +5 twice.
-    _autosave_run("team_change")
+    # This is intentionally NOT another save point. If the run ends before the
+    # next stage-start checkpoint, the current stage is replayed from its saved
+    # beginning, including this decision.
 
 
 func _on_levelup_continue() -> void:
