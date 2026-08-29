@@ -3,7 +3,8 @@ extends Node
 # Exactly one active adventure save. MetaProgression and the leaderboard use
 # their own files and are deliberately never touched here.
 const SAVE_PATH: String = "user://timeflow_run_save.dat"
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 2
+const MIN_SUPPORTED_SAVE_VERSION: int = 1
 const SAVE_KIND: String = "adventure_route"
 
 # Kept configurable so the persistence layer can be regression-tested without
@@ -13,7 +14,7 @@ var _last_payload_hash: int = 0
 
 
 func has_run_save() -> bool:
-    return FileAccess.file_exists(save_path) and not load_run_save().is_empty()
+    return not load_run_save().is_empty()
 
 
 func saved_stage() -> int:
@@ -26,7 +27,12 @@ func saved_checkpoint() -> String:
     return str(payload.get("checkpoint", "stage_checkpoint")) if not payload.is_empty() else ""
 
 
-func save_route(route: Node, checkpoint: String = "autosave") -> bool:
+func saved_version() -> int:
+    var payload: Dictionary = load_run_save()
+    return int(payload.get("version", 0)) if not payload.is_empty() else 0
+
+
+func save_route(route: Node, checkpoint: String = "stage_start") -> bool:
     if route == null:
         return false
 
@@ -39,7 +45,7 @@ func save_route(route: Node, checkpoint: String = "autosave") -> bool:
         return false
 
     var payload_hash: int = hash([checkpoint, state])
-    if payload_hash == _last_payload_hash and FileAccess.file_exists(save_path):
+    if payload_hash == _last_payload_hash and not load_run_save().is_empty():
         return true
 
     var payload: Dictionary = {
@@ -51,35 +57,69 @@ func save_route(route: Node, checkpoint: String = "autosave") -> bool:
         "state": state
     }
 
-    var file := FileAccess.open(save_path, FileAccess.WRITE)
-    if file == null:
-        push_error("RunSaveManager: Spielstand konnte nicht geöffnet werden: %s" % save_path)
+    # Write and validate a temporary file first. Only after that succeeds is the
+    # previous checkpoint moved aside and the new file promoted. A failed write
+    # therefore cannot silently destroy the last valid stage-start checkpoint.
+    var temp_path: String = save_path + ".tmp"
+    var backup_path: String = save_path + ".bak"
+    _remove_file_if_exists(temp_path)
+    _remove_file_if_exists(backup_path)
+
+    if not _write_payload(temp_path, payload):
+        _remove_file_if_exists(temp_path)
         return false
 
-    file.store_var(payload, false)
-    file.flush()
-    var write_error: Error = file.get_error()
-    file.close()
-    if write_error != OK:
-        push_error(
-            "RunSaveManager: Fehler beim Schreiben des Spielstands (%s)."
-            % error_string(write_error)
+    var moved_previous: bool = false
+    if FileAccess.file_exists(save_path):
+        var backup_error: Error = DirAccess.rename_absolute(
+            ProjectSettings.globalize_path(save_path),
+            ProjectSettings.globalize_path(backup_path)
         )
+        if backup_error != OK:
+            push_error(
+                "RunSaveManager: Alter Spielstand konnte nicht gesichert werden (%s)."
+                % error_string(backup_error)
+            )
+            _remove_file_if_exists(temp_path)
+            return false
+        moved_previous = true
+
+    var promote_error: Error = DirAccess.rename_absolute(
+        ProjectSettings.globalize_path(temp_path),
+        ProjectSettings.globalize_path(save_path)
+    )
+    if promote_error != OK:
+        push_error(
+            "RunSaveManager: Neuer Spielstand konnte nicht aktiviert werden (%s)."
+            % error_string(promote_error)
+        )
+        if moved_previous and FileAccess.file_exists(backup_path):
+            DirAccess.rename_absolute(
+                ProjectSettings.globalize_path(backup_path),
+                ProjectSettings.globalize_path(save_path)
+            )
+        _remove_file_if_exists(temp_path)
         return false
 
-    # Do not report success merely because FileAccess.open() succeeded. Verify
-    # that the just-written payload can actually be read and validated again.
-    var verified: Dictionary = _load_payload()
-    if verified.is_empty():
-        push_error("RunSaveManager: Geschriebener Spielstand konnte nicht verifiziert werden.")
+    var verified: Dictionary = _load_payload_from_path(save_path)
+    if verified.is_empty() or int(verified.get("version", 0)) != SAVE_VERSION:
+        push_error("RunSaveManager: Neuer Spielstand konnte nach Aktivierung nicht verifiziert werden.")
+        _remove_file_if_exists(save_path)
+        if moved_previous and FileAccess.file_exists(backup_path):
+            DirAccess.rename_absolute(
+                ProjectSettings.globalize_path(backup_path),
+                ProjectSettings.globalize_path(save_path)
+            )
         return false
 
+    _remove_file_if_exists(backup_path)
     _last_payload_hash = payload_hash
     return true
 
 
 func load_run_save() -> Dictionary:
-    return _load_payload()
+    _recover_previous_checkpoint_if_needed()
+    return _load_payload_from_path(save_path)
 
 
 func restore_route(route: Node) -> bool:
@@ -110,20 +150,40 @@ func restore_route(route: Node) -> bool:
 
 func clear_run_save() -> void:
     _last_payload_hash = 0
-    if not FileAccess.file_exists(save_path):
-        return
-
-    var absolute_path: String = ProjectSettings.globalize_path(save_path)
-    var error: Error = DirAccess.remove_absolute(absolute_path)
-    if error != OK:
-        push_warning("RunSaveManager: Spielstand konnte nicht gelöscht werden (%s)." % error_string(error))
+    _remove_file_if_exists(save_path)
+    _remove_file_if_exists(save_path + ".tmp")
+    _remove_file_if_exists(save_path + ".bak")
 
 
-func _load_payload() -> Dictionary:
-    if not FileAccess.file_exists(save_path):
+func _write_payload(path: String, payload: Dictionary) -> bool:
+    var file := FileAccess.open(path, FileAccess.WRITE)
+    if file == null:
+        push_error("RunSaveManager: Spielstand konnte nicht geöffnet werden: %s" % path)
+        return false
+
+    file.store_var(payload, false)
+    file.flush()
+    var write_error: Error = file.get_error()
+    file.close()
+    if write_error != OK:
+        push_error(
+            "RunSaveManager: Fehler beim Schreiben des Spielstands (%s)."
+            % error_string(write_error)
+        )
+        return false
+
+    var verified: Dictionary = _load_payload_from_path(path)
+    if verified.is_empty():
+        push_error("RunSaveManager: Geschriebener Spielstand konnte nicht verifiziert werden.")
+        return false
+    return true
+
+
+func _load_payload_from_path(path: String) -> Dictionary:
+    if not FileAccess.file_exists(path):
         return {}
 
-    var file := FileAccess.open(save_path, FileAccess.READ)
+    var file := FileAccess.open(path, FileAccess.READ)
     if file == null:
         return {}
 
@@ -136,13 +196,44 @@ func _load_payload() -> Dictionary:
         return {}
 
     var payload: Dictionary = value as Dictionary
-    if int(payload.get("version", 0)) != SAVE_VERSION:
+    var version: int = int(payload.get("version", 0))
+    if version < MIN_SUPPORTED_SAVE_VERSION or version > SAVE_VERSION:
         return {}
     if str(payload.get("kind", "")) != SAVE_KIND:
         return {}
     if not (payload.get("state", {}) is Dictionary):
         return {}
     return payload
+
+
+func _recover_previous_checkpoint_if_needed() -> void:
+    if FileAccess.file_exists(save_path):
+        return
+
+    var backup_path: String = save_path + ".bak"
+    if not FileAccess.file_exists(backup_path):
+        return
+
+    var restore_error: Error = DirAccess.rename_absolute(
+        ProjectSettings.globalize_path(backup_path),
+        ProjectSettings.globalize_path(save_path)
+    )
+    if restore_error != OK:
+        push_warning(
+            "RunSaveManager: Sicherungskopie konnte nicht wiederhergestellt werden (%s)."
+            % error_string(restore_error)
+        )
+
+
+func _remove_file_if_exists(path: String) -> void:
+    if not FileAccess.file_exists(path):
+        return
+    var error: Error = DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+    if error != OK:
+        push_warning(
+            "RunSaveManager: Temporäre Spielstandsdatei konnte nicht gelöscht werden (%s)."
+            % error_string(error)
+        )
 
 
 func _snapshot_script_state(route: Node) -> Dictionary:
