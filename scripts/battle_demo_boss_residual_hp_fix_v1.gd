@@ -21,68 +21,6 @@ extends "res://scripts/battle_demo_gen3_moves_v2.gd"
 # level/Attack/Defense, not max HP, so boss HP multipliers do not inflate it.
 
 const BossResidualStatusEffects = preload("res://scripts/battle/status_effect_runtime.gd")
-const ROUTE_SAVE_BOUNDARY_TEXT: String = "💾 Letzter Speicherpunkt: vor diesem Kampf · Beim Fortsetzen beginnt dieser Kampf erneut."
-
-var _route_save_boundary_panel: PanelContainer = null
-
-
-func _route_begin_wave() -> void:
-    super._route_begin_wave()
-    _sync_route_save_boundary_notice()
-
-
-func _refresh_cards() -> void:
-    super._refresh_cards()
-    _sync_route_save_boundary_notice()
-
-
-func _sync_route_save_boundary_notice() -> void:
-    var should_show: bool = route_mode and battle_active
-    if _route_save_boundary_panel == null or not is_instance_valid(_route_save_boundary_panel):
-        if not should_show:
-            return
-        _route_save_boundary_panel = _create_route_save_boundary_notice()
-
-    _route_save_boundary_panel.visible = should_show
-
-
-func _create_route_save_boundary_notice() -> PanelContainer:
-    var panel := PanelContainer.new()
-    panel.name = "RouteSaveBoundaryNotice"
-    panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    panel.z_index = 200
-    panel.anchor_left = 0.5
-    panel.anchor_right = 0.5
-    panel.anchor_top = 0.0
-    panel.anchor_bottom = 0.0
-    panel.offset_left = -330.0
-    panel.offset_right = 330.0
-    panel.offset_top = 12.0
-    panel.offset_bottom = 62.0
-
-    var panel_style := StyleBoxFlat.new()
-    panel_style.bg_color = Color(0.035, 0.043, 0.065, 0.94)
-    panel_style.border_color = Color(0.55, 0.72, 0.95, 0.72)
-    panel_style.set_border_width_all(1)
-    panel_style.corner_radius_top_left = 9
-    panel_style.corner_radius_top_right = 9
-    panel_style.corner_radius_bottom_left = 9
-    panel_style.corner_radius_bottom_right = 9
-    panel.add_theme_stylebox_override("panel", panel_style)
-
-    var label := Label.new()
-    label.name = "RouteSaveBoundaryText"
-    label.text = ROUTE_SAVE_BOUNDARY_TEXT
-    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    label.add_theme_font_size_override("font_size", 14)
-    label.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0, 1.0))
-    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    panel.add_child(label)
-
-    add_child(panel)
-    return panel
 
 
 func _residual_damage_max_hp(combatant: Dictionary) -> int:
