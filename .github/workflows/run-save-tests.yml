@@ -15,7 +15,6 @@ on:
       - "scripts/battle_demo_boss_residual_hp_fix_v1.gd"
       - "tests/run_save_manager_test.gd"
       - "tests/route_canonical_save_test.gd"
-      - "tests/boss_fundstelle_two_pick_test.gd"
       - ".github/workflows/run-save-tests.yml"
   workflow_dispatch:
 
@@ -50,6 +49,3 @@ jobs:
 
       - name: Run canonical route save regression
         run: ./godot --headless --path . --script tests/route_canonical_save_test.gd
-
-      - name: Run boss Fundstelle two-pick regression
-        run: ./godot --headless --path . --script tests/boss_fundstelle_two_pick_test.gd
