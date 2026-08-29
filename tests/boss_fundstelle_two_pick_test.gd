@@ -4,6 +4,14 @@ const RouteScript = preload("res://scripts/demo_route_boss_reward_two_pick_v1.gd
 
 
 func _initialize() -> void:
+    # Run after SceneTree has entered its event loop. The assertions themselves
+    # previously passed, but quit(0) from _initialize() could leave this very
+    # large inherited route script waiting during engine teardown until CI hit
+    # its five-minute timeout.
+    call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
     var route = RouteScript.new()
 
     route.set("_boss_fundstelle_pending", true)
