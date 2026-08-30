@@ -35,5 +35,11 @@ jobs:
       - name: Status effect migration regression test
         run: ./godot --headless --path . --script tests/status_effect_migration_test.gd
 
+      - name: Status stage scaling regression test
+        run: ./godot --headless --path . --script tests/status_stage_scaling_test.gd
+
+      - name: Status speed soft-cap regression test
+        run: ./godot --headless --path . --script tests/status_speed_softcap_regression_test.gd
+
       - name: Major-status Aggro integrity regression test
         run: ./godot --headless --path . --script tests/status_aggro_integrity_test.gd
