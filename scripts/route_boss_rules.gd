@@ -8,6 +8,14 @@ extends RefCounted
 # species that are actually available/playable at that moment.
 
 const RULES_PATH: String = "res://data/route_boss_rules_v1.json"
+const ENDGAME_BALANCE_SETTINGS_PATH: String = "user://boss_gauntlet_balance.cfg"
+
+const DEFAULT_ENDGAME_BALANCE := {
+    "boss_level_offset": 10,
+    "boss_atb_rate_multiplier": 1.5,
+    "legendary_level_offset": 10,
+    "legendary_atb_rate_multiplier": 2.0
+}
 
 const DEFAULT_REINFORCEMENT_PROFILE := {
     "enabled": true,
@@ -28,7 +36,7 @@ const DEFAULT_STANDARD_PROFILE := {
 }
 
 
-static func _load_rules() -> Dictionary:
+static func _load_source_rules() -> Dictionary:
     var file := FileAccess.open(RULES_PATH, FileAccess.READ)
     if file == null:
         push_error("Routen-Bossregeln fehlen: " + RULES_PATH)
@@ -39,6 +47,137 @@ static func _load_rules() -> Dictionary:
         push_error("Routen-Bossregeln sind ungültig: " + RULES_PATH)
         return {}
     return (parsed as Dictionary).duplicate(true)
+
+
+static func _load_rules() -> Dictionary:
+    var rules: Dictionary = _load_source_rules()
+    if rules.is_empty():
+        return rules
+    var override_settings: Dictionary = _load_endgame_balance_override()
+    if override_settings.is_empty():
+        return rules
+    return apply_endgame_balance_settings_to_rules(rules, override_settings)
+
+
+static func normalize_endgame_balance_settings(settings: Dictionary) -> Dictionary:
+    var normalized: Dictionary = DEFAULT_ENDGAME_BALANCE.duplicate(true)
+    normalized.merge(settings, true)
+    normalized["boss_level_offset"] = clampi(
+        int(normalized.get("boss_level_offset", 10)), -20, 30
+    )
+    normalized["boss_atb_rate_multiplier"] = clampf(
+        float(normalized.get("boss_atb_rate_multiplier", 1.5)), 0.5, 4.0
+    )
+    normalized["legendary_level_offset"] = clampi(
+        int(normalized.get("legendary_level_offset", 10)), -20, 30
+    )
+    normalized["legendary_atb_rate_multiplier"] = clampf(
+        float(normalized.get("legendary_atb_rate_multiplier", 2.0)), 0.5, 4.0
+    )
+    return normalized
+
+
+static func _load_endgame_balance_override() -> Dictionary:
+    var config := ConfigFile.new()
+    if config.load(ENDGAME_BALANCE_SETTINGS_PATH) != OK:
+        return {}
+
+    var settings: Dictionary = {}
+    for key: String in [
+        "boss_level_offset",
+        "boss_atb_rate_multiplier",
+        "legendary_level_offset",
+        "legendary_atb_rate_multiplier"
+    ]:
+        if config.has_section_key("balance", key):
+            settings[key] = config.get_value("balance", key)
+
+    if settings.is_empty():
+        return {}
+    return normalize_endgame_balance_settings(settings)
+
+
+static func endgame_balance_settings() -> Dictionary:
+    var rules: Dictionary = _load_rules()
+    var endgame_value: Variant = rules.get("planned_endgame", {})
+    if not (endgame_value is Dictionary):
+        return DEFAULT_ENDGAME_BALANCE.duplicate(true)
+
+    var endgame: Dictionary = endgame_value as Dictionary
+    var boss_value: Variant = endgame.get("boss_profile", {})
+    var legendary_value: Variant = endgame.get("legendary_profile", {})
+    var boss_profile: Dictionary = boss_value as Dictionary if boss_value is Dictionary else {}
+    var legendary_profile: Dictionary = legendary_value as Dictionary if legendary_value is Dictionary else {}
+    return normalize_endgame_balance_settings({
+        "boss_level_offset": int(boss_profile.get("level_offset", 10)),
+        "boss_atb_rate_multiplier": float(boss_profile.get("atb_rate_multiplier", 1.5)),
+        "legendary_level_offset": int(legendary_profile.get("level_offset", 10)),
+        "legendary_atb_rate_multiplier": float(legendary_profile.get("atb_rate_multiplier", 2.0))
+    })
+
+
+static func apply_endgame_balance_settings_to_rules(
+    rules: Dictionary,
+    settings: Dictionary
+) -> Dictionary:
+    var updated: Dictionary = rules.duplicate(true)
+    var normalized: Dictionary = normalize_endgame_balance_settings(settings)
+    var endgame_value: Variant = updated.get("planned_endgame", {})
+    if not (endgame_value is Dictionary):
+        return updated
+
+    var endgame: Dictionary = endgame_value as Dictionary
+    var boss_value: Variant = endgame.get("boss_profile", {})
+    var legendary_value: Variant = endgame.get("legendary_profile", {})
+    if not (boss_value is Dictionary) or not (legendary_value is Dictionary):
+        return updated
+
+    var boss_profile: Dictionary = boss_value as Dictionary
+    var legendary_profile: Dictionary = legendary_value as Dictionary
+    boss_profile["level_offset"] = int(normalized["boss_level_offset"])
+    boss_profile["atb_rate_multiplier"] = float(normalized["boss_atb_rate_multiplier"])
+    legendary_profile["level_offset"] = int(normalized["legendary_level_offset"])
+    legendary_profile["atb_rate_multiplier"] = float(normalized["legendary_atb_rate_multiplier"])
+    endgame["boss_profile"] = boss_profile
+    endgame["legendary_profile"] = legendary_profile
+    updated["planned_endgame"] = endgame
+    return updated
+
+
+static func save_endgame_balance_settings(settings: Dictionary) -> bool:
+    var normalized: Dictionary = normalize_endgame_balance_settings(settings)
+
+    # This user:// file is the persistent runtime source used by both the real
+    # adventure and the fast balancing route. It also keeps packaged builds
+    # functional where res:// may be read-only.
+    var config := ConfigFile.new()
+    config.set_value("balance", "boss_level_offset", int(normalized["boss_level_offset"]))
+    config.set_value("balance", "boss_atb_rate_multiplier", float(normalized["boss_atb_rate_multiplier"]))
+    config.set_value("balance", "legendary_level_offset", int(normalized["legendary_level_offset"]))
+    config.set_value("balance", "legendary_atb_rate_multiplier", float(normalized["legendary_atb_rate_multiplier"]))
+    var config_result: Error = config.save(ENDGAME_BALANCE_SETTINGS_PATH)
+    if config_result != OK:
+        push_error("Endgame-Balance konnte nicht gespeichert werden: %s" % ENDGAME_BALANCE_SETTINGS_PATH)
+        return false
+
+    # During development from the Godot project, mirror the chosen values into
+    # the actual source JSON as well. In packaged exports res:// is normally
+    # read-only; the persistent override above remains canonical in that case.
+    var source_rules: Dictionary = _load_source_rules()
+    if not source_rules.is_empty():
+        var updated_rules: Dictionary = apply_endgame_balance_settings_to_rules(
+            source_rules,
+            normalized
+        )
+        var source_file := FileAccess.open(RULES_PATH, FileAccess.WRITE)
+        if source_file != null:
+            source_file.store_string(JSON.stringify(updated_rules, "  ", false) + "\n")
+        else:
+            push_warning(
+                "Endgame-Balance gilt im Spiel, aber die Quell-JSON ist in dieser Ausführung schreibgeschützt."
+            )
+
+    return true
 
 
 static func standard_boss_profile() -> Dictionary:
