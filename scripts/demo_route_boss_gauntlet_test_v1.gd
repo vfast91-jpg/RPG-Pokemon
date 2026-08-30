@@ -18,7 +18,7 @@ var _boss_gauntlet_balance_settings: Dictionary = {}
 
 func _ready() -> void:
     super._ready()
-    _tf_clean_player_facing_demo_terms(root)
+    _tf_clean_player_facing_demo_terms(self)
 
 
 func boss_gauntlet_default_settings() -> Dictionary:
@@ -38,7 +38,7 @@ func start_route() -> void:
     # canonical and are deliberately shared with the normal adventure.
     _boss_gauntlet_test_mode = false
     super.start_route()
-    _tf_clean_player_facing_demo_terms(root)
+    _tf_clean_player_facing_demo_terms(self)
 
 
 func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
@@ -106,7 +106,7 @@ func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
 
 func _show_stage_choices(message: String = "") -> void:
     super._show_stage_choices(_tf_player_facing_text(message))
-    _tf_clean_player_facing_demo_terms(root)
+    _tf_clean_player_facing_demo_terms(self)
     if (
         not _boss_gauntlet_test_mode
         or stage < ENDGAME_STAGE_START
@@ -132,7 +132,7 @@ func _show_stage_choices(message: String = "") -> void:
 
 func _choose_path(choice: Dictionary) -> void:
     super._choose_path(choice)
-    _tf_clean_player_facing_demo_terms(root)
+    _tf_clean_player_facing_demo_terms(self)
 
 
 func _boss_level() -> int:
@@ -232,7 +232,7 @@ func _finish_run(victory: bool, message: String) -> void:
         if final_victory:
             AudioManager.play_victory(true)
         super._finish_run(victory, _tf_player_facing_text(message))
-        _tf_clean_player_facing_demo_terms(root)
+        _tf_clean_player_facing_demo_terms(self)
         if final_victory:
             _tf_present_final_route_victory()
         return
