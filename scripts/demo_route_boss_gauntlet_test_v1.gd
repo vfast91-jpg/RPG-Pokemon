@@ -165,20 +165,44 @@ func _begin_endgame_boss() -> void:
 
 func _start_special_battle(kind: String, enemy_party: Array, heading: String) -> void:
     var prepared_party: Array = enemy_party.duplicate(true)
+    var legendary_stage: bool = false
+    var legendary_species_id: String = ""
+
     if stage >= ENDGAME_STAGE_START and stage <= ENDGAME_STAGE_END:
         var profile: Dictionary = BossGauntletRules.boss_profile_for_stage(stage)
         var atb_multiplier: float = maxf(
             0.0,
             float(profile.get("atb_rate_multiplier", 1.0))
         )
+        legendary_stage = bool(profile.get("legendary_stage", false))
+
         for enemy_value: Variant in prepared_party:
             if not (enemy_value is Dictionary):
                 continue
             var enemy: Dictionary = enemy_value as Dictionary
-            if bool(enemy.get("boss", false)):
-                enemy["atb_rate_multiplier"] = atb_multiplier
+            if not bool(enemy.get("boss", false)):
+                continue
+
+            # Existing technical boss mechanics remain authoritative. The new
+            # flag is presentation-only and is consumed by the active battle UI.
+            enemy["atb_rate_multiplier"] = atb_multiplier
+            if legendary_stage:
+                enemy["legendary_endgame"] = true
+                if legendary_species_id.is_empty():
+                    legendary_species_id = str(enemy.get("species_id", "")).strip_edges().to_lower()
+
+    if legendary_stage:
+        # No player-facing Boss/Superboss wording is allowed on stages 96-100.
+        heading = LEGENDARY_ENDGAME_HEADING
+        if not legendary_species_id.is_empty():
+            _tf_apply_legendary_endgame_battle_landscape_for_species(stage, legendary_species_id)
 
     super._start_special_battle(kind, prepared_party, heading)
+
+    # Re-apply after inherited battle setup so a generic route-background refresh
+    # cannot overwrite the encounter-specific legendary landscape.
+    if legendary_stage and not legendary_species_id.is_empty():
+        _tf_apply_legendary_endgame_battle_landscape_for_species(stage, legendary_species_id)
 
 
 func _commit_canonical_stage_start(show_feedback: bool = true) -> bool:
