@@ -1,9 +1,9 @@
 extends "res://scripts/demo_route_rest_pack_v1.gd"
 
 # Fast balancing entry for the real stage-91..100 endgame.
-# The test mode deliberately reuses the production route/endgame methods and
-# route_boss_rules.gd. It only supplies a fresh random Lv.80 team and starts at
-# stage 91. No balancing values are duplicated here.
+# The test mode reuses the production route/endgame methods and only overrides
+# the two balancing knobs the player wants to experiment with: level offset and
+# ATB rate for stages 91-95 and 96-100. Production values remain untouched.
 
 const BossGauntletRules = preload("res://scripts/route_boss_rules.gd")
 const BOSS_GAUNTLET_TEST_START_STAGE: int = 91
@@ -11,18 +11,87 @@ const BOSS_GAUNTLET_TEST_TEAM_LEVEL: int = 80
 const BOSS_GAUNTLET_TEST_TEAM_SIZE: int = 4
 
 var _boss_gauntlet_test_mode: bool = false
+var _boss_gauntlet_balance_settings: Dictionary = {}
+
+
+func boss_gauntlet_default_settings() -> Dictionary:
+    var boss_profile: Dictionary = BossGauntletRules.boss_profile_for_stage(91)
+    var legendary_profile: Dictionary = BossGauntletRules.boss_profile_for_stage(96)
+    return {
+        "boss_level_offset": int(boss_profile.get("level_offset", 10)),
+        "boss_atb_rate_multiplier": float(boss_profile.get("atb_rate_multiplier", 1.5)),
+        "legendary_level_offset": int(legendary_profile.get("level_offset", 10)),
+        "legendary_atb_rate_multiplier": float(legendary_profile.get("atb_rate_multiplier", 2.0))
+    }
+
+
+func _normalize_boss_gauntlet_settings(settings: Dictionary) -> Dictionary:
+    var normalized: Dictionary = boss_gauntlet_default_settings()
+    normalized.merge(settings, true)
+    normalized["boss_level_offset"] = clampi(
+        int(normalized.get("boss_level_offset", 10)), -20, 30
+    )
+    normalized["boss_atb_rate_multiplier"] = clampf(
+        float(normalized.get("boss_atb_rate_multiplier", 1.5)), 0.5, 4.0
+    )
+    normalized["legendary_level_offset"] = clampi(
+        int(normalized.get("legendary_level_offset", 10)), -20, 30
+    )
+    normalized["legendary_atb_rate_multiplier"] = clampf(
+        float(normalized.get("legendary_atb_rate_multiplier", 2.0)), 0.5, 4.0
+    )
+    return normalized
+
+
+func _boss_gauntlet_profile_for_stage(current_stage: int) -> Dictionary:
+    var profile: Dictionary = BossGauntletRules.boss_profile_for_stage(current_stage)
+    if not _boss_gauntlet_test_mode or profile.is_empty():
+        return profile
+
+    if _boss_gauntlet_balance_settings.is_empty():
+        _boss_gauntlet_balance_settings = boss_gauntlet_default_settings()
+
+    var legendary_stage: bool = bool(profile.get(
+        "legendary_stage",
+        current_stage >= ENDGAME_LEGENDARY_STAGE_START
+    ))
+    if legendary_stage:
+        profile["level_offset"] = int(_boss_gauntlet_balance_settings.get(
+            "legendary_level_offset",
+            profile.get("level_offset", 10)
+        ))
+        profile["atb_rate_multiplier"] = float(_boss_gauntlet_balance_settings.get(
+            "legendary_atb_rate_multiplier",
+            profile.get("atb_rate_multiplier", 2.0)
+        ))
+    else:
+        profile["level_offset"] = int(_boss_gauntlet_balance_settings.get(
+            "boss_level_offset",
+            profile.get("level_offset", 10)
+        ))
+        profile["atb_rate_multiplier"] = float(_boss_gauntlet_balance_settings.get(
+            "boss_atb_rate_multiplier",
+            profile.get("atb_rate_multiplier", 1.5)
+        ))
+    return profile
 
 
 func start_route() -> void:
-    # A normal adventure must always use the normal persistence path.
+    # A normal adventure must always use the normal persistence path and the
+    # production balance values from route_boss_rules_v1.json.
     _boss_gauntlet_test_mode = false
     super.start_route()
 
 
-func start_boss_gauntlet_test() -> void:
+func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
     if battle_demo == null:
         push_error("Bosskampflauf: BattleDemo fehlt.")
         return
+
+    if not settings.is_empty():
+        _boss_gauntlet_balance_settings = _normalize_boss_gauntlet_settings(settings)
+    elif _boss_gauntlet_balance_settings.is_empty():
+        _boss_gauntlet_balance_settings = boss_gauntlet_default_settings()
 
     _boss_gauntlet_test_mode = true
     stage = BOSS_GAUNTLET_TEST_START_STAGE
@@ -62,15 +131,91 @@ func start_boss_gauntlet_test() -> void:
     _show_stage_choices(
         "[b]Bosskampflauf-Test[/b]\n"
         + "Zufälliges Viererteam auf Level %d · direkter Einstieg bei Etappe %d.\n"
-        + "Level- und ATB-Boni stammen exakt aus den Regeln des echten Spiels."
-        % [BOSS_GAUNTLET_TEST_TEAM_LEVEL, BOSS_GAUNTLET_TEST_START_STAGE]
+        + "91–95: +%d Level · ATB ×%.2f · 96–100: +%d Level · ATB ×%.2f"
+        % [
+            BOSS_GAUNTLET_TEST_TEAM_LEVEL,
+            BOSS_GAUNTLET_TEST_START_STAGE,
+            int(_boss_gauntlet_balance_settings.get("boss_level_offset", 10)),
+            float(_boss_gauntlet_balance_settings.get("boss_atb_rate_multiplier", 1.5)),
+            int(_boss_gauntlet_balance_settings.get("legendary_level_offset", 10)),
+            float(_boss_gauntlet_balance_settings.get("legendary_atb_rate_multiplier", 2.0))
+        ]
     )
+
+
+func _show_stage_choices(message: String = "") -> void:
+    super._show_stage_choices(message)
+    if (
+        not _boss_gauntlet_test_mode
+        or stage < ENDGAME_STAGE_START
+        or stage > ENDGAME_STAGE_END
+    ):
+        return
+
+    var profile: Dictionary = _boss_gauntlet_profile_for_stage(stage)
+    if profile.is_empty():
+        return
+
+    var level_offset: int = int(profile.get("level_offset", 10))
+    var atb_multiplier: float = float(profile.get("atb_rate_multiplier", 1.0))
+    var hp_bars: int = maxi(1, int(profile.get("hp_bars", 4)))
+    var boss_kind: String = "LEGENDÄRER BOSS" if bool(profile.get("legendary_stage", false)) else "SUPERBOSS"
+    event_label.text = (
+        "[b]🔥 %s · TEST · ETAPPE %d/%d[/b]\n"
+        + "Aktuelle Testregel: höchstes eigenes Pokémon [b]%+d Level[/b] · "
+        + "[b]ATB ×%.2f[/b] · [b]%d vollständige KP-Leisten[/b].\n"
+        + "Diese Werte gelten nur für den Bosskampflauf und verändern das echte Abenteuer nicht."
+    ) % [boss_kind, stage, ENDGAME_ROUTE_STAGE_COUNT, level_offset, atb_multiplier, hp_bars]
+
+
+func _boss_level() -> int:
+    if not _boss_gauntlet_test_mode:
+        return super._boss_level()
+    var profile: Dictionary = _boss_gauntlet_profile_for_stage(stage)
+    return maxi(1, _highest_team_level() + int(profile.get("level_offset", 10)))
+
+
+func _begin_endgame_boss() -> void:
+    if not _boss_gauntlet_test_mode:
+        super._begin_endgame_boss()
+        return
+
+    if stage < ENDGAME_STAGE_START or stage > ENDGAME_STAGE_END or battle_demo == null:
+        return
+
+    var profile: Dictionary = _boss_gauntlet_profile_for_stage(stage)
+    if profile.is_empty():
+        event_label.text = "Für Etappe %d fehlen die Superboss-Regeln." % stage
+        return
+
+    var boss_level: int = maxi(1, _highest_team_level() + int(profile.get("level_offset", 10)))
+    var species_id: String = _endgame_species_for_profile(profile, boss_level)
+    if species_id.is_empty():
+        event_label.text = (
+            "Für den Superboss auf Level %d ist aktuell keine vollständig spielbare Spezies verfügbar."
+            % boss_level
+        )
+        return
+
+    var party: Array = [{
+        "species_id": species_id,
+        "level": boss_level,
+        "boss": true,
+        "hp_multiplier": maxf(1.0, float(profile.get("hp_multiplier", 4.0))),
+        "hp_bars": maxi(1, int(profile.get("hp_bars", 4)))
+    }]
+
+    _start_special_battle(EVENT_RARE, party, "🔥 Superboss")
 
 
 func _start_special_battle(kind: String, enemy_party: Array, heading: String) -> void:
     var prepared_party: Array = enemy_party.duplicate(true)
     if stage >= ENDGAME_STAGE_START and stage <= ENDGAME_STAGE_END:
-        var profile: Dictionary = BossGauntletRules.boss_profile_for_stage(stage)
+        var profile: Dictionary = (
+            _boss_gauntlet_profile_for_stage(stage)
+            if _boss_gauntlet_test_mode
+            else BossGauntletRules.boss_profile_for_stage(stage)
+        )
         var atb_multiplier: float = maxf(
             0.0,
             float(profile.get("atb_rate_multiplier", 1.0))
@@ -114,15 +259,30 @@ func _finish_run(victory: bool, message: String) -> void:
     result_label.add_theme_font_size_override("font_size", 16)
     path_box.add_child(result_label)
 
+    var values_label := Label.new()
+    values_label.text = (
+        "Getestet · 91–95: %+d Level / ATB ×%.2f · 96–100: %+d Level / ATB ×%.2f"
+        % [
+            int(_boss_gauntlet_balance_settings.get("boss_level_offset", 10)),
+            float(_boss_gauntlet_balance_settings.get("boss_atb_rate_multiplier", 1.5)),
+            int(_boss_gauntlet_balance_settings.get("legendary_level_offset", 10)),
+            float(_boss_gauntlet_balance_settings.get("legendary_atb_rate_multiplier", 2.0))
+        ]
+    )
+    values_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    values_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    values_label.add_theme_font_size_override("font_size", 10)
+    path_box.add_child(values_label)
+
     var restart_test := Button.new()
-    restart_test.text = "BOSSKAMPFLAUF NEU STARTEN"
+    restart_test.text = "MIT DIESEN WERTEN NEU STARTEN"
     restart_test.custom_minimum_size = Vector2(330, 42)
     restart_test.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     restart_test.pressed.connect(start_boss_gauntlet_test)
     path_box.add_child(restart_test)
 
     var menu_button := Button.new()
-    menu_button.text = "ZUM HAUPTMENÜ"
+    menu_button.text = "ZUM HAUPTMENÜ · WERTE ÄNDERN"
     menu_button.custom_minimum_size = Vector2(330, 38)
     menu_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     menu_button.pressed.connect(_leave_boss_gauntlet_test)
