@@ -1,5 +1,6 @@
 extends SceneTree
 
+const ActiveMainMenuScript = preload("res://scripts/main_menu_click_difficulty_v1.gd")
 const ActiveRouteScript = preload("res://scripts/demo_route_boss_gauntlet_test_v1.gd")
 const ActiveBattleScript = preload("res://scripts/battle_demo_endgame_atb_v1.gd")
 const BossRules = preload("res://scripts/route_boss_rules.gd")
@@ -94,6 +95,12 @@ func _initialize() -> void:
     _check(route.BOSS_GAUNTLET_TEST_TEAM_LEVEL == 80, "Bosskampflauf-Testteam muss auf Level 80 starten.")
     _check(route.BOSS_GAUNTLET_TEST_TEAM_SIZE == 4, "Bosskampflauf-Testteam muss vier Pokémon besitzen.")
 
+    var test_defaults: Dictionary = route.boss_gauntlet_default_settings()
+    _check(int(test_defaults.get("boss_level_offset", 0)) == 10, "Balance-Labor muss den echten Superboss-Levelwert als Standard laden.")
+    _check(is_equal_approx(float(test_defaults.get("boss_atb_rate_multiplier", 0.0)), 1.5), "Balance-Labor muss den echten Superboss-ATB-Wert als Standard laden.")
+    _check(int(test_defaults.get("legendary_level_offset", 0)) == 10, "Balance-Labor muss den echten Legendären-Levelwert als Standard laden.")
+    _check(is_equal_approx(float(test_defaults.get("legendary_atb_rate_multiplier", 0.0)), 2.0), "Balance-Labor muss den echten Legendären-ATB-Wert als Standard laden.")
+
     route.stage = 91
     route.team = [{"species_id": "bulbasaur", "level": 100, "hp": 1, "max_hp": 1}]
     _check(route._boss_level() == 110, "Ein Teammaximum Lv.100 muss auf Etappe 91 einen Superboss Lv.110 erzeugen.")
@@ -106,6 +113,29 @@ func _initialize() -> void:
     route.stage = 96
     route.team = [{"species_id": "bulbasaur", "level": 80, "hp": 1, "max_hp": 1}]
     _check(route._boss_level() == 90, "Legendäres Endgame-Pokémon muss bei Teammaximum Lv.80 auf Lv.90 liegen.")
+
+    route._boss_gauntlet_balance_settings = route._normalize_boss_gauntlet_settings({
+        "boss_level_offset": 15,
+        "boss_atb_rate_multiplier": 1.75,
+        "legendary_level_offset": 20,
+        "legendary_atb_rate_multiplier": 2.25
+    })
+    route._boss_gauntlet_test_mode = true
+
+    route.stage = 91
+    route.team = [{"species_id": "bulbasaur", "level": 80, "hp": 1, "max_hp": 1}]
+    _check(route._boss_level() == 95, "Testmodus muss den frei gewählten Superboss-Levelbonus anwenden.")
+    var test_stage_91_profile: Dictionary = route._boss_gauntlet_profile_for_stage(91)
+    _check(is_equal_approx(float(test_stage_91_profile.get("atb_rate_multiplier", 0.0)), 1.75), "Testmodus muss den frei gewählten Superboss-ATB-Faktor anwenden.")
+
+    route.stage = 96
+    _check(route._boss_level() == 100, "Testmodus muss den frei gewählten Legendären-Levelbonus anwenden.")
+    var test_stage_96_profile: Dictionary = route._boss_gauntlet_profile_for_stage(96)
+    _check(is_equal_approx(float(test_stage_96_profile.get("atb_rate_multiplier", 0.0)), 2.25), "Testmodus muss den frei gewählten Legendären-ATB-Faktor anwenden.")
+
+    route._boss_gauntlet_test_mode = false
+    route.stage = 91
+    _check(route._boss_level() == 90, "Nach dem Testmodus muss wieder ausschließlich die Produktionsbalance gelten.")
 
     route.stage = 100
     _check(route._progress_text().contains("Etappe 100 von 100"), "Fortschrittsanzeige muss Etappe 100 von 100 zeigen.")
