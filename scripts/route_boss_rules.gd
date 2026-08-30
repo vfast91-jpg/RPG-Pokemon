@@ -182,31 +182,37 @@ static func planned_endgame_profile_for_stage(current_stage: int) -> Dictionary:
     if current_stage < stage_start or current_stage > stage_end:
         return {}
 
-    var profile: Dictionary = {}
-    var base_profile_value: Variant = endgame.get("boss_profile", {})
-    if base_profile_value is Dictionary:
-        profile = (base_profile_value as Dictionary).duplicate(true)
-
     var stages_value: Variant = endgame.get("stages", [])
     if not (stages_value is Array):
         return {}
 
-    var stage_found: bool = false
+    var stage_rule: Dictionary = {}
     for stage_value: Variant in stages_value:
         if not (stage_value is Dictionary):
             continue
-        var stage_rule: Dictionary = stage_value as Dictionary
-        if int(stage_rule.get("stage", -1)) != current_stage:
-            continue
-        profile.merge(stage_rule, true)
-        stage_found = true
-        break
+        var candidate: Dictionary = stage_value as Dictionary
+        if int(candidate.get("stage", -1)) == current_stage:
+            stage_rule = candidate.duplicate(true)
+            break
 
-    if not stage_found:
+    if stage_rule.is_empty():
         return {}
 
+    var is_legendary_stage: bool = str(stage_rule.get("species_mode", "")) == "random_legendary_pool"
+    var profile_key: String = "legendary_profile" if is_legendary_stage else "boss_profile"
+    var profile_value: Variant = endgame.get(profile_key, endgame.get("boss_profile", {}))
+    var profile: Dictionary = {}
+    if profile_value is Dictionary:
+        profile = (profile_value as Dictionary).duplicate(true)
+
+    profile.merge(stage_rule, true)
+    profile["level_offset"] = int(profile.get("level_offset", 5))
+    profile["hp_multiplier"] = maxf(1.0, float(profile.get("hp_multiplier", 4.0)))
+    profile["hp_bars"] = maxi(1, int(profile.get("hp_bars", 4)))
+    profile["atb_rate_multiplier"] = maxf(0.0, float(profile.get("atb_rate_multiplier", 1.0)))
     profile["enabled"] = bool(endgame.get("enabled", false))
     profile["planned_endgame"] = true
+    profile["legendary_stage"] = is_legendary_stage
     return profile
 
 
