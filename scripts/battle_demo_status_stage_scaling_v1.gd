@@ -9,6 +9,14 @@ extends "res://scripts/battle_demo_low_hp_power_v1.gd"
 #   +2 positive stages -> 1.25 x R
 # where R = Status / (75 + Status).
 #
+# Speed effects need one additional translation because Timeflow stores them as
+# ATB-cycle multipliers while the player-facing attribute is effective Speed.
+# A +kR Speed buff must therefore store cycle = 1 / (1 + kR), not 1 - kR.
+# Otherwise converting the shortened cycle back into effective Speed explodes
+# non-linearly (for example a 62% intended buff becomes roughly +163%).
+# Slows keep the inverse relation: cycle = 1 + kR, so effective Speed becomes
+# 1 / (1 + kR). Both directions remain finite for every finite Status value.
+#
 # Stockpile/Horter is also repaired here because the legacy handler created a
 # new timed modifier on every use and multiplied the current stack count into
 # each new modifier. Horter now owns one persistent Defense contribution that is
@@ -37,6 +45,31 @@ func _status_modifier_multiplier(
         kind,
         signed_stages
     )
+
+    # Speed is represented internally through ATB cycle length, but Status move
+    # weights describe the intended Speed change. Convert the desired effective
+    # Speed multiplier into its reciprocal cycle multiplier exactly once.
+    #
+    # Positive Speed boost (negative atb_cycle_mod weight):
+    #   speed = 1 + kR  ->  cycle = 1 / (1 + kR)
+    # Speed reduction (positive atb_cycle_mod weight):
+    #   cycle = 1 + kR  ->  speed = 1 / (1 + kR)
+    #
+    # This preserves the shared diminishing-returns curve instead of turning a
+    # bounded 1x boost into the unbounded 1/(1-R) curve.
+    if kind == "atb_cycle_mod":
+        var speed_weight: float = _status_strength_weight(
+            actor,
+            adjusted,
+            apply_type_bonus,
+            apply_sun_bonus
+        )
+        var scaled_speed: float = (
+            speed_weight * _status_ratio(float(actor.get("special", 0.0)))
+        )
+        if signed_stages < 0.0:
+            return 1.0 / maxf(0.0001, 1.0 + scaled_speed)
+        return 1.0 + scaled_speed
 
     # Defense is a real Timeflow attribute. A positive Defense stage therefore
     # increases that attribute additively by its Status contribution instead of
