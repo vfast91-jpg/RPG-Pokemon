@@ -40,3 +40,6 @@ jobs:
 
       - name: Test legendary landscapes and UI
         run: ./godot --headless --path . --script tests/route_legendary_landscape_ui_test.gd
+
+      - name: Test final route victory presentation
+        run: ./godot --headless --path . --script tests/route_final_victory_test.gd
