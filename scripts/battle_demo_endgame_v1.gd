@@ -5,7 +5,7 @@ extends "res://scripts/battle_demo_status_effect_migration_v1.gd"
 # - Existing <=100 behaviour is left untouched.
 # - Endgame bosses can display four continuous HP bars.
 
-const ENDGAME_BOSS_CARD_HEIGHT: float = 82.0
+const ENDGAME_BOSS_CARD_HEIGHT: float = 94.0
 const ENDGAME_BOSS_BAR_GAP: float = 8.0
 const PRACTICAL_LEVEL_PICKER_MAX: float = 100000.0
 
