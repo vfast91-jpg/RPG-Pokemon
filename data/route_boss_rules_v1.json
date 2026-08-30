@@ -4,6 +4,7 @@
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
     "capture_event": true,
+    "capture_pool_relative_weight": 0.05,
     "species_ids": [
       "articuno",
       "zapdos",

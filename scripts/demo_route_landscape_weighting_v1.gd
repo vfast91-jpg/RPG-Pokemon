@@ -5,8 +5,11 @@ extends "res://scripts/demo_route_landscape_overview_v1.gd"
 # untypische Typen x0.2 und ausgeschlossene Typen x0.
 #
 # Für die Landschaftskorrelation zählt bei Doppeltypen ausschließlich Typ 1.
-# Typ 2 wird vollständig ignoriert. Fangwiese und normale Zufalls-/Boss-
-# Selektoren benutzen dieselbe Typ-1-Regel und dieselben Multiplikatoren.
+# Typ 2 wird vollständig ignoriert. Normale Fangwiesenfamilien und normale
+# Zufalls-/Boss-Selektoren benutzen dieselbe Typ-1-Regel und dieselben
+# Multiplikatoren. Der separate Legendären-Fangpool behält dagegen sein fixes
+# Gesamtgewicht; die Landschaft bestimmt dort nur, welche legendäre Familie
+# innerhalb des Pools bevorzugt wird, und x0 bleibt ein echter Ausschluss.
 
 const LANDSCAPE_PREFERRED_MULTIPLIER: float = 8.0
 const LANDSCAPE_DEFAULT_MULTIPLIER: float = 1.0
@@ -175,33 +178,82 @@ func _tf_weighted_capture_root_from_candidates(candidates: Array[String], search
         return ""
 
     var capture_level: int = _capture_level_for_search(search_number)
+    var legendary_ids: Array[String] = _capture_legendary_species_ids()
+    var legendary_allowed: bool = _capture_legendary_allowed()
+    var legendary_families: Array[String] = []
+    var legendary_roots: Array[String] = []
+    var legendary_landscape_weights: Array[float] = []
+    var normal_roots: Array[String] = []
+    var normal_weights: Array[float] = []
     var total_weight: float = 0.0
-    var weights: Array[float] = []
 
     for root_id: String in candidates:
         var species_id: String = _tf_generated_capture_species(root_id, capture_level)
         if species_id.is_empty():
-            weights.append(0.0)
             continue
 
         var family_id: String = _family_id_for_species(root_id)
-        var rarity_weight: float = maxf(0.0, _capture_family_weight(family_id, search_number))
         var landscape_multiplier: float = _tf_landscape_multiplier_for_species(species_id)
+        var normalized_root_id: String = root_id.strip_edges().to_lower()
+
+        if legendary_ids.has(normalized_root_id):
+            # Legendäre verlassen die Fangratenformel vollständig. x0 bleibt aber
+            # ein echter Landschaftsausschluss. Positive Landschaftsmultiplikatoren
+            # verteilen nur die Wahl INNERHALB des bereits gewonnenen Sonderpools.
+            if not legendary_allowed or landscape_multiplier <= 0.0:
+                continue
+            if not legendary_families.has(family_id):
+                legendary_families.append(family_id)
+                legendary_roots.append(root_id)
+                legendary_landscape_weights.append(landscape_multiplier)
+            continue
+
+        var rarity_weight: float = maxf(0.0, _capture_family_weight(family_id, search_number))
         var weight: float = rarity_weight * landscape_multiplier
-        weights.append(weight)
+        normal_roots.append(root_id)
+        normal_weights.append(weight)
         total_weight += weight
+
+    # Ein einziger legendärer Pool: Seine Gesamtgewichtung hängt weder von der
+    # Anzahl verfügbarer Legendärer noch von der Landschaft ab. Dadurch bleibt
+    # der Sonderstatus exakt 0.05 relativ zu einer Fangrate-45-Familie. Erst
+    # nachdem der Pool gewonnen hat, beeinflusst die Landschaft die konkrete Wahl.
+    var legendary_pool_weight: float = 0.0
+    if not legendary_roots.is_empty():
+        legendary_pool_weight = maxf(0.0, _capture_legendary_pool_weight(search_number))
+        total_weight += legendary_pool_weight
 
     if total_weight <= 0.0:
         return ""
 
     var roll: float = randf() * total_weight
     var cumulative: float = 0.0
-    for index: int in range(candidates.size()):
-        cumulative += weights[index]
-        if roll <= cumulative and weights[index] > 0.0:
-            return candidates[index]
+    for index: int in range(normal_roots.size()):
+        cumulative += normal_weights[index]
+        if roll <= cumulative and normal_weights[index] > 0.0:
+            return normal_roots[index]
 
-    for index: int in range(candidates.size() - 1, -1, -1):
-        if weights[index] > 0.0:
-            return candidates[index]
+    if legendary_pool_weight > 0.0 and not legendary_roots.is_empty():
+        if legendary_roots.size() == 1:
+            return legendary_roots[0]
+
+        var legendary_total_landscape_weight: float = 0.0
+        for weight: float in legendary_landscape_weights:
+            legendary_total_landscape_weight += maxf(0.0, weight)
+        if legendary_total_landscape_weight <= 0.0:
+            return ""
+
+        var legendary_roll: float = randf() * legendary_total_landscape_weight
+        var legendary_cumulative: float = 0.0
+        for index: int in range(legendary_roots.size()):
+            legendary_cumulative += maxf(0.0, legendary_landscape_weights[index])
+            if legendary_roll <= legendary_cumulative:
+                return legendary_roots[index]
+        return legendary_roots[legendary_roots.size() - 1]
+
+    # Floating-point safety for a normal-only pool. This keeps the former
+    # last-positive-candidate fallback behavior intact.
+    for index: int in range(normal_roots.size() - 1, -1, -1):
+        if normal_weights[index] > 0.0:
+            return normal_roots[index]
     return ""

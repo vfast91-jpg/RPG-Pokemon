@@ -2,6 +2,7 @@ extends SceneTree
 
 const RouteScript = preload("res://scripts/demo_route_rebalance_v1.gd")
 const RouteEventsScript = preload("res://scripts/demo_route_events_v1.gd")
+const RouteBossRules = preload("res://scripts/route_boss_rules.gd")
 
 var failures: int = 0
 
@@ -17,6 +18,17 @@ func _initialize() -> void:
 
     _check(route.CAPTURE_SEARCH_MAX == 3, "Eine Fangwiese muss exakt drei Suchen erlauben.")
     _check(route.CAPTURE_SEARCH_LEVEL_OFFSETS == [1, 3, 5], "Fangwiese muss die festen Levelabstände -1/-3/-5 verwenden.")
+    _check(
+        route.CAPTURE_SEARCH_RARITY_EXPONENTS == [1.0, 0.66, 0.33],
+        "Fangwiese muss die freigegebenen Such-Exponenten 1.00/0.66/0.33 verwenden."
+    )
+    _check_close(
+        RouteBossRules.capture_legendary_pool_relative_weight(),
+        0.05,
+        0.000001,
+        "Legendärer Fangpool relativ zu Fangrate 45"
+    )
+    _check(RouteBossRules.capture_event_allows_legendary(), "Reisegefährten-Suche muss Legendäre grundsätzlich erlauben.")
     _check(route._capture_level_for_stage(40) == 17, "Basis-Fanglevel bei Teammaximum Lv.18 muss Lv.17 sein.")
     _check(route._capture_level_for_search(1) == 17, "Suche 1 muss ein Level unter dem höchsten Team-Pokémon liegen.")
     _check(route._capture_level_for_search(2) == 15, "Suche 2 muss drei Level unter dem höchsten Team-Pokémon liegen.")
@@ -54,8 +66,14 @@ func _initialize() -> void:
     _check_close(route._family_catch_rate("bulbasaur"), 45.0, 0.000001, "Bisasam-Familien-Fangrate")
     _check_close(route._family_catch_rate("rattata"), 191.0, 0.000001, "Rattfratz-Familien-Fangrate")
 
-    # Die Seltenheits-Gambling-Kurve bleibt unverändert; nur die Fanglevel wurden
-    # auf die neuen festen Abstände -1/-3/-5 angehoben.
+    _check(RouteBossRules.is_legendary_species("suicune"), "Suicune muss zentral als legendär erkannt werden.")
+    _check(RouteBossRules.is_legendary_species("regice"), "Regice muss zentral als legendär erkannt werden.")
+    _check(RouteBossRules.is_legendary_species("deoxys"), "Deoxys muss zentral als legendär erkannt werden.")
+    _check(RouteBossRules.is_legendary_species("deoxys-attack"), "Deoxys-Angriffsform muss zentral als legendär erkannt werden.")
+    _check(not RouteBossRules.is_legendary_species("bulbasaur"), "Bisasam darf nicht als legendär erkannt werden.")
+
+    # Die normalen Pokémon behalten dieselbe Etappenformel. Nur die drei
+    # Such-Ausgangsexponenten sind auf 1.00/0.66/0.33 festgelegt.
     route.stage = 1
     var common_1: float = route._capture_family_weight("rattata", 1)
     var rare_1: float = route._capture_family_weight("bulbasaur", 1)
@@ -65,8 +83,8 @@ func _initialize() -> void:
     var rare_3: float = route._capture_family_weight("bulbasaur", 3)
 
     _check_close(rare_1, 45.0, 0.000001, "Suche-1-Gewicht auf Etappe 1")
-    _check_close(rare_2, sqrt(45.0), 0.000001, "Suche-2-Gewicht auf Etappe 1")
-    _check_close(rare_3, sqrt(sqrt(45.0)), 0.000001, "Suche-3-Gewicht auf Etappe 1")
+    _check_close(rare_2, pow(45.0, 0.66), 0.000001, "Suche-2-Gewicht auf Etappe 1")
+    _check_close(rare_3, pow(45.0, 0.33), 0.000001, "Suche-3-Gewicht auf Etappe 1")
 
     var ratio_1: float = common_1 / rare_1
     var ratio_2: float = common_2 / rare_2
@@ -74,8 +92,47 @@ func _initialize() -> void:
     _check(ratio_1 > ratio_2 and ratio_2 > ratio_3, "Spätere Suchen müssen den Häufigkeitsvorteil häufig fangbarer Familien schrittweise verkleinern.")
     _check(ratio_3 > 1.0, "Auf Etappe 1 darf auch Suche 3 seltene Familien nicht automatisch wahrscheinlicher als häufige machen.")
 
-    # Im späten Run muss sich das Verhältnis umkehren. Suche 2/3 verstärken
-    # diese Verschiebung zusätzlich, ohne Familien zu garantieren.
+    # Legendäre teilen sich EINEN Sonderpool. Sein Gesamtgewicht bleibt auf
+    # jeder geprüften Etappe und bei jeder Suche exakt 0.05 relativ zu einer
+    # Fangrate-45-Familie. Die legendäre Fangrate 3 kommt hier nicht mehr vor.
+    for current_stage: int in [1, 70, 95]:
+        route.stage = current_stage
+        for search_number: int in [1, 2, 3]:
+            var reference_45: float = route._capture_family_weight("bulbasaur", search_number)
+            var legendary_pool: float = route._capture_legendary_pool_weight(search_number)
+            _check_close(
+                legendary_pool / reference_45,
+                0.05,
+                0.000001,
+                "Legendären-Pool Etappe %d Suche %d" % [current_stage, search_number]
+            )
+
+    # Auf Etappe 95 / Suche 3 liegt der korrekte Sonderpool bereits unter dem
+    # alten 0.0001-Mindestgewicht. Er darf deshalb ausdrücklich NICHT darauf
+    # hochgeklemmt werden, sonst wäre 0.05 nicht mehr konstant.
+    route.stage = 95
+    _check(
+        route._capture_legendary_pool_weight(3) < 0.0001,
+        "Legendären-Pool darf im späten Run nicht durch ein Mindestgewicht künstlich erhöht werden."
+    )
+
+    # Alle vier Deoxys-Formen sind dieselbe legendäre Familie. Der Basis-Selektor
+    # muss deshalb selbst dann nur einen Pool-Kandidaten erzeugen, wenn mehrere
+    # Formen als Roots hereingereicht werden.
+    route._encounter_species_to_family["deoxys"] = "deoxys"
+    route._encounter_species_to_family["deoxys-attack"] = "deoxys"
+    route._encounter_species_to_family["deoxys-defense"] = "deoxys"
+    route._encounter_species_to_family["deoxys-speed"] = "deoxys"
+    route._capture_seen_families.clear()
+    route.stage = 1
+    var deoxys_root: String = route._weighted_capture_root(
+        ["deoxys", "deoxys-attack", "deoxys-defense", "deoxys-speed"],
+        1
+    )
+    _check(deoxys_root == "deoxys", "Alle Deoxys-Formen müssen gemeinsam genau einen legendären Familienplatz belegen.")
+
+    # Im späten Run muss sich das Verhältnis der normalen Pokémon umkehren.
+    # Suche 2/3 verstärken diese Verschiebung zusätzlich, ohne Familien zu garantieren.
     route.stage = 90
     var late_ratio_1: float = (
         route._capture_family_weight("rattata", 1)
@@ -115,6 +172,7 @@ func _initialize() -> void:
     route.free()
 
     # Normale Gegner und Bosse benutzen dieselbe Etappenkurve wie Suche 1.
+    # Die neue Legendären-Sonderregel ist absichtlich nur eine Fangwiesenregel.
     var event_route = RouteEventsScript.new()
     event_route._ensure_encounter_family_data()
 

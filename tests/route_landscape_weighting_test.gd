@@ -132,9 +132,23 @@ func _initialize() -> void:
     assert(is_equal_approx(route.route_landscape_combined_weight(7.5, ["fire"], "meadow"), 1.5), "x0.2 muss die bestehende Seltenheitsgewichtung multiplizieren.")
     assert(is_equal_approx(route.route_landscape_combined_weight(7.5, ["ghost"], "meadow"), 0.0), "x0 muss einen Kandidaten strikt ausschließen.")
 
+    # Die Landschaftsschicht darf das feste Gesamtgewicht des Legendären-Pools
+    # nicht wieder mit x8/x0.2 multiplizieren. Auch hier bleibt er bei allen drei
+    # Suchen exakt 0.05 relativ zu einer Fangrate-45-Familie.
+    route.stage = 95
+    for search_number: int in [1, 2, 3]:
+        var reference_45: float = route._capture_family_weight("bulbasaur", search_number)
+        var legendary_pool: float = route._capture_legendary_pool_weight(search_number)
+        assert(
+            is_equal_approx(legendary_pool / reference_45, 0.05),
+            "Landschaftsschicht muss Legendären-Pool bei Suche %d auf exakt 0.05 halten." % search_number
+        )
+
     var battle = BattleScript.new()
     root.add_child(battle)
     route.battle_demo = battle
+    route.team = [{"species_id": "bulbasaur", "level": 30, "hp": 80, "max_hp": 80}]
+
     var generated_eevee: String = route._tf_generated_capture_species("eevee", 30)
     assert(not generated_eevee.is_empty(), "Fangwiese muss einen konkreten Evoli-Systemzweig erzeugen können.")
     assert(
@@ -145,6 +159,20 @@ func _initialize() -> void:
         route._resolve_capture_species_for_root("eevee", 30) == generated_eevee,
         "Landschaftsgewichtung und anschließendes Fangangebot müssen exakt denselben Entwicklungszweig verwenden."
     )
+
+    # Legendäre behalten den Landschafts-Sonderstatus: x0 schließt eine Familie
+    # weiterhin strikt aus. Sobald ihr Primärtyp erlaubt ist, kann dieselbe Familie
+    # innerhalb des gemeinsamen Legendären-Pools ausgewählt werden.
+    assert(battle.route_species_is_available("mew"), "Mew muss für den Landschafts-Legendären-Test verfügbar sein.")
+    route.current_landscape_id = "city"
+    route._tf_capture_generated_species_by_root.clear()
+    var excluded_mew: String = route._tf_weighted_capture_root_from_candidates(["mew"], 1)
+    assert(excluded_mew.is_empty(), "Stadt x0 für Psycho muss Mew auch im Legendären-Pool strikt ausschließen.")
+
+    route.current_landscape_id = "ruins"
+    route._tf_capture_generated_species_by_root.clear()
+    var allowed_mew: String = route._tf_weighted_capture_root_from_candidates(["mew"], 1)
+    assert(allowed_mew == "mew", "Ruinen x8 für Psycho muss Mew innerhalb des Legendären-Pools erlauben.")
 
     battle.queue_free()
     route.free()

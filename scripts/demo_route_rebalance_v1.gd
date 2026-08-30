@@ -4,6 +4,8 @@ extends "res://scripts/demo_route_levelup_evolution_order_fix.gd"
 # Keeping the redesign here lets us add the new rules without rewriting the
 # mature battle, level-up, evolution, team-card and capture-preview layers.
 
+const CaptureLegendaryRules = preload("res://scripts/route_boss_rules.gd")
+
 const NORMAL_STAGE_XP_FRACTION: float = 0.50
 const ENCOUNTER_FAMILY_DATA_PATH: String = "res://data/gen1_species_encounter_families_v1.json"
 # Reisegefährten-Suche: Jede weitere Suche erhöht wie bisher die relative Chance
@@ -11,8 +13,9 @@ const ENCOUNTER_FAMILY_DATA_PATH: String = "res://data/gen1_species_encounter_fa
 # direkt vom höchsten eigenen Pokémon aus definiert, damit sie über den gesamten
 # Run verständlich und konstant bleiben: Suche 1 -1, Suche 2 -3, Suche 3 -5.
 const CAPTURE_SEARCH_LEVEL_OFFSETS: Array[int] = [1, 3, 5]
-const CAPTURE_SEARCH_RARITY_EXPONENTS: Array[float] = [1.0, 0.5, 0.25]
+const CAPTURE_SEARCH_RARITY_EXPONENTS: Array[float] = [1.0, 0.66, 0.33]
 const CAPTURE_SEARCH_MAX: int = 3
+const CAPTURE_LEGENDARY_REFERENCE_CATCH_RATE: float = 45.0
 const ROUTE_RARITY_MAX_STAGE: int = 100
 const ROUTE_RARITY_STAGE_SHIFT_MAX: float = 2.0
 
@@ -135,6 +138,28 @@ func _capture_family_weight(family_id: String, search_number: int) -> float:
     )
 
 
+func _capture_legendary_pool_weight(search_number: int) -> float:
+    # Legendäre benutzen in der Reisegefährten-Suche bewusst NICHT ihre
+    # Fangrate 3. Alle aktuell verfügbaren legendären Familien teilen sich
+    # stattdessen einen einzigen Sonderpool. Dessen Gesamtgewicht bleibt immer
+    # der konfigurierte Anteil des rohen Fangrate-45-Basisgewichts.
+    return (
+        CaptureLegendaryRules.capture_legendary_pool_relative_weight()
+        * pow(
+            CAPTURE_LEGENDARY_REFERENCE_CATCH_RATE,
+            _capture_effective_rarity_exponent(search_number, stage)
+        )
+    )
+
+
+func _capture_legendary_species_ids() -> Array[String]:
+    return CaptureLegendaryRules.legendary_species_ids()
+
+
+func _capture_legendary_allowed() -> bool:
+    return CaptureLegendaryRules.capture_event_allows_legendary()
+
+
 func _weighted_capture_root(roots: Array, search_number: int) -> String:
     if roots.is_empty():
         return ""
@@ -152,24 +177,64 @@ func _weighted_capture_root(roots: Array, search_number: int) -> String:
         for root_value: Variant in roots:
             candidates.append(str(root_value))
 
+    var legendary_ids: Array[String] = _capture_legendary_species_ids()
+    var legendary_allowed: bool = _capture_legendary_allowed()
+    var legendary_families: Array[String] = []
+    var legendary_roots: Array[String] = []
+    var normal_roots: Array[String] = []
+    var normal_weights: Array[float] = []
     var total_weight: float = 0.0
-    var weights: Array[float] = []
+
     for root_id: String in candidates:
         var family_id: String = _family_id_for_species(root_id)
+        var normalized_root_id: String = root_id.strip_edges().to_lower()
+        if legendary_ids.has(normalized_root_id):
+            # Ein ausgeschalteter Legendären-Fangpool darf nicht durch die normale
+            # Fangratenformel zurück in die Reisegefährten-Suche gelangen.
+            if not legendary_allowed:
+                continue
+            # Formen derselben legendären Familie sind EIN Pool-Kandidat. Das ist
+            # insbesondere für die vier Deoxys-Formen wichtig.
+            if not legendary_families.has(family_id):
+                legendary_families.append(family_id)
+                legendary_roots.append(root_id)
+            continue
+
         var weight: float = maxf(0.0001, _capture_family_weight(family_id, search_number))
-        weights.append(weight)
+        normal_roots.append(root_id)
+        normal_weights.append(weight)
         total_weight += weight
 
+    # Der Legendären-Pool wird exakt EINMAL addiert, unabhängig davon, wie viele
+    # legendäre Familien aktuell verfügbar sind. Keine Mindestgewicht-Klammer:
+    # 0.05 muss auch im späten Run exakt 0.05 relativ zum Fangrate-45-Basisgewicht bleiben.
+    var legendary_pool_weight: float = 0.0
+    if not legendary_roots.is_empty():
+        legendary_pool_weight = maxf(0.0, _capture_legendary_pool_weight(search_number))
+        total_weight += legendary_pool_weight
+
     if total_weight <= 0.0:
-        return candidates.pick_random()
+        return ""
 
     var roll: float = randf() * total_weight
     var cumulative: float = 0.0
-    for index: int in range(candidates.size()):
-        cumulative += weights[index]
+    for index: int in range(normal_roots.size()):
+        cumulative += normal_weights[index]
         if roll <= cumulative:
-            return candidates[index]
-    return candidates[candidates.size() - 1]
+            return normal_roots[index]
+
+    if legendary_pool_weight > 0.0:
+        cumulative += legendary_pool_weight
+        if roll <= cumulative:
+            return str(legendary_roots.pick_random())
+
+    # Floating-point safety only. In normal operation the roll is always caught
+    # by one of the branches above.
+    if not normal_roots.is_empty():
+        return normal_roots[normal_roots.size() - 1]
+    if not legendary_roots.is_empty() and legendary_pool_weight > 0.0:
+        return str(legendary_roots.pick_random())
+    return ""
 
 
 func _begin_capture_event() -> void:

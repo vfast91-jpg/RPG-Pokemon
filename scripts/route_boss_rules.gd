@@ -125,6 +125,17 @@ static func capture_event_allows_legendary() -> bool:
     return bool((policy_value as Dictionary).get("capture_event", true))
 
 
+static func capture_legendary_pool_relative_weight() -> float:
+    var rules: Dictionary = _load_rules()
+    var policy_value: Variant = rules.get("legendary_policy", {})
+    if not (policy_value is Dictionary):
+        return 0.05
+    return maxf(
+        0.0,
+        float((policy_value as Dictionary).get("capture_pool_relative_weight", 0.05))
+    )
+
+
 static func planned_endgame_enabled() -> bool:
     var rules: Dictionary = _load_rules()
     var endgame_value: Variant = rules.get("planned_endgame", {})
