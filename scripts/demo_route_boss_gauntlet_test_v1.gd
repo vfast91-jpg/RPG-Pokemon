@@ -9,9 +9,16 @@ const BossGauntletRules = preload("res://scripts/route_boss_rules.gd")
 const BOSS_GAUNTLET_TEST_START_STAGE: int = 91
 const BOSS_GAUNTLET_TEST_TEAM_LEVEL: int = 80
 const BOSS_GAUNTLET_TEST_TEAM_SIZE: int = 4
+const FINAL_VICTORY_TITLE: String = "🏆 POKÉMON TIMEFLOW GEMEISTERT! 🏆"
+const FINAL_VICTORY_PROGRESS: String = "100 / 100 ETAPPEN · ROUTE VOLLENDET"
 
 var _boss_gauntlet_test_mode: bool = false
 var _boss_gauntlet_balance_settings: Dictionary = {}
+
+
+func _ready() -> void:
+    super._ready()
+    _tf_clean_player_facing_demo_terms(root)
 
 
 func boss_gauntlet_default_settings() -> Dictionary:
@@ -31,6 +38,7 @@ func start_route() -> void:
     # canonical and are deliberately shared with the normal adventure.
     _boss_gauntlet_test_mode = false
     super.start_route()
+    _tf_clean_player_facing_demo_terms(root)
 
 
 func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
@@ -97,7 +105,8 @@ func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
 
 
 func _show_stage_choices(message: String = "") -> void:
-    super._show_stage_choices(message)
+    super._show_stage_choices(_tf_player_facing_text(message))
+    _tf_clean_player_facing_demo_terms(root)
     if (
         not _boss_gauntlet_test_mode
         or stage < ENDGAME_STAGE_START
@@ -119,6 +128,11 @@ func _show_stage_choices(message: String = "") -> void:
         + "[b]ATB ×%.2f[/b] · [b]%d vollständige KP-Leisten[/b].\n"
         + "Dieselben Level- und ATB-Werte gelten auch im normalen Abenteuer."
     ) % [encounter_kind, stage, ENDGAME_ROUTE_STAGE_COUNT, level_offset, atb_multiplier, hp_bars]
+
+
+func _choose_path(choice: Dictionary) -> void:
+    super._choose_path(choice)
+    _tf_clean_player_facing_demo_terms(root)
 
 
 func _boss_level() -> int:
@@ -214,7 +228,13 @@ func _commit_canonical_stage_start(show_feedback: bool = true) -> bool:
 
 func _finish_run(victory: bool, message: String) -> void:
     if not _boss_gauntlet_test_mode:
-        super._finish_run(victory, message)
+        var final_victory: bool = victory and stage >= ENDGAME_ROUTE_STAGE_COUNT
+        if final_victory:
+            AudioManager.play_victory(true)
+        super._finish_run(victory, _tf_player_facing_text(message))
+        _tf_clean_player_facing_demo_terms(root)
+        if final_victory:
+            _tf_present_final_route_victory()
         return
 
     # Do not call the normal persistence/leaderboard finish path: that path
@@ -265,6 +285,84 @@ func _finish_run(victory: bool, message: String) -> void:
     path_box.add_child(menu_button)
 
     _refresh_team_panel()
+
+
+func _tf_present_final_route_victory() -> void:
+    title_label.text = FINAL_VICTORY_TITLE
+    title_label.add_theme_font_size_override("font_size", 24)
+    title_label.add_theme_color_override("font_color", Color("ffe576"))
+    progress_label.text = FINAL_VICTORY_PROGRESS
+    progress_label.add_theme_font_size_override("font_size", 12)
+    progress_label.add_theme_color_override("font_color", Color("dff4e7"))
+
+    restart_button.text = "NEUE ROUTE"
+    restart_button.visible = true
+    restart_button.custom_minimum_size = Vector2(0, 36)
+
+    var celebration := PanelContainer.new()
+    celebration.name = "FinalVictoryCelebration"
+    celebration.custom_minimum_size = Vector2(350, 74)
+    celebration.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    celebration.add_theme_stylebox_override(
+        "panel",
+        _panel(Color("21372f"), Color("ffe576"), 12, 10.0)
+    )
+    path_box.add_child(celebration)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 4)
+    celebration.add_child(content)
+
+    var crown := Label.new()
+    crown.text = "★  👑  ★"
+    crown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    crown.add_theme_font_size_override("font_size", 22)
+    crown.add_theme_color_override("font_color", Color("ffe576"))
+    content.add_child(crown)
+
+    var line := Label.new()
+    line.text = "Alle 100 Etappen bezwungen · Die Zeitlinie gehört dir."
+    line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    line.add_theme_font_size_override("font_size", 11)
+    line.add_theme_color_override("font_color", Color("e7f2ed"))
+    content.add_child(line)
+
+    event_label.text = _tf_player_facing_text(event_label.text) + (
+        "\n\n[center][b]🏆 Herzlichen Glückwunsch![/b]\n"
+        + "Du hast Pokémon Timeflow bis zum Ende gemeistert.[/center]"
+    )
+
+
+func _tf_player_facing_text(text_value: String) -> String:
+    return text_value.replace("NEUE DEMO-ROUTE", "NEUE ROUTE").replace(
+        "Neue Demo-Route", "Neue Route"
+    ).replace(
+        "Demo-Route", "Route"
+    ).replace(
+        "Für die Demo wird", "Hier wird"
+    )
+
+
+func _tf_clean_player_facing_demo_terms(node: Node) -> void:
+    if node == null:
+        return
+
+    if node is Button:
+        var button := node as Button
+        button.text = _tf_player_facing_text(button.text)
+        button.tooltip_text = _tf_player_facing_text(button.tooltip_text)
+    elif node is RichTextLabel:
+        var rich_label := node as RichTextLabel
+        rich_label.text = _tf_player_facing_text(rich_label.text)
+        rich_label.tooltip_text = _tf_player_facing_text(rich_label.tooltip_text)
+    elif node is Label:
+        var label := node as Label
+        label.text = _tf_player_facing_text(label.text)
+        label.tooltip_text = _tf_player_facing_text(label.tooltip_text)
+
+    for child: Node in node.get_children():
+        _tf_clean_player_facing_demo_terms(child)
 
 
 func _leave_boss_gauntlet_test() -> void:
