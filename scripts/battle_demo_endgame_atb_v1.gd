@@ -45,6 +45,21 @@ func _route_begin_wave() -> void:
         )
 
 
+func _refresh_cards() -> void:
+    super._refresh_cards()
+    if not route_mode:
+        return
+    # battle_demo_route_boss.gd rebuilds the visible boss title during ordinary
+    # card refreshes. Re-apply the stage-96..100 presentation after every such
+    # refresh so the technical boss flag can never leak back into player text.
+    for combatant_value: Variant in enemy_team:
+        if not (combatant_value is Dictionary):
+            continue
+        var combatant: Dictionary = combatant_value as Dictionary
+        if bool(combatant.get("legendary_endgame", false)):
+            _apply_legendary_endgame_name(combatant)
+
+
 func _apply_legendary_endgame_name(combatant: Dictionary) -> void:
     var combatant_id: String = str(combatant.get("id", ""))
     var ui_value: Variant = cards.get(combatant_id, {})
