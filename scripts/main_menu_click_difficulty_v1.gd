@@ -4,7 +4,7 @@ extends "res://scripts/main_menu_run_save_v1.gd"
 # the adventure UI. No card receives keyboard focus automatically and arrow-key
 # navigation must not create a misleading golden preselection border.
 
-const BOSS_GAUNTLET_SETTINGS_PATH: String = "user://boss_gauntlet_balance.cfg"
+const BossGauntletRules = preload("res://scripts/route_boss_rules.gd")
 
 var _boss_gauntlet_button: Button
 var _boss_gauntlet_settings_overlay: Control
@@ -55,7 +55,7 @@ func _install_boss_gauntlet_button() -> void:
     _boss_gauntlet_button.text = "🔥  BOSSKAMPFLAUF"
     _boss_gauntlet_button.custom_minimum_size = Vector2(0, 44)
     _boss_gauntlet_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _boss_gauntlet_button.tooltip_text = "Endgame ab Etappe 91 mit frei einstellbaren Testwerten ausprobieren."
+    _boss_gauntlet_button.tooltip_text = "Endgame ab Etappe 91 testen und dabei die echten Endgame-Balancewerte einstellen."
     _boss_gauntlet_button.pressed.connect(_show_boss_gauntlet_settings)
     _apply_main_menu_button_style(_boss_gauntlet_button)
     row.add_child(_boss_gauntlet_button)
@@ -104,7 +104,7 @@ func _build_boss_gauntlet_settings_overlay() -> void:
     content.add_child(title)
 
     var subtitle := Label.new()
-    subtitle.text = "Testteam: 4 zufällige Pokémon auf Lv.80 · Werte gelten nur im Testmodus und werden lokal gespeichert."
+    subtitle.text = "Testteam: 4 zufällige Pokémon auf Lv.80 · Deine Werte gelten zugleich im normalen Hauptlauf."
     subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     subtitle.add_theme_font_size_override("font_size", 9)
@@ -135,7 +135,7 @@ func _build_boss_gauntlet_settings_overlay() -> void:
     grid.add_child(_boss_gauntlet_legendary_atb)
 
     var hint := Label.new()
-    hint.text = "Beispiel: Testteam Lv.80 + Level-Bonus 10 = Boss Lv.90. ATB 1,50 = 50 % schnellerer ATB-Aufbau."
+    hint.text = "Beispiel: Lv.80 + Level-Bonus 10 = Gegner Lv.90. ATB 1,50 = 50 % schnellerer ATB-Aufbau. Beim Start werden diese Werte als echte Endgame-Spielwerte gespeichert."
     hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hint.add_theme_font_size_override("font_size", 9)
@@ -156,17 +156,17 @@ func _build_boss_gauntlet_settings_overlay() -> void:
     buttons.add_child(cancel_button)
 
     var reset_button := Button.new()
-    reset_button.text = "SPIELWERTE"
+    reset_button.text = "AKTUELLE WERTE"
     reset_button.custom_minimum_size = Vector2(135, 38)
-    reset_button.tooltip_text = "Setzt die Regler auf die aktuell im echten Spiel hinterlegten Werte zurück."
+    reset_button.tooltip_text = "Lädt die derzeit für das echte Endgame geltenden Werte in die Regler."
     reset_button.focus_mode = Control.FOCUS_NONE
     reset_button.pressed.connect(_reset_boss_gauntlet_settings_to_game_values)
     _apply_main_menu_button_style(reset_button)
     buttons.add_child(reset_button)
 
     var start_button := Button.new()
-    start_button.text = "TESTLAUF STARTEN"
-    start_button.custom_minimum_size = Vector2(170, 38)
+    start_button.text = "ÜBERNEHMEN & TESTEN"
+    start_button.custom_minimum_size = Vector2(190, 38)
     start_button.focus_mode = Control.FOCUS_NONE
     start_button.pressed.connect(_start_boss_gauntlet_test)
     _apply_main_menu_button_style(start_button)
@@ -202,49 +202,19 @@ func _boss_gauntlet_spinbox(minimum: float, maximum: float, step_value: float) -
 
 
 func _boss_gauntlet_default_settings() -> Dictionary:
-    var defaults := {
-        "boss_level_offset": 10,
-        "boss_atb_rate_multiplier": 1.5,
-        "legendary_level_offset": 10,
-        "legendary_atb_rate_multiplier": 2.0
-    }
     if demo_route != null and demo_route.has_method("boss_gauntlet_default_settings"):
         var route_defaults: Variant = demo_route.call("boss_gauntlet_default_settings")
         if route_defaults is Dictionary:
-            defaults.merge(route_defaults as Dictionary, true)
-    return defaults
+            return (route_defaults as Dictionary).duplicate(true)
+    return BossGauntletRules.endgame_balance_settings()
 
 
 func _load_boss_gauntlet_settings() -> Dictionary:
-    var settings: Dictionary = _boss_gauntlet_default_settings()
-    var config := ConfigFile.new()
-    if config.load(BOSS_GAUNTLET_SETTINGS_PATH) != OK:
-        return settings
-
-    settings["boss_level_offset"] = int(config.get_value(
-        "balance", "boss_level_offset", settings["boss_level_offset"]
-    ))
-    settings["boss_atb_rate_multiplier"] = float(config.get_value(
-        "balance", "boss_atb_rate_multiplier", settings["boss_atb_rate_multiplier"]
-    ))
-    settings["legendary_level_offset"] = int(config.get_value(
-        "balance", "legendary_level_offset", settings["legendary_level_offset"]
-    ))
-    settings["legendary_atb_rate_multiplier"] = float(config.get_value(
-        "balance", "legendary_atb_rate_multiplier", settings["legendary_atb_rate_multiplier"]
-    ))
-    return settings
+    return _boss_gauntlet_default_settings()
 
 
-func _save_boss_gauntlet_settings(settings: Dictionary) -> void:
-    var config := ConfigFile.new()
-    config.set_value("balance", "boss_level_offset", int(settings["boss_level_offset"]))
-    config.set_value("balance", "boss_atb_rate_multiplier", float(settings["boss_atb_rate_multiplier"]))
-    config.set_value("balance", "legendary_level_offset", int(settings["legendary_level_offset"]))
-    config.set_value("balance", "legendary_atb_rate_multiplier", float(settings["legendary_atb_rate_multiplier"]))
-    var save_result: Error = config.save(BOSS_GAUNTLET_SETTINGS_PATH)
-    if save_result != OK:
-        push_warning("Bosskampflauf: Testwerte konnten nicht lokal gespeichert werden.")
+func _save_boss_gauntlet_settings(settings: Dictionary) -> bool:
+    return BossGauntletRules.save_endgame_balance_settings(settings)
 
 
 func _collect_boss_gauntlet_settings() -> Dictionary:
@@ -290,7 +260,9 @@ func _start_boss_gauntlet_test() -> void:
         return
 
     var settings: Dictionary = _collect_boss_gauntlet_settings()
-    _save_boss_gauntlet_settings(settings)
+    if not _save_boss_gauntlet_settings(settings):
+        push_error("Bosskampflauf: Endgame-Spielwerte konnten nicht übernommen werden.")
+        return
     _hide_boss_gauntlet_settings()
 
     menu_layer.visible = false
