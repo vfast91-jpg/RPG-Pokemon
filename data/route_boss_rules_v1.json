@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "legendary_policy": {
     "normal_stage_battles": false,
     "special_boss_encounters_before_endgame": false,
@@ -52,9 +52,16 @@
     "stage_start": 91,
     "stage_end": 100,
     "boss_profile": {
-      "level_offset": 5,
+      "level_offset": 10,
       "hp_multiplier": 4.0,
-      "hp_bars": 4
+      "hp_bars": 4,
+      "atb_rate_multiplier": 1.5
+    },
+    "legendary_profile": {
+      "level_offset": 10,
+      "hp_multiplier": 4.0,
+      "hp_bars": 4,
+      "atb_rate_multiplier": 2.0
     },
     "legendary_pools": {
       "bst_580": [
