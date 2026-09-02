@@ -230,7 +230,7 @@ func _finish_run(victory: bool, message: String) -> void:
     if not _boss_gauntlet_test_mode:
         var final_victory: bool = victory and stage >= ENDGAME_ROUTE_STAGE_COUNT
         if final_victory:
-            AudioManager.play_victory(true)
+            AudioManager.play_victory("final")
         super._finish_run(victory, _tf_player_facing_text(message))
         _tf_clean_player_facing_demo_terms(self)
         if final_victory:
