@@ -7,6 +7,8 @@ extends "res://scripts/battle_demo_spotlight_ui_v1.gd"
 # Stages 96-100 additionally carry a presentation-only legendary_endgame flag;
 # internal boss=true semantics remain untouched for HP bars and boss mechanics.
 
+const ATB_MAX: float = 100.0
+
 
 func _route_begin_wave() -> void:
     super._route_begin_wave()
