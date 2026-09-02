@@ -25,6 +25,7 @@ MetaProgression="*res://scripts/meta_progression.gd"
 RunSaveManager="*res://scripts/run_save_manager.gd"
 AudioManager="*res://scripts/audio_manager.gd"
 SafeTooltipManager="*res://scripts/ui/safe_tooltip_manager_lifecycle_fix.gd"
+TouchScrollManager="*res://scripts/ui/touch_scroll_manager.gd"
 
 [display]
 
@@ -33,6 +34,15 @@ window/size/viewport_height=360
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
+
+[gui]
+
+common/default_scroll_deadzone=10
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
+pointing/emulate_touch_from_mouse=true
 
 [rendering]
 
