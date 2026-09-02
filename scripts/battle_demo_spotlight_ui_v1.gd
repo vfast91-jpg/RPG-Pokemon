@@ -34,7 +34,10 @@ func _refresh_spotlight_visuals() -> void:
         if sprite == null or not is_instance_valid(sprite):
             continue
 
-        var spotlight_active: bool = SpotlightIndicatorRules.is_active(combatant, int(action_serial))
+        var spotlight_active: bool = SpotlightIndicatorRules.is_active(
+            combatant,
+            int(combatant.get("action_serial", 0))
+        )
         var halo: Line2D = ui.get("spotlight_halo") as Line2D
         var badge: PanelContainer = ui.get("spotlight_badge") as PanelContainer
 
