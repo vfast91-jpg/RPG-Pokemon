@@ -56,6 +56,10 @@ func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
 
     _boss_gauntlet_test_mode = true
     stage = BOSS_GAUNTLET_TEST_START_STAGE
+    # This mode jumps straight from the menu to stage 91. Treat stage 91 as the
+    # freshly generated test team's join-stage so the inherited 30-stage travel
+    # companion clock cannot consume 90 stages at once and remove the whole team.
+    _companion_duration_checkpoint_stage = stage
     stage_xp_multiplier = 1.0
     last_route_message = ""
     pending_capture.clear()
@@ -86,14 +90,16 @@ func start_boss_gauntlet_test(settings: Dictionary = {}) -> void:
         )
         member["level"] = BOSS_GAUNTLET_TEST_TEAM_LEVEL
         member["hp"] = int(member.get("max_hp", member.get("hp", 1)))
+        _ensure_member_companion_duration(member)
         team.append(member)
 
     visible = true
     _show_stage_choices(
-        "[b]Bosskampflauf-Test[/b]\n"
-        + "Zufälliges Viererteam auf Level %d · direkter Einstieg bei Etappe %d.\n"
-        + "91–95: +%d Level · ATB ×%.2f · 96–100: +%d Level · ATB ×%.2f"
-        % [
+        (
+            "[b]Bosskampflauf-Test[/b]\n"
+            + "Zufälliges Viererteam auf Level %d · direkter Einstieg bei Etappe %d.\n"
+            + "91–95: +%d Level · ATB ×%.2f · 96–100: +%d Level · ATB ×%.2f"
+        ) % [
             BOSS_GAUNTLET_TEST_TEAM_LEVEL,
             BOSS_GAUNTLET_TEST_START_STAGE,
             int(_boss_gauntlet_balance_settings.get("boss_level_offset", 10)),
