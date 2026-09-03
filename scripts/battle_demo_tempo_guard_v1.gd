@@ -1,10 +1,62 @@
 extends "res://scripts/battle_demo_endgame_atb_v1.gd"
 
-# Final shared guard against runaway temporary Speed control.
-#
-# Two rules are enforced at the last runtime seam so every battle mode using
-# main.tscn gets the same behavior without rewriting the historical modifier
-# layers below it:
+# Final shared guards applied at the last runtime seam so every battle mode
+# using main.tscn receives the same fixes after all historical data packs and
+# modifier layers below it have loaded.
+
+const ENEMY_ONLY_SPREAD_MOVE_IDS: Array[String] = [
+    "earthquake",
+    "misty_explosion",
+    "bulldoze",
+    "surf",
+    "synchronoise",
+    "discharge",
+    "expanding_force",
+    "hyper_voice",
+]
+
+const TEMPO_SLOWDOWN_CAP: float = 2.5
+const TEMPO_EFFECT_ACTIONS: int = 3
+
+
+func _load_data() -> void:
+    super._load_data()
+    _apply_enemy_only_spread_target_guard()
+
+
+func _apply_enemy_only_spread_target_guard() -> void:
+    # These eight moves must never hit allied active Pokemon. Only rewrite
+    # ally-inclusive spread targets; already-correct single-enemy/all-enemies
+    # definitions (for example Expanding Force and Hyper Voice) stay intact.
+    var runtime_moves_value: Variant = data.get("moves", {})
+    if runtime_moves_value is Dictionary:
+        var runtime_moves: Dictionary = runtime_moves_value
+        _force_enemy_only_spread_targets(runtime_moves)
+        data["moves"] = runtime_moves
+
+    # Keep the canonical runtime mirror consistent as well, so a later rebuild
+    # cannot restore an older friendly-fire target from a loaded data pack.
+    var canonical_moves_value: Variant = _canonical_pack.get("moves", {})
+    if canonical_moves_value is Dictionary:
+        var canonical_moves: Dictionary = canonical_moves_value
+        _force_enemy_only_spread_targets(canonical_moves)
+        _canonical_pack["moves"] = canonical_moves
+
+
+func _force_enemy_only_spread_targets(moves: Dictionary) -> void:
+    for move_id: String in ENEMY_ONLY_SPREAD_MOVE_IDS:
+        var move_value: Variant = moves.get(move_id, {})
+        if not (move_value is Dictionary):
+            continue
+
+        var move: Dictionary = move_value
+        var target_rule: String = str(move.get("target", ""))
+        if target_rule == "all_other_active_pokemon" or target_rule == "field_all_pokemon":
+            move["target"] = "all_enemies"
+            moves[move_id] = move
+
+
+# Two tempo rules are enforced here as well:
 # 1) Re-applying the same named Speed/ATB-cycle effect refreshes its duration
 #    instead of creating another independent stack. Different moves may still
 #    combine, preserving intentional tempo-control synergies.
@@ -12,9 +64,6 @@ extends "res://scripts/battle_demo_endgame_atb_v1.gd"
 #    2.5x normal. This keeps strong Speed control useful while preventing a
 #    self-reinforcing soft lock where the slowed Pokemon barely receives the
 #    own actions that are required for its debuffs to expire.
-
-const TEMPO_SLOWDOWN_CAP: float = 2.5
-const TEMPO_EFFECT_ACTIONS: int = 3
 
 
 func _add_timed_modifier(
