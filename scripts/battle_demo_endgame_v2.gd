@@ -10,23 +10,31 @@ extends "res://scripts/battle_demo_endgame_v1.gd"
 # exactly as required by the Timeflow rule: it scales the final damage per
 # actually targeted/hit Pokemon and therefore cannot be forgotten by a family
 # implementation.
+#
+# Numerical spread-status effects are centralized here for the same reason.
+# Their strength is reduced by target count while duration, hit/status chance
+# and binary effects remain untouched.
 
 const AreaDamageRules = preload("res://scripts/battle/area_damage_rules.gd")
+const AreaStatusRules = preload("res://scripts/battle/area_status_rules.gd")
 
 # Keyed by actor id + counted action + move id. The first damage resolution of
 # a spread move freezes its target-count multiplier for that whole action. That
 # prevents early KOs from making later targets in the SAME attack take a larger
 # percentage simply because fewer Pokemon are still alive by then.
 var _area_damage_action_multipliers: Dictionary = {}
+var _area_status_effect_pre_scaled: bool = false
 
 
 func _start_battle() -> void:
     _area_damage_action_multipliers.clear()
+    _area_status_effect_pre_scaled = false
     super._start_battle()
 
 
 func open_config() -> void:
     _area_damage_action_multipliers.clear()
+    _area_status_effect_pre_scaled = false
     super.open_config()
 
 
@@ -83,6 +91,92 @@ func _damage(
         return damage
 
     return maxi(1, int(round(float(damage) * multiplier)))
+
+
+func _effect(actor: Dictionary, target: Dictionary, mechanic: Dictionary) -> float:
+    if not AreaStatusRules.mechanic_uses_scaling(mechanic):
+        return super._effect(actor, target, mechanic)
+
+    var target_rule: String = _area_status_target_rule(mechanic)
+    if not AreaStatusRules.target_rule_uses_scaling(target_rule):
+        return super._effect(actor, target, mechanic)
+
+    var target_count: int = _area_status_target_count(actor, target_rule, str(target.get("side", "")))
+    if target_count <= 1:
+        return super._effect(actor, target, mechanic)
+
+    var scaled_mechanic: Dictionary = mechanic.duplicate(true)
+    scaled_mechanic["multiplier_from_special"] = AreaStatusRules.scale_special_coefficient(
+        float(mechanic.get("multiplier_from_special", 0.0)),
+        target_count
+    )
+
+    # Some inherited/custom numerical handlers calculate their final modifier
+    # through _status_modifier_multiplier(). Mark this call as already scaled so
+    # the shared fallback below cannot apply the area factor a second time.
+    _area_status_effect_pre_scaled = true
+    var result: float = super._effect(actor, target, scaled_mechanic)
+    _area_status_effect_pre_scaled = false
+    return result
+
+
+func _status_modifier_multiplier(
+    actor: Dictionary,
+    mechanic: Dictionary,
+    kind: String,
+    flag_a: bool = false,
+    flag_b: bool = false
+) -> float:
+    var multiplier: float = super._status_modifier_multiplier(
+        actor, mechanic, kind, flag_a, flag_b
+    )
+    if _area_status_effect_pre_scaled:
+        return multiplier
+
+    var target_rule: String = _area_status_target_rule(mechanic)
+    if not AreaStatusRules.target_rule_uses_scaling(target_rule):
+        return multiplier
+
+    var target_count: int = _area_status_target_count(actor, target_rule)
+    if target_count <= 1:
+        return multiplier
+
+    return AreaStatusRules.scale_modifier_multiplier(multiplier, target_count)
+
+
+func _area_status_target_rule(mechanic: Dictionary) -> String:
+    var scope: String = str(mechanic.get("scope", ""))
+    if AreaStatusRules.target_rule_uses_scaling(scope):
+        return scope
+
+    var move: Dictionary = _area_damage_active_move()
+    var move_rule: String = str(move.get("target", "")) if not move.is_empty() else ""
+    if AreaStatusRules.target_rule_uses_scaling(move_rule):
+        return move_rule
+
+    return scope if not scope.is_empty() else move_rule
+
+
+func _area_status_target_count(
+    actor: Dictionary,
+    target_rule: String,
+    target_side: String = ""
+) -> int:
+    if not AreaStatusRules.target_rule_uses_scaling(target_rule):
+        return 1
+
+    var targets: Array = _targets(actor, target_rule)
+    var count: int = 0
+    for target_value: Variant in targets:
+        if not (target_value is Dictionary):
+            continue
+        var candidate: Dictionary = target_value
+        if not bool(candidate.get("alive", false)):
+            continue
+        if not target_side.is_empty() and str(candidate.get("side", "")) != target_side:
+            continue
+        count += 1
+    return maxi(1, count)
 
 
 func _area_damage_active_move() -> Dictionary:
