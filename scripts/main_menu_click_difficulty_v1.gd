@@ -16,7 +16,6 @@ var _boss_gauntlet_legendary_atb: SpinBox
 
 func _build_main_menu() -> void:
     super._build_main_menu()
-    _install_boss_gauntlet_button()
     _build_boss_gauntlet_settings_overlay()
 
 
